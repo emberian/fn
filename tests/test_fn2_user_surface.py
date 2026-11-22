@@ -23,6 +23,8 @@ import subprocess
 import sys
 import time
 
+from harness.launcher import require_launcher_sigkill
+
 ROOT = Path(__file__).resolve().parents[1]
 FN = str(ROOT / "fn")
 
@@ -73,8 +75,7 @@ class LiveNode:
     def sigkill(self) -> None:
         assert self.node_pid and int(self.pidfile.read_text(encoding="ascii")) == self.node_pid
         os.kill(self.node_pid, signal.SIGKILL)
-        rc = self.proc.wait(timeout=30)
-        assert rc != 0, f"expected non-zero exit on SIGKILL, got {rc}"
+        require_launcher_sigkill(self.proc)
 
     def close(self) -> None:
         if self.proc.poll() is None:
