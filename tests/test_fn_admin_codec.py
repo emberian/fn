@@ -149,6 +149,51 @@ class PeerPullActivation(unittest.TestCase):
                 fn_admin.decode_auth_reply("peer-pull", auth_reply("peer-pull", fields))
 
 
+class PeerPositionCodec(unittest.TestCase):
+    def test_owner_request_names_only_principal_and_consumer(self):
+        request = fn_admin.build_auth_request("peer-position", principal=129, consumer=305)
+        self.assertEqual(fn_admin.fnct_open(request), (29, b"\x07\x81\x01\xb1\x02"))
+        with self.assertRaises(ValueError):
+            fn_admin.build_auth_request("peer-position", principal=129, consumer=0)
+
+    def test_found_layout_carries_the_exact_persistent_scope_and_chain(self):
+        ids = b"".join(fn_admin.leb_encode(n) for n in (23, 813, 1, 5, 24, 129))
+        chain = bytes(range(32))
+        prefix = ids + b"\x00\x01" + (2**32 + 7).to_bytes(8, "big")
+        tail = prefix + b"\x01" + chain
+        self.assertEqual(fn_admin.decode_auth_reply("peer-position", auth_reply("peer-position", b"\x01" + tail)), {
+            "outcome": "accepted", "reason": "none", "found": True,
+            "target_stream": 23, "source_domain": 813, "source_incarnation": 1,
+            "source_revision": 5, "source_view": 24, "source_view_version": 129,
+            "interpretation": 1, "position": 2**32 + 7, "chain": chain.hex(),
+        })
+        self.assertEqual(fn_admin.decode_auth_reply("peer-position", auth_reply("peer-position", b"\x00")),
+                         {"outcome": "accepted", "reason": "none", "found": False})
+        for fields in (b"\x02", b"\x00" + tail, b"\x01" + tail[:-1], b"\x01" + tail + b"\x00",
+                       b"\x01" + prefix + b"\x02" + chain):
+            with self.subTest(fields=fields), self.assertRaises(fn_admin.WireError):
+                fn_admin.decode_auth_reply("peer-position", auth_reply("peer-position", fields))
+
+    def test_init_and_serve_forward_the_history_revision_to_boot(self):
+        parser = fn_admin.build_parser()
+        for argv in (["init", "image", "--size-mb", "8"], ["serve", "image"]):
+            with self.subTest(command=argv[0]):
+                env = {}
+                fn_admin.apply_origin_options(parser.parse_args(argv), env)
+                self.assertNotIn("FN2_HISTORY_REVISION", env)
+                fn_admin.apply_origin_options(parser.parse_args(argv + ["--history-revision", "814"]), env)
+                self.assertEqual(env["FN2_HISTORY_REVISION"], "814")
+
+    def test_remote_stream_is_bounded_in_octets(self):
+        request = dict(principal=3, stream=2, consumer=1, history=8, incarnation=1, view=9,
+                       remote_stream="é" * 32, remote_address="127.0.0.1", remote_port=119,
+                       timeout_ms=30000, remote_user="remote", secret=secrets.token_bytes(16))
+        fn_admin.build_auth_request("peer-pull", **request)
+        request["remote_stream"] += "x"
+        with self.assertRaises(ValueError):
+            fn_admin.build_auth_request("peer-pull", **request)
+
+
 class ReplyDecoding(unittest.TestCase):
     def test_cursor_layout_preserves_consumer_octets_and_version_width(self) -> None:
         ids = b"".join(fn_admin.octets_var(value) for value in

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Drive independent fn2 nodes over verified TLS.
 
-The article-only control uses ordinary POST, ARTICLE and IHAVE. The catch-up
-run requires an accepted counted READ and a served B-side peer-pull import.
+The article-only control uses ordinary POST, ARTICLE and IHAVE. The pull
+control drives B's actual actor and checks its durable position after restart.
 """
 import argparse
 import json
@@ -10,13 +10,16 @@ from contextlib import contextmanager, ExitStack
 from pathlib import Path
 import secrets
 import stat
+import struct
 import subprocess
 import tempfile
+import time
+from typing import NamedTuple
 
 from test_fn2_starttls_surface import Peer
 from test_fn2_user_surface import FN, LiveNode, ROOT, run_fn
 
-from fn_admin import build_cns_request, decode_cns_reply, fnct_open
+from fn_admin import build_cns_request, cursor_consumer_and_position_width, decode_cns_reply, fnct_open, leb_decode
 
 SENDER_ORIGIN = 811
 CONSUMER = 7
@@ -35,6 +38,26 @@ def accepted(*args):
     return result
 
 
+class RunningNode(NamedTuple):
+    port: int
+    cert: Path
+    image: Path
+    process: LiveNode
+    serve: list[str]
+
+
+@contextmanager
+def listen(directory, image, control, serve, label):
+    running = LiveNode(directory, image, label, serve)
+    try:
+        port = int(running.wait_marker(b"LISTENING ").split()[1])
+        assert running.wait_marker(b"LISTENING-LOCAL ") == f"LISTENING-LOCAL {control}".encode()
+        assert stat.S_IMODE(control.stat().st_mode) == 0o600
+        yield port, running
+    finally:
+        running.close()
+
+
 @contextmanager
 def node(directory, control, identity, *, counted=False, pull_ca=None):
     directory.mkdir()
@@ -51,6 +74,7 @@ def node(directory, control, identity, *, counted=False, pull_ca=None):
         "--origin-incarnation", "1",
         "--history-id", str(identity + 2),
         "--history-incarnation", "1",
+        "--history-revision", str(identity + 3),
     )
     image = directory / "node.img"
     run_fn("init", str(image), "--size-mb", "8", "--group", GROUP, *origin)
@@ -66,14 +90,8 @@ def node(directory, control, identity, *, counted=False, pull_ca=None):
     if pull_ca is not None:
         serve.extend(["--peer-pull-slots", "1", "--peer-pull-ca-file", str(pull_ca),
                       "--peer-pull-tls-name", "localhost"])
-    running = LiveNode(directory, image, "peer", serve)
-    try:
-        port = int(running.wait_marker(b"LISTENING ").split()[1])
-        assert running.wait_marker(b"LISTENING-LOCAL ") == f"LISTENING-LOCAL {control}".encode()
-        assert stat.S_IMODE(control.stat().st_mode) == 0o600
-        yield port, cert
-    finally:
-        running.close()
+    with listen(directory, image, control, serve, "peer") as (port, running):
+        yield RunningNode(port, cert, image, running, serve)
 
 
 def provision(control, principal, rights):
@@ -119,6 +137,8 @@ def post_one(peer):
 
 def article_transit(source, target, directory):
     assert target.command(b"ARTICLE " + MID).startswith(b"430 ")
+    assert target.command(b"BODY " + MID).startswith(b"430 ")
+    assert target.command(b"CHECK " + MID) == b"238 " + MID
     assert source.command(b"ARTICLE " + MID).startswith(b"220 ")
     article = []
     while (line := source.line()) != b".":
@@ -131,20 +151,41 @@ def article_transit(source, target, directory):
     (directory / "ordinary-article.nntp").write_bytes(transfer + b"\r\n")
     assert target.command(b"IHAVE " + MID).startswith(b"335 ")
     assert target.command(transfer).startswith(b"235 ")
+    assert target.command(b"CHECK " + MID) == b"438 " + MID
     assert target.command(b"IHAVE " + MID) == b"435 duplicate"
     assert target.command(b"BODY " + MID).startswith(b"222 ")
     assert [target.line(), target.line()] == [BODY, b"."]
     print("PASS ordinary ARTICLE body transit and same-ID retry on B", flush=True)
 
 
-def catch_up(source, target, directory):
-    assert target.command(b"ARTICLE " + MID).startswith(b"430 ")
-    registered = source.xfnc("register", consumer=bytes([CONSUMER]), start="history", streams=[GROUP.encode("ascii")])
+def register_at_sender(source, directory):
+    registered = source.xfnc("register", consumer=bytes([CONSUMER]), start="history",
+                             streams=[GROUP.encode("ascii")])
     if registered.get("outcome") != "accepted":
         raise BoundaryBlocked(f"A REGISTER returned {registered!r}")
     assert registered["position"] == 0, registered
     cursor = bytes.fromhex(registered["cursor"])
+    consumer, width = cursor_consumer_and_position_width(cursor)
+    assert consumer == bytes([CONSUMER])
+    indices = []
+    off = 5
+    for _ in range(2):
+        size, off = leb_decode(cursor, off)
+        indices.append(int.from_bytes(cursor[off:off + size], "big"))
+        off += size
+    assert indices == [SENDER_ORIGIN + 2, 1], indices
+    view = int.from_bytes(cursor[-3 * width:-2 * width], "big")
+    assert view > 0
     (directory / "initial.fncu").write_bytes(cursor)
+    return cursor, view
+
+
+# kind 28 holds the generated peer batch layout, including its digest tag.
+PEER_BATCH_HEADER = struct.Struct(">BQQQB32sQQHQQBI")
+PEER_BATCH_PAIR = struct.Struct(">QHH")
+
+
+def read_sender_page(source, cursor, directory):
     query = build_cns_request("read", cursor=cursor, max_items=1, max_octets=1024)
     request = f"XFNC {len(query)}\r\n".encode("ascii") + query
     assert source.tls.write(request) == len(request)
@@ -153,14 +194,40 @@ def catch_up(source, target, directory):
     code, separator, extent = line.partition(b" ")
     assert separator and extent.isdigit() and 0 < int(extent) <= 4096, line
     reply = source.take(int(extent))
-    fnct_open(reply)
+    kind, payload = fnct_open(reply)
     (directory / "read-line").write_bytes(line + b"\r\n")
     (directory / "read.fnct").write_bytes(reply)
     if code != b"290":
         result = decode_cns_reply("read", reply)
         assert code == {"refused": b"490", "uncertain": b"491"}[result["outcome"]], result
         raise BoundaryBlocked(f"A counted READ returned {result!r}")
-    raise BoundaryBlocked("B has no served peer-pull import handoff or settled receipt to compare after restart")
+    assert kind == 28 and payload[:3] == bytes(3), "unexpected accepted peer READ envelope"
+    count = int.from_bytes(payload[3:7], "big")
+    result = payload[7:]
+    assert count == len(result) and len(result) >= PEER_BATCH_HEADER.size + 2
+    (version, history, incarnation, revision, algorithm, chain, view, view_version, interpretation,
+     next_position, end, stop, pairs) = PEER_BATCH_HEADER.unpack_from(result)
+    assert (version, algorithm, pairs) == (1, 1, 1)
+    assert 0 < next_position <= end and stop in (0, 1, 2, 3)
+    pos = PEER_BATCH_HEADER.size
+    cursor_size = int.from_bytes(result[pos:pos + 2], "big")
+    pos += 2 + cursor_size
+    assert 0 < cursor_size <= 366 and pos + PEER_BATCH_PAIR.size <= len(result)
+    item_position, history_size, evidence_size = PEER_BATCH_PAIR.unpack_from(result, pos)
+    pos += PEER_BATCH_PAIR.size
+    assert item_position == next_position and history_size > 0 and evidence_size > 0
+    assert pos + history_size + evidence_size == len(result)
+    assert MID in result[pos + history_size:]
+    return dict(source_domain=history, source_incarnation=incarnation, source_revision=revision,
+                source_view=view, source_view_version=view_version, interpretation=interpretation,
+                position=next_position, chain=chain.hex())
+
+
+def catch_up(source, target, directory):
+    assert target.command(b"ARTICLE " + MID).startswith(b"430 ")
+    cursor, _ = register_at_sender(source, directory)
+    read_sender_page(source, cursor, directory)
+    print("PASS A counted READ carried the posted article's evidence", flush=True)
 
 
 def activate_receiver(control, target, remote_port, sender_auth, view, directory):
@@ -185,16 +252,58 @@ def activate_receiver(control, target, remote_port, sender_auth, view, directory
     print("PASS B owner pull activation", flush=True)
 
 
+def peer_position(control, timeout=10):
+    return run_fn("peer", "position", "--control-sock", str(control), "--local-principal", "from-a",
+                  "--consumer", str(CONSUMER), as_json=True, timeout=timeout)
+
+
+def wait_for_progress(control):
+    deadline = time.monotonic() + 40
+    while (remaining := deadline - time.monotonic()) > 0:
+        state = peer_position(control, timeout=min(10, remaining))
+        assert state["outcome"] == "accepted", state
+        if state["found"] and state["position"] > 0:
+            return state
+        time.sleep(min(0.25, max(0, deadline - time.monotonic())))
+    raise BoundaryBlocked("B accepted the pull but exposed no positive durable position within 40 seconds")
+
+
+def pull_and_reopen(directory, a, b, a_socket, b_socket, a_auth, b_auth):
+    with logged_in(a.port, a.cert, a_auth, peer_role=True) as source:
+        cursor, view = register_at_sender(source, directory)
+        sender_page = read_sender_page(source, cursor, directory)
+    before = peer_position(b_socket)
+    assert before == {"outcome": "accepted", "reason": "none", "found": False}, before
+    with logged_in(b.port, b.cert, b_auth, peer_role=True) as target:
+        activate_receiver(b_socket, target, a.port, a_auth, view, directory)
+    position = wait_for_progress(b_socket)
+    a_scope = accepted("grant", "get", "from-b", "peer-feed", GROUP,
+                       "--control-sock", str(a_socket))
+    b_scope = accepted("grant", "get", "from-a", "peer-accept", GROUP,
+                       "--control-sock", str(b_socket))
+    assert position["target_stream"] == b_scope["target"], position
+    assert position["source_domain"] == SENDER_ORIGIN + 2 and position["source_incarnation"] == 1, position
+    assert position["source_view"] == a_scope["target"] and position["source_view_version"] == view, position
+    assert position["source_revision"] == SENDER_ORIGIN + 3 and any(bytes.fromhex(position["chain"])), position
+    assert {field: position[field] for field in sender_page} == sender_page, position
+    (directory / "durable-position.json").write_text(json.dumps(position, sort_keys=True) + "\n")
+    b.process.sigkill()
+    with listen(b.image.parent, b.image, b_socket, b.serve, "after-import") as (port, _):
+        assert peer_position(b_socket) == position, "B recovered a different peer checkpoint"
+        print("PASS B durable peer position after process death", flush=True)
+        with logged_in(a.port, a.cert, a_auth, peer_role=True) as source:
+            with logged_in(port, b.cert, b_auth, peer_role=True) as target:
+                article_transit(source, target, directory)
+        assert peer_position(b_socket) == position, "ordinary transit changed the peer checkpoint"
+
+
 def main():
     args = argparse.ArgumentParser(description=__doc__)
     args.add_argument("--directory", type=Path, required=True)
     modes = args.add_mutually_exclusive_group()
     modes.add_argument("--article-only", action="store_true", help="run the ordinary transit control")
-    modes.add_argument("--activate-pull", action="store_true", help="check the owner's pull activation on B")
-    args.add_argument("--expected-view", type=int, help="expected A view version for --activate-pull")
+    modes.add_argument("--activate-pull", action="store_true", help="run B's actor and verify its durable position")
     options = args.parse_args()
-    if options.activate_pull and options.expected_view is None:
-        args.error("--activate-pull requires --expected-view")
     directory = options.directory.resolve()
     directory.mkdir(parents=True, exist_ok=False)
     try:
@@ -204,8 +313,8 @@ def main():
             a = cleanup.enter_context(node(directory / "a", a_socket, SENDER_ORIGIN,
                                            counted=not options.article_only))
             b = cleanup.enter_context(node(directory / "b", b_socket, 821,
-                                           pull_ca=a[1] if options.activate_pull else None))
-            assert a[0] != b[0], (a[0], b[0])
+                                           pull_ca=a.cert if options.activate_pull else None))
+            assert a.port != b.port, (a.port, b.port)
             a_poster = provision(a_socket, "local-poster", [("append", GROUP)])
             a_reader = provision(a_socket, "from-b", [
                 ("peer", None), ("consume", None), ("peer-feed", GROUP), ("read", GROUP),
@@ -213,14 +322,14 @@ def main():
             b_target = provision(b_socket, "from-a", [
                 ("peer", None), ("peer-accept", GROUP), ("append", GROUP), ("read", GROUP),
             ])
-            with logged_in(*a, a_poster) as poster:
+            with logged_in(a.port, a.cert, a_poster) as poster:
                 post_one(poster)
             print("PASS durable NNTP POST on A", flush=True)
-            with logged_in(*b, b_target, peer_role=True) as target:
-                if options.activate_pull:
-                    activate_receiver(b_socket, target, a[0], a_reader, options.expected_view, directory)
-                else:
-                    with logged_in(*a, a_reader, peer_role=True) as source:
+            if options.activate_pull:
+                pull_and_reopen(directory, a, b, a_socket, b_socket, a_reader, b_target)
+            else:
+                with logged_in(b.port, b.cert, b_target, peer_role=True) as target:
+                    with logged_in(a.port, a.cert, a_reader, peer_role=True) as source:
                         if options.article_only:
                             article_transit(source, target, directory)
                         else:
