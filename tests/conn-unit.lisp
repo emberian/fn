@@ -9,6 +9,7 @@
 ; Run: sh tools/certify.sh tests/conn-unit.lisp
 (in-package "ACL2")
 (include-book "../books/owed-conn")
+(include-book "protected-peer-fixture")
 (include-book "../sim/check-wire")
 (include-book "std/testing/must-fail" :dir :system)
 
@@ -267,7 +268,19 @@
                                                        "503 archive projection unavailable"
                                                        "412 no newsgroup selected")) t)))
 
-; Brick H5: peer connection (AcceptResult with peer family) admits MODE STREAM,
+;; The wire driver completes an issued TLS operation, then supplies TLS
+;; application data. Until that terminal, QUIT cannot be parsed.
+(assert-event
+ (let* ((profile (put-assoc-equal :tls-certificate "fixture.pem"
+                   (put-assoc-equal :tls-key "fixture.key"
+                    (put-assoc-equal :tls-handshakes 1 *fn2-conn-wire-profile*))))
+        (octets (fn2-cu-text '("STARTTLS" "QUIT")))
+        (got (fn2-conn-wire-run-in profile (list (list octets '(10 :tls) t))))
+        (want (list (fn2-cu-text (list *fn2-cu-greeting* "382 continue with TLS negotiation"
+                                     "205 closing connection")) t)))
+   (and (fn2-conn-safe-p got) (equal (car (nth 1 got)) want))))
+
+; Brick H5: a provisioned protected peer admits MODE STREAM,
 ; CHECK (431 when reading is off), IHAVE (436 when posting is off), and
 ; TAKETHIS (drains the immediate block and answers 439 <id> when posting is off
 ; or the command line is malformed :discard).
@@ -293,22 +306,23 @@
         "439 bad"
         "205 closing connection"))
 (assert-event
- (let* ((octets (fn2-cu-text *fn2-cu-peer-lines*))
-        (want (list (fn2-cu-text *fn2-cu-peer-expect*) t))
-        (peering (put-assoc-equal :peering-interim t *fn2-conn-wire-profile*))
-        (r1 (fn2-conn-wire-run-in peering (list (list octets nil t))))
-        (r2 (fn2-conn-wire-run-in peering (list (list octets '(7 3 1) t)))))
-   (and (fn2-conn-safe-p r1)
-        (fn2-conn-safe-p r2)
-        (equal (car (nth 1 r1)) want)
-        (equal (car (nth 1 r2)) want)
-        (fn2-wire-pass-p octets (car want) t))))
+ (let* ((old (fn2-cu-text *fn2-cu-peer-expect*))
+        (want (list :quiet 0 (list (fn2-cu-text (append (list *fn2-cu-greeting*)
+                                                       *fn2-ppf-login-lines*
+                                                       (cdr *fn2-cu-peer-expect*)))
+                                   t)))
+        (r1 (fn2-ppf-wire *fn2-conn-wire-profile* nil *fn2-cu-peer-lines* nil t))
+        (r2 (fn2-ppf-wire *fn2-conn-wire-profile* nil *fn2-cu-peer-lines* '(7 3 1) t)))
+   (and (equal r1 want)
+        (equal r2 want)
+        (fn2-wire-pass-p (fn2-cu-text *fn2-cu-peer-lines*) old t))))
 
-; Control: without :peering-interim the same AcceptResult family admits no
-; peer; the transit verbs are refused by state at once (no block is drained).
+; Control: the peering profile and a transport address alone grant no peer
+; role. TAKETHIS is refused immediately, with no block drain.
 (assert-event
  (let* ((octets (fn2-cu-text '("TAKETHIS <a@example.invalid>" "QUIT")))
-        (r (fn2-conn-wire-run (list (list octets nil t))))
+        (r (fn2-conn-wire-run-in (put-assoc-equal :peering-interim t *fn2-conn-wire-profile*)
+                                 (list (list octets nil t))))
         (wire (car (car (nth 1 r)))))
    (and (fn2-conn-safe-p r)
         (search (fn2-cw-chars (coerce "502" 'list)) wire)

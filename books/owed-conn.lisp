@@ -126,6 +126,10 @@
       (let* ((ac (fn2-cw-client accepted clients))
              (fn2-core (fn2-cw-post-accept op opgen accepted 77 (nth 4 ac) fn2-core)))
         (mv t (+ 1 accepted) clients store fn2-core)))
+     ((and (equal kind *fn2-action-receive*) (eq (car sizes) :tls))
+      ;; Keep protected application input outside the RX range until the
+      ;; scheduled TLS terminal. A premature receive cannot use it.
+      (mv t accepted clients store fn2-core))
      ((equal kind *fn2-action-receive*)
       (if (atom input)
           (if (eq (car sizes) :eof)
@@ -142,6 +146,19 @@
           (mv t accepted
               (fn2-cw-set cap (list (nthcdr n input) (if (consp sizes) (cdr sizes) nil) wire (nth 3 c) peer) clients)
               store fn2-core))))
+     ;; The transcript schedules TLS termination explicitly. A test gives
+     ;; the STARTTLS line in its own receive; subsequent octets stand for
+     ;; application data from the host after the typed terminal.
+     ((and (equal kind *fn2-action-tls-start*) (eq (car sizes) :tls) (equal rlen 0))
+      (b* (((mv outcome reason count aux0 aux1)
+            (fn2-sim-terminal-values kind :ok 0 0 rlen nil nil))
+           (fn2-core
+            (stobj-let ((fn2-ops (fn2-core-ops fn2-core))) (fn2-ops)
+              (fn2-post-result 0 op opgen *fn2-event-tls-result* outcome reason
+                               count aux0 aux1 fn2-ops)
+              fn2-core))
+           (fn2-core (fn2-cw-post 1 op opgen *fn2-event-borrow-released* *fn2-outcome-done* 0 0 0 fn2-core)))
+        (mv t accepted (fn2-cw-set cap (list input (cdr sizes) wire (nth 3 c) peer) clients) store fn2-core)))
      ((equal kind *fn2-action-send*)
       (b* ((octets (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (octets)
                      (fn2-cw-read-range roff (+ roff rlen) rslot fn2-pool) octets))
