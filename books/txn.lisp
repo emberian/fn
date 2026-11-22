@@ -15,6 +15,7 @@
 ;; and continuations are materialized by assembly-callbacks-d-txn.lisp.
 (in-package "ACL2")
 (include-book "txn-kind")
+(include-book "authority-grant-policy")
 (include-book "upload")
 (include-book "upload-stream")
 (include-book "pool-copy")
@@ -287,7 +288,6 @@
   :doc "Declare the competing binding and its keyed APPEND outcome in the same private successor (ruling 6).")
 (defcost fn2-txn-prebind :answers (:ok) :tables (fn2-core-fields)
   :doc "Pre-fill prospective event numbers into staged insert slots before emitting journal records.")
-(defconst *fn2-authority-right-append* 2)
 (defconst *fn2-txn-role-check* 1)
 (defconst *fn2-txn-peer-accept-check* 4)
 (defconst *fn2-txn-append-check* 7)

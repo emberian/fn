@@ -70,6 +70,8 @@
 ;; fn2-outcome's accepted code, as D's transaction writes it (txn.lisp's
 ;; *fn2-txn-outcome-accepted*, a later book)
 (defconst *fn2-auth-outcome-code-accepted* *fn2-txn-outcome-accepted*)
+(defcost fn2-grant-scope-admissible-p :child fn2-grant-scope-admissible-p
+ :doc "Validate the grant right, scope and target as one durable key.")
 (assert-event (and (equal (caddr *fn2-authority-right-layout*) '(:consume :read :append :peer :peer-feed :peer-accept))
                    (equal (caddr *fn2-authority-scope-layout*) '(:own-consumers :stream :principal))
                    (equal *fn2-authority-right-append* 2)))
@@ -962,11 +964,7 @@
    (:set (grantee ge) (gright rt) (gscope sc) (gtarget tg) (enabled en) (ehead eh) (gop opid))
    (:cond ((not (or (equal row-admin 1) (and (equal row-opcode *fn2-auth-op-get*) (equal row-principal ge))))
            (:set (reason *fn2-auth-reason-access*)) (:goto refuse))
-          ((not (cond ((equal rt *fn2-authority-right-consume*)
-                       (and (equal sc *fn2-authority-scope-own-consumers*) (equal tg 0)))
-                      ((equal rt *fn2-authority-right-peer*)
-                       (and (equal sc *fn2-authority-scope-principal*) (equal tg 0)))
-                      (t (and (equal sc *fn2-authority-scope-stream*) (posp tg)))))
+          ((not (fn2-grant-scope-admissible-p rt sc tg))
            (:set (reason *fn2-auth-reason-scope*)) (:goto refuse))
           (t (:do (kcode) (fn2-auth-known ge) :accept (:ok :absent) :why "an unknown grantee is a refusal")
              (:cond ((eq kcode :absent) (:set (reason *fn2-auth-reason-unknown-principal*)) (:goto refuse))

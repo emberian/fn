@@ -30,6 +30,7 @@ ACL2_BOOKS = \
   books/upload-stream-stage \
   books/upload-stream \
   books/upload-window-geometry \
+  tests/authority-grant-policy-unit \
   tests/grant-class-resolution-unit \
   tests/machine-range-provider-unit \
   tests/machine-taken-byte-class-unit \
@@ -106,6 +107,7 @@ ACL2_BOOKS = \
   books/authority-codec \
   books/authority-kind \
   books/authority-port \
+  books/authority-grant-policy \
   books/authority-read \
   books/authority-schema \
   books/blake3 \

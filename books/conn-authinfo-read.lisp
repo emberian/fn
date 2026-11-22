@@ -52,6 +52,8 @@
       (unsigned-byte-p 60 (mv-nth 3 (fn2-conn-peer-role-step conn gen step head grant fn2-core))))
  :hints (("Goal" :in-theory (enable fn2-conn-peer-role-step))))
 (in-theory (disable fn2-conn-peer-role-step))
+(defcost fn2-peer-role-at-decision :child fn2-peer-role-at-decision
+ :doc "Bind the role at login or retain the same immutable grant at command admission.")
 (defcost fn2-conn-peer-role-step :answers (:ok :access :more :state) :bytes 4096
  :tables (fn2-core-reads fn2-core-ranges fn2-core-seeks fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
  :doc "One committed principal-scoped peer grant lookup on the connection's private read row.")
