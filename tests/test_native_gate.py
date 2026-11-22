@@ -15,6 +15,28 @@ class NativeGate(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn(b'full 40-character SHA', result.stderr)
 
+    def test_durable_retry_uses_a_separate_store_and_grant_cut(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            binaries = root / "bin"
+            binaries.mkdir()
+            log = root / "calls"
+            (binaries / "git").write_text('#!/bin/sh\ncase "$*" in *rev-parse*) echo '+SHA+';; esac\n')
+            (binaries / "python3").write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "'+str(log)+'"\n')
+            for command in binaries.iterdir():
+                command.chmod(0o755)
+            env = dict(os.environ, PATH=str(binaries) + ":/usr/bin:/bin")
+            for mode in ("fnct", "durable-retry"):
+                subprocess.run(["/bin/sh", str(GATE), str(root), SHA, mode],
+                               env=env, capture_output=True, check=True)
+            campaigns = [call.split() for call in log.read_text().splitlines()
+                         if call.startswith("tests/native-append-fetch-restart.py ")]
+            self.assertEqual(campaigns, [
+                ["tests/native-append-fetch-restart.py", "--directory", f"build/native-{SHA}-fnct"],
+                ["tests/native-append-fetch-restart.py", "--directory", f"build/native-{SHA}-durable-retry",
+                 "--durable-retry"],
+            ])
+
     def test_missing_current_certificates_refuse_before_build_or_socket(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory); binaries = root/'bin'; binaries.mkdir()
@@ -23,12 +45,12 @@ class NativeGate(unittest.TestCase):
             (binaries/'python3').write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "'+str(log)+'"\nexit 31\n')
             for command in binaries.iterdir(): command.chmod(0o755)
             env = dict(os.environ, PATH=str(binaries)+':/usr/bin:/bin')
-            for mode in ('host','fnct','nntp','large','cursor'):
+            for mode in ('host','fnct','durable-retry','nntp','large','cursor'):
                 with self.subTest(mode=mode):
                     result = subprocess.run(['/bin/sh',str(GATE),str(root),SHA,mode],env=env,capture_output=True)
                     self.assertEqual(result.returncode,31,result.stderr)
             calls=log.read_text().splitlines()
-            self.assertEqual(len(calls),5)
+            self.assertEqual(len(calls),6)
             self.assertTrue(all(line.startswith('tools/certs.py install-set books/node-profile books/native-b3-evidence ') for line in calls))
             self.assertTrue(all('--toolchain-identity 8aeb1bea' in line for line in calls))
             self.assertFalse((root/'build').exists())

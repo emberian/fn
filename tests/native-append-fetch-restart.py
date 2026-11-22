@@ -243,7 +243,8 @@ def main():
                 assert accepted == other, (accepted, other)
             elif args.durable_retry:
                 alternate_mid = "<native-append-fetch-alternate@example.invalid>"
-                alternate = crossing_article(alternate_mid)
+                alternate = crossing_article(alternate_mid, body_variant=1)
+                assert all(a[4096:] != submissions[0][1][4096:] for a in (article, alternate))
                 alternate_path = directory / "submitted-alternate.article"
                 alternate_path.write_bytes(alternate)
                 candidates = [submission, (alternate_mid, alternate, alternate_path)]
