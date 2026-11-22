@@ -10,4 +10,5 @@
 (include-book "assembly-callbacks-d-cursor")
 (include-book "assembly-callbacks-e-cns")
 (include-book "assembly-callbacks-e-auth")
+(include-book "assembly-callbacks-peer-pull")
 (fn2-dispatch-attach-all-events)

@@ -21,7 +21,7 @@
 (defmachine fn2-peer-pull
  :phases (:free :stage :connect :connecting :line :write-command :send
           :upgrade :upgrading :authenticated :closing :close-wait :draining :retired)
- :fields ((ctl :link) (ctl-gen :u60) (local-principal :u60) (stream :u60)
+ :fields ((ctl :link) (ctl-gen :u60) (local-principal :u60) (stream :u60) (consumer :u60)
           (remote-history :u60) (remote-incarnation :u60) (remote-view :u60) (trust-ref :u60)
           (family :u8) (port :u16) (w0 :u32) (w1 :u32) (w2 :u32) (w3 :u32) (timeout-ms :u32)
           (rx-slot :link) (rx-gen :u60) (tx-slot :link) (tx-gen :u60)
@@ -43,7 +43,7 @@
          :ranges ((:rx-range :slot rx-slot :gen rx-gen :class 0)
                   (:tx-range :slot tx-slot :gen tx-gen :class 0)
                   (:tx-range :slot secret-slot :gen secret-gen :class 0))
-         :copy (ctl ctl-gen principal-slot account-ref local-principal stream remote-history remote-incarnation
+         :copy (ctl ctl-gen principal-slot account-ref local-principal stream consumer remote-history remote-incarnation
                 remote-view trust-ref family port w0 w1 w2 w3 timeout-ms)
          :clear (stream-len user-len pass-len cap-index cap-nonce connected protected dialog pos start tx-off op-gen
                  timer cancel-issued pending stopped))

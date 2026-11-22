@@ -206,6 +206,7 @@ ACL2_BOOKS = \
   books/peer-pull-kind \
   books/peer-pull-line \
   books/peer-pull-stage \
+  books/assembly-callbacks-peer-pull \
   books/conn-kind \
   books/consumer-codec \
   books/consumer-model \
