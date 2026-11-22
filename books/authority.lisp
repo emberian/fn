@@ -424,18 +424,15 @@
    ;; of the head), with GRANT 0 when no grant governs (an administering
    ;; connection: the owner's bootstrap authority; or a core serving none); :access when no current
    ;; grant, or a disabled one, allows it; :state when the request moved on.
-   (defun fn2-cns-authority-allows (cns gen right scope target xstep head grant budget fn2-core)
+   ;; The request owner reserves X before entering this shared four-read
+   ;; decision. Remote callers obtain PID from the live protected connection;
+   ;; the local CNS wrapper retains its existing bootstrap rules.
+   (defun fn2-read-principal-grant (x pid right scope target xstep head grant budget fn2-core)
      (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-     (b* (((unless (fn2-auth-served fn2-core)) (mv :ok 0 0 0 fn2-core))
-          ((mv pc pid) (fn2-cns-principal cns gen fn2-core))
-          ((unless (eq pc :ok)) (mv :state 0 0 0 fn2-core))
-          ((when (fn2-cns-admin-p cns fn2-core)) (mv :ok 0 0 0 fn2-core))
-          ((unless (posp pid)) (mv :access 0 0 0 fn2-core))
-          ((unless (and (unsigned-byte-p 60 pid) (unsigned-byte-p 60 right) (unsigned-byte-p 60 scope)
+     (b* (((unless (and (natp x) (posp pid) (unsigned-byte-p 60 pid)
+                        (unsigned-byte-p 60 right) (unsigned-byte-p 60 scope)
                         (unsigned-byte-p 60 target) (unsigned-byte-p 60 head) (unsigned-byte-p 60 grant)))
            (mv :state 0 0 0 fn2-core))
-          ((mv xc x) (fn2-cns-read-row cns fn2-core))
-          ((unless (eq xc :ok)) (mv :state 0 0 0 fn2-core))
           ((mv & fn2-core) (if (posp xstep) (mv :ok fn2-core) (fn2-read-release x fn2-core)))
           (step (if (posp xstep) (- xstep 1) 0)))
        (cond
@@ -460,6 +457,28 @@
            (cond ((not (eq c :ok)) (mv (if (eq c :more) :more :state) 4 head grant fn2-core))
                  ((equal h head) (mv :ok 4 head grant fn2-core))
                  (t (mv :more 1 0 0 fn2-core))))))))
+   (fn2-core-preserves fn2-read-principal-grant
+    (x pid right scope target xstep head grant budget fn2-core) :position 4 :rows nil)
+   (defthm fn2-read-principal-grant-continuation-types
+    (and (natp (mv-nth 1 (fn2-read-principal-grant x pid right scope target xstep head grant budget fn2-core)))
+         (< (mv-nth 1 (fn2-read-principal-grant x pid right scope target xstep head grant budget fn2-core)) 5)
+         (unsigned-byte-p 60 (mv-nth 2 (fn2-read-principal-grant x pid right scope target xstep head grant budget fn2-core)))
+         (unsigned-byte-p 60 (mv-nth 3 (fn2-read-principal-grant x pid right scope target xstep head grant budget fn2-core))))
+    :hints (("Goal" :in-theory (enable fn2-read-principal-grant))))
+   (in-theory (disable fn2-read-principal-grant))
+   (defun fn2-cns-authority-allows (cns gen right scope target xstep head grant budget fn2-core)
+     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+     (b* (((unless (fn2-auth-served fn2-core)) (mv :ok 0 0 0 fn2-core))
+          ((mv pc pid) (fn2-cns-principal cns gen fn2-core))
+          ((unless (eq pc :ok)) (mv :state 0 0 0 fn2-core))
+          ((when (fn2-cns-admin-p cns fn2-core)) (mv :ok 0 0 0 fn2-core))
+          ((unless (posp pid)) (mv :access 0 0 0 fn2-core))
+          ((unless (and (unsigned-byte-p 60 pid) (unsigned-byte-p 60 right) (unsigned-byte-p 60 scope)
+                        (unsigned-byte-p 60 target) (unsigned-byte-p 60 head) (unsigned-byte-p 60 grant)))
+           (mv :state 0 0 0 fn2-core))
+          ((mv xc x) (fn2-cns-read-row cns fn2-core))
+          ((unless (eq xc :ok)) (mv :state 0 0 0 fn2-core)))
+       (fn2-read-principal-grant x pid right scope target xstep head grant budget fn2-core)))
    (fn2-core-preserves fn2-cns-authority-allows (cns gen right scope target xstep head grant budget fn2-core) :position 4 :rows nil)
    (defthm fn2-cns-authority-allows-types
      (and (natp (mv-nth 1 (fn2-cns-authority-allows cns gen right scope target xstep head grant budget fn2-core)))

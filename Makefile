@@ -256,6 +256,9 @@ ACL2_BOOKS = \
   books/journal-retention-state \
   books/journal-retention \
   books/journal-retention-core \
+  books/peer-view-member \
+  books/peer-view-read \
+  books/xfnc-view \
   books/xfnc-reader \
   books/event-read-verify \
   books/event-read-verify-domain \
@@ -406,6 +409,7 @@ ACL2_BOOKS = \
   tests/commit-resource-unit \
   tests/commit-stop-unit \
   tests/commit-turn-frame-unit \
+  tests/peer-view-read-unit \
   tests/peer-history-member-unit \
   tests/journal-members-unit \
   tests/commit-txn-unit \

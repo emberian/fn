@@ -6,5 +6,8 @@
 (include-book "assembly-callbacks-d")
 (include-book "cns")
 (include-book "authority")
+(include-book "xfnc-reader")
+(include-book "xfnc-view")
 (fn2-auth-read-events)
+(fn2-xfnc-view-events)
 (fn2-cns-events)

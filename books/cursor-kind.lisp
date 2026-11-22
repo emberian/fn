@@ -38,6 +38,10 @@
           ;; HDR over stored headers (HMODE): the scan's matched name octets
           ;; (HK; its state is AST) and the range's step to resume (HSTEP)
           (hmode :bool) (hk :u32) (hstep :u8)
+          ;; The durable grant lookup continuation for the protected peer view.
+          (view-principal :u60) (view-stream :u60) (view-anchor :u60) (view-right :bool)
+          (view-step :u8) (view-head :u60) (view-grant :u60) (view-version :u60) (view-publish :bool)
+          (view-end (:enum fn2-xfnc-end (:none :empty :complete :access :dependency :uncertain :invalid)))
           ;; block reads in flight (the terminal of each completion consumes one)
           (pending :u32)
           ;; the pool class a row parked for its lease waits on (:park :pool's field)
@@ -52,7 +56,7 @@
  :capacity (fn2-b-cursor-rows profile)
  :taken (:phase :select :rows :cursor-row :ranges ()
          :copy (conn conn-gen conn-kind mask rx-slot rx-gen line-s line-e tx-slot tx-gen group current pin posting)
-         :clear (tag k0 a0 b0 k1 a1 b1 a2 b2 lat step lo hi next found count low high sel ncurrent spin update reply roff
+         :clear (view-principal view-stream view-anchor view-right view-step view-head view-grant view-version view-publish view-end tag k0 a0 b0 k1 a1 b1 a2 b2 lat step lo hi next found count low high sel ncurrent spin update reply roff
                  lpos seen have turn done cancel stopped lgroup klen
                  art lunit lepoch lalloc alen apos plen loff ast lease oat mso mln said revent routcome rcount rready
                  mkind mpos bunit bepoch balloc blen bready mread bhash bcv lhashlen hmode hk hstep cursor))
