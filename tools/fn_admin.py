@@ -115,6 +115,7 @@ AUTH_OPCODES = {
     "stream-resolve": 4,
     "principal-set-password": 5,
     "peer-pull": 6,
+    "peer-position": 7,
 }
 AUTH_RIGHTS = {"consume": 0, "read": 1, "append": 2, "peer": 3, "peer-feed": 4, "peer-accept": 5}
 CNS_CODES = {
@@ -310,8 +311,8 @@ def build_auth_request(verb: str, **kw) -> bytes:
         stream = kw["remote_stream"].encode("utf-8")
         username = kw["remote_user"].encode("utf-8")
         secret = kw["secret"]
-        if not (0 < len(stream) <= 250 and 0 < len(username) <= 64 and 0 < len(secret) <= 496):
-            raise ValueError("peer pull stream, username, or password has invalid length")
+        if not (0 < len(stream) <= 64 and 0 < len(username) <= 64 and 0 < len(secret) <= 496):
+            raise ValueError("peer pull stream and username must contain 1..64 octets and the password 1..496")
         port, timeout = kw["remote_port"], kw["timeout_ms"]
         if not (0 < port < (1 << 16) and 0 < timeout < (1 << 32)):
             raise ValueError("peer pull requires a u16 port and a positive u32 timeout")
@@ -322,6 +323,11 @@ def build_auth_request(verb: str, **kw) -> bytes:
         body = (bytes([code]) + b"".join(leb_encode(value) for value in ids)
                 + octets16(stream) + address + port.to_bytes(2, "big")
                 + timeout.to_bytes(4, "big") + octets16(username) + octets16(secret))
+    elif verb == "peer-position":
+        principal, consumer = kw["principal"], kw["consumer"]
+        if not (0 < principal < (1 << 60) and 0 < consumer < (1 << 60)):
+            raise ValueError("peer position requires positive u60 principal and consumer ids")
+        body = bytes([code]) + leb_encode(principal) + leb_encode(consumer)
     elif verb == "grant-set":
         op_bytes = be_pos(kw["op"])
         body = (
@@ -382,6 +388,22 @@ def decode_auth_reply(verb: str, frame: bytes) -> dict:
         if attempt >= 1 << 32 or generation == 0:
             raise WireError("invalid peer pull attempt handle")
         out.update(attempt=attempt, generation=generation)
+    elif verb == "peer-position":
+        found, i = _take(p, i, 1, "peer position found")
+        if found[0] not in (0, 1):
+            raise WireError("invalid peer position found boolean")
+        out["found"] = bool(found[0])
+        if out["found"]:
+            for field in ("target_stream", "source_domain", "source_incarnation", "source_revision",
+                          "source_view", "source_view_version"):
+                out[field], i = leb_decode(p, i)
+            interpretation, i = _take(p, i, 2, "peer position interpretation")
+            position, i = _take(p, i, 8, "peer position")
+            digest, i = _take(p, i, 33, "peer position chain")
+            if digest[0] != 1:
+                raise WireError("invalid peer position chain algorithm")
+            out.update(interpretation=int.from_bytes(interpretation, "big"),
+                       position=int.from_bytes(position, "big"), chain=digest[1:].hex())
     elif verb == "grant-set":
         grant_id, i = leb_decode(p, i)
         head, i = leb_decode(p, i)
@@ -931,7 +953,8 @@ def apply_origin_options(args: argparse.Namespace, env: dict[str, str]) -> None:
                              ("origin_domain", "FN2_ORIGIN_DOMAIN"),
                              ("origin_incarnation", "FN2_ORIGIN_INCARNATION"),
                              ("history_id", "FN2_HISTORY_ID"),
-                             ("history_incarnation", "FN2_HISTORY_INCARNATION")):
+                             ("history_incarnation", "FN2_HISTORY_INCARNATION"),
+                             ("history_revision", "FN2_HISTORY_REVISION")):
         value = getattr(args, option, None)
         if value is not None:
             env[variable] = value
@@ -1215,6 +1238,16 @@ def cmd_peer_pull(args: argparse.Namespace) -> int:
                            view=args.expected_view, remote_stream=args.remote_stream,
                            remote_address=args.remote_address, remote_port=args.remote_port,
                            timeout_ms=args.timeout_ms, remote_user=args.remote_user, secret=secret)
+    return emit(result, args.json)
+
+
+def cmd_peer_position(args: argparse.Namespace) -> int:
+    sock_path = require_control_sock(args)
+    principal, _, err = resolve_principal_on_node(sock_path, args.local_principal)
+    if err is not None:
+        return emit(err, args.json)
+    with ControlSession(sock_path) as sess:
+        result = sess.auth("peer-position", principal=principal, consumer=args.consumer)
     return emit(result, args.json)
 
 
@@ -1669,6 +1702,7 @@ def build_parser() -> argparse.ArgumentParser:
 
         origin_parser.add_argument("--history-id", metavar="ID", help="persisted physical history name")
         origin_parser.add_argument("--history-incarnation", metavar="ID", help="persisted physical history incarnation")
+        origin_parser.add_argument("--history-revision", metavar="ID", help="persisted peer history revision")
 
     p_princ = sub.add_parser("principal", help="manage durable principals over --control-sock")
     princ_sub = p_princ.add_subparsers(dest="principal_cmd", required=True)
@@ -1707,12 +1741,17 @@ def build_parser() -> argparse.ArgumentParser:
     p_pull.add_argument("--expected-history", required=True, type=int, help="expected sender history id")
     p_pull.add_argument("--expected-incarnation", required=True, type=int, help="expected sender incarnation id")
     p_pull.add_argument("--expected-view", required=True, type=int, help="expected sender view version")
-    p_pull.add_argument("--remote-stream", required=True, help="sender stream name")
+    p_pull.add_argument("--remote-stream", required=True, help="sender stream name (1..64 UTF-8 octets)")
     p_pull.add_argument("--remote-address", required=True, help="numeric IPv4 address")
     p_pull.add_argument("--remote-port", required=True, type=int, help="sender NNTP port")
     p_pull.add_argument("--timeout-ms", required=True, type=int, help="pull attempt timeout in milliseconds")
     p_pull.add_argument("--remote-user", required=True, help="sender login name (password read from stdin)")
     _add_control_args(p_pull, allow_as=False)
+
+    p_peer_pos = peer_sub.add_parser("position", help="read a durable peer pull checkpoint over the owner socket")
+    p_peer_pos.add_argument("--local-principal", required=True, help="local principal name or id")
+    p_peer_pos.add_argument("--consumer", required=True, type=int, help="durable consumer id for the pull")
+    _add_control_args(p_peer_pos, allow_as=False)
 
     p_stream = sub.add_parser("stream", help="consumer & stream operations over --control-sock")
     stream_sub = p_stream.add_subparsers(dest="stream_cmd", required=True)
@@ -1831,8 +1870,8 @@ def main(argv: list[str] | None = None, root: Path | None = None) -> int:
             return cmd_grant_set(args)
         if args.command == "grant" and args.grant_cmd == "get":
             return cmd_grant_get(args)
-        if args.command == "peer" and args.peer_cmd == "pull":
-            return cmd_peer_pull(args)
+        if args.command == "peer":
+            return (cmd_peer_pull if args.peer_cmd == "pull" else cmd_peer_position)(args)
         if args.command == "stream":
             dispatch = {
                 "register": cmd_stream_register,
