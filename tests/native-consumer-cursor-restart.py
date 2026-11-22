@@ -149,6 +149,11 @@ def main():
         assert status["outcome"] == "accepted" and status["domain"] == ack["domain"], status
         assert status["position"] == first["next"] and status["frontier"] == second["next"], status
         assert status["gap"] == second["next"] - first["next"], status
+        # No mutation precedes this read. Omitting --cursor makes the CLI
+        # fetch POSITION from the restarted node rather than reuse saved bytes.
+        redelivery = stream("read-from-persisted", "read", "--consumer", consumer, "--max-items", 1)
+        check_page(redelivery, appended[1], articles[1], more=False)
+        assert redelivery == second, (redelivery, second)
         other_status = stream("other-status-after-restart", "status", "--consumer", consumer, actor=other)
         assert other_status["outcome"] == "accepted", other_status
         assert other_status["position"] == other_registered["position"] < status["position"], other_status
@@ -198,10 +203,6 @@ def main():
         consumed = stream("ack-under-restored-view", "ack", visible["next"], "--cursor", visible["cursor"], actor=other)
         assert consumed["outcome"] == "accepted" and consumed["position"] == visible["next"], consumed
 
-        # Omitting --cursor makes the public CLI ask the fresh node for POSITION.
-        redelivery = stream("read-from-persisted", "read", "--consumer", consumer, "--max-items", 1)
-        check_page(redelivery, appended[1], articles[1], more=False)
-        assert redelivery == second, (redelivery, second)
         repeated = stream("repeat-first-ack", "ack", first["next"], "--cursor", first["cursor"])
         assert repeated == ack, (repeated, ack)
         stale = stream("stale-ack", "ack", registered["position"], "--cursor",
@@ -273,12 +274,12 @@ def main():
     try:
         node.marker(b"LISTENING-LOCAL ")
         assert node.node_pid != processes[-1]["pid"], node.node_pid
-        retained_epoch = stream("register-rebased-id-after-restart", "register", "--consumer", consumer,
-                                "--start", "history", actor=other)
-        assert retained_epoch == rebased, (retained_epoch, rebased)
         empty = stream("read-rebased-position-after-restart", "read", "--consumer", consumer, actor=other)
         assert empty["outcome"] == "accepted" and empty["items"] == [] and not empty["more"], empty
         assert empty["cursor"] == rebased["cursor"] and empty["next"] == rebased["position"], empty
+        retained_epoch = stream("register-rebased-id-after-restart", "register", "--consumer", consumer,
+                                "--start", "history", actor=other)
+        assert retained_epoch == rebased, (retained_epoch, rebased)
         stale_epoch = stream("ack-pre-rebase-epoch-after-restart", "ack", consumed["position"],
                              "--cursor", restored_view["cursor"], actor=other, expected=1)
         assert stale_epoch == {"outcome": "refused", "reason": "scope"}, stale_epoch
@@ -364,8 +365,15 @@ def main():
         replacement = stream("register-after-tombstone-recovery", "register", "--consumer", consumer,
                              "--start", "history", actor=other)
         assert replacement["outcome"] == "accepted" and replacement["position"] == 0, replacement
-        for label, verb in (("read", "read"), ("unregister", "unregister"), ("rebase", "rebase")):
-            stale = stream(f"{label}-retired-epoch", verb, "--cursor", now["cursor"], actor=other, expected=1)
+        # Checking only the last epoch misses a tombstone reset to epoch 1.
+        # Every earlier issued epoch must fail at scope, before its view check.
+        prior = (other_registered, denied_view, restored_view, rebased, historical, latest_history, now)
+        for index, issued in enumerate(prior):
+            stale = stream(f"read-retired-issued-epoch-{index}", "read",
+                           "--cursor", issued["cursor"], actor=other, expected=1)
+            assert stale == {"outcome": "refused", "reason": "scope"}, stale
+        for verb in ("unregister", "rebase"):
+            stale = stream(f"{verb}-retired-epoch", verb, "--cursor", now["cursor"], actor=other, expected=1)
             assert stale == {"outcome": "refused", "reason": "scope"}, stale
         stale_ack = stream("ack-retired-epoch", "ack", now["position"],
                            "--cursor", now["cursor"], actor=other, expected=1)
