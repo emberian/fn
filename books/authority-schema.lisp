@@ -28,8 +28,8 @@
 (defrunschema fn2-grants :id 17
  :key ((grant (:id grant)))
  :value ((grantor (:id principal)) (grantee (:id principal))
-         (right (:enum fn2-authority-right (:consume :read :append)))
-         (scope (:enum fn2-authority-scope (:own-consumers :stream)))
+         (right (:enum fn2-authority-right (:consume :read :append :peer :peer-feed :peer-accept)))
+         (scope (:enum fn2-authority-scope (:own-consumers :stream :principal)))
          (target (:id stream)) (enabled :bool) (previous (:id grant)))
  :merge :unique)
 

@@ -50,7 +50,7 @@
 (defconst *fn2-cursor-update-close* 4)
 
 (defmachine fn2-conn
- :states (:free :greeting :command :article-input :reply :upgrading :closing :draining :retired :query :dispatch :authenticate :login-reply)
+ :states (:free :greeting :command :article-input :reply :upgrading :closing :draining :retired :query :dispatch :authenticate :login-reply :peer-role :peer-bind)
  :fields ((cap-index :u32) (cap-nonce :u32)
           (rx-slot :link) (rx-gen :u60) (tx-slot :link) (tx-gen :u60)
           (start :u32) (pos :u32) (overflow :bool) (compacting :bool) (cursor :u32)
@@ -60,6 +60,9 @@
           ;; Durable principal of a successful protected login. Positional
           ;; accounting and the transport mask are distinct observations.
           (login-principal :u60)
+          ;; PEER-ROLE-GRANT is the immutable grant selected at protected login.
+          ;; A replaced grant requires a fresh login, including revoke/regrant.
+          (peer-role-grant :u60) (peer-step :u8) (peer-head :u60) (peer-grant :u60) (peer-login :bool)
           (login-candidate :u60) (login-off :u32) (login-len :u32) (login-loaded :bool)
           (login-mode (:enum fn2-conn-login (:none :user :pass))) (login-failures :u8)
           (upgrade-target (:enum fn2-conn-upgrade-target (:none :tls :compress)))
@@ -92,7 +95,8 @@
          (:draining :connection-row :rx-range :tx-range) (:query :connection-row :rx-range :tx-range)
          (:dispatch :connection-row :rx-range :tx-range)
          (:authenticate :connection-row :rx-range :tx-range)
-         (:login-reply :connection-row :rx-range :tx-range))
+         (:login-reply :connection-row :rx-range :tx-range) (:peer-role :connection-row :rx-range :tx-range)
+         (:peer-bind :connection-row :rx-range :tx-range))
  :budget (:bytes 4096 :steps 32 :descriptors 4)
  :capacity (fn2-profile-c profile)
  ;; The listener admits a connection into :greeting with its RX and TX
@@ -100,13 +104,13 @@
  :admission (:phase :greeting :ranges (:rx-range :tx-range)
              :copy (principal-slot account-ref peer-family peer-port peer-w0 peer-w1 peer-w2 peer-w3)
              :clear (start pos overflow compacting cursor tx-off pending borrows ordinal refused
-                     auth-pending login-principal login-candidate login-off login-len login-loaded login-mode login-failures
+                     auth-pending login-principal peer-role-grant peer-step peer-head peer-grant peer-login login-candidate login-off login-len login-loaded login-mode login-failures
                      upgrade-target tls-token-gen tls-op-gen upgrade-stage tls-ok access-ref upload-gen rule request feed-mode feed-discard fed word
                      outcome-ready posting query-gen line-s line-e group current pin))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (rx-slot *fn2-none*) (tx-slot *fn2-none*) (account-ref *fn2-none*) (next-free fn2-machine-initial-next-free)
            (upload *fn2-none*) (query *fn2-none*) (tls-token *fn2-none*) (tls-op *fn2-none*))
- :arms ((:free) (:greeting) (:command) (:article-input) (:reply) (:upgrading) (:closing) (:draining) (:retired) (:query) (:dispatch) (:authenticate) (:login-reply))
+ :arms ((:free) (:greeting) (:command) (:article-input) (:reply) (:upgrading) (:closing) (:draining) (:retired) (:query) (:dispatch) (:authenticate) (:login-reply) (:peer-role) (:peer-bind))
  :observes ((:receive-result) (:send-result) (:borrow-released) (:close-result) (:tls-result) (:compress-result) (:cancel-result)))
 
 ; MACHINE-FORM 6.5 P4: the kind's admission in child form, proved here;

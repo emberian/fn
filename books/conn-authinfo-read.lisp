@@ -19,6 +19,36 @@
      (mv :bounds 0))))
 
 
+(defun fn2-conn-peer-role-step (conn gen step head grant fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (b* (((unless (and (eq (fn2-conn-snapshot-read-code conn fn2-core) :ok)
+                    (equal (fn2-machine-generation conn fn2-core) gen)
+                    (equal (fn2-conn-row-phase conn fn2-core) *fn2-conn-state-peer-role*)))
+       (mv :state 0 0 0 fn2-core))
+      (at-login (equal (fn2-conn-row-peer-login conn fn2-core) 1))
+      (mask (fn2-conn-row-mask conn fn2-core))
+      (pid (if at-login (fn2-conn-row-login-candidate conn fn2-core)
+             (fn2-conn-row-login-principal conn fn2-core)))
+      ((unless (and (equal (fn2-conn-peering-p fn2-core) 1) (posp pid)
+                    (unsigned-byte-p 60 pid) (integerp mask) (logtest mask *fn2-nntp-state-tls*)
+                    (or at-login (and (logtest mask *fn2-nntp-state-authenticated*)
+                                      (posp (fn2-conn-row-peer-role-grant conn fn2-core))))))
+       (mv :access 0 0 0 fn2-core))
+      ((mv rc x) (fn2-conn-authinfo-read-row conn fn2-core))
+      ((unless (eq rc :ok)) (mv :state 0 0 0 fn2-core)))
+   (fn2-authority-principal-allows x pid *fn2-authority-right-peer* *fn2-authority-scope-principal*
+                                  0 step head grant 4096 fn2-core)))
+(fn2-core-preserves fn2-conn-peer-role-step (conn gen step head grant fn2-core) :position 4 :rows nil)
+(defthm fn2-conn-peer-role-step-widths
+ (and (unsigned-byte-p 8 (mv-nth 1 (fn2-conn-peer-role-step conn gen step head grant fn2-core)))
+      (unsigned-byte-p 60 (mv-nth 2 (fn2-conn-peer-role-step conn gen step head grant fn2-core)))
+      (unsigned-byte-p 60 (mv-nth 3 (fn2-conn-peer-role-step conn gen step head grant fn2-core))))
+ :hints (("Goal" :in-theory (enable fn2-conn-peer-role-step))))
+(in-theory (disable fn2-conn-peer-role-step))
+(defcost fn2-conn-peer-role-step :answers (:ok :access :more :state) :bytes 4096
+ :tables (fn2-core-reads fn2-core-ranges fn2-core-seeks fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
+ :doc "One committed principal-scoped peer grant lookup on the connection's private read row.")
+
 (defun fn2-conn-authinfo-user (x conn gen slot rgen off len fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (b* (((unless (and (posp len) (<= len *fn2-principals-name-max*)))

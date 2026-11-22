@@ -46,16 +46,16 @@
 ; authority frames first, then its consumer frames.
 ;   (:create NAME) (:bind NAME) (:set NAME RIGHT SCOPE GROUP ENABLED)
 ;   (:append OP MID GROUP) (:register CID) (:position CID)
-; RIGHT :consume :read :append; SCOPE :own (target 0) or :stream (GROUP's id).
-(defun fn2-oa-right (r) (declare (xargs :guard t)) (case r (:consume 0) (:read 1) (otherwise 2)))
-(defun fn2-oa-scope (s) (declare (xargs :guard t)) (if (eq s :own) 0 1))
+; The stream policy targets a group ID. A peer role targets the principal as a whole.
+(defun fn2-oa-right (r) (declare (xargs :guard t)) (case r (:consume 0) (:read 1) (:peer 3) (:peer-feed 4) (:peer-accept 5) (otherwise 2)))
+(defun fn2-oa-scope (s) (declare (xargs :guard t)) (case s (:own 0) (:principal 2) (otherwise 1)))
 (defun fn2-oa-auth-step-p (s)
   (declare (xargs :guard t))
   (and (true-listp s)
        (case (car s)
          ((:create :bind) (and (equal (len s) 2) (stringp (cadr s))))
-         (:set (and (equal (len s) 6) (stringp (nth 1 s)) (member-eq (nth 2 s) '(:consume :read :append))
-                    (member-eq (nth 3 s) '(:own :stream)) (or (null (nth 4 s)) (stringp (nth 4 s)))
+         (:set (and (equal (len s) 6) (stringp (nth 1 s)) (member-eq (nth 2 s) '(:consume :read :append :peer :peer-feed :peer-accept))
+                    (member-eq (nth 3 s) '(:own :stream :principal)) (or (null (nth 4 s)) (stringp (nth 4 s)))
                     (member (nth 5 s) '(0 1))))
          (otherwise nil))))
 (defun fn2-oa-cns-step-p (s)

@@ -14,8 +14,8 @@
 (defconst *fn2-authority-reply-kind* 30)
 
 (defport fn2-authority
-  :fields ((stream-name (:octets 250)) (name (:octets 64)) (grantee (:id principal)) (right (:enum fn2-authority-right (:consume :read :append)))
-           (scope (:enum fn2-authority-scope (:own-consumers :stream))) (target (:id stream)) (enabled :bool)
+  :fields ((stream-name (:octets 250)) (name (:octets 64)) (grantee (:id principal)) (right (:enum fn2-authority-right (:consume :read :append :peer :peer-feed :peer-accept)))
+           (scope (:enum fn2-authority-scope (:own-consumers :stream :principal))) (target (:id stream)) (enabled :bool)
            (expected-head (:id grant)) (op (:octets 64))
            (principal (:id principal)) (authority-head (:id grant)) (grant (:id grant)) (receipt :receipt)
            (salt (:octets 16)) (secret (:octets 512))

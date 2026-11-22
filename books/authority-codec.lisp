@@ -11,8 +11,8 @@
 (include-book "authority-port")
 (fn2-book-layer :e)
 
-(defconst *fn2-authority-right-layout* '(:enum fn2-authority-right (:consume :read :append)))
-(defconst *fn2-authority-scope-layout* '(:enum fn2-authority-scope (:own-consumers :stream)))
+(defconst *fn2-authority-right-layout* '(:enum fn2-authority-right (:consume :read :append :peer :peer-feed :peer-accept)))
+(defconst *fn2-authority-scope-layout* '(:enum fn2-authority-scope (:own-consumers :stream :principal)))
 
 ;; Requests: (OPCODE VERB FIELDS). Names and operation identities are
 ;; length-prefixed octets, nonempty, at most 64 (checked by the verb, which

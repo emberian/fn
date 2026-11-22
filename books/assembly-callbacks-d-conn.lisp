@@ -119,8 +119,9 @@
    (:do (code account) (fn2-conn-authinfo-transfer row-principal-slot row-login-candidate)
          :case (((:ok)
                  (:set (principal-slot account) (account-ref account) (login-principal row-login-candidate)
+                       (peer-role-grant row-peer-grant) (peer-grant 0) (peer-login 0)
                        (mask (logior (logand row-mask (lognot (logior *fn2-nntp-state-anonymous* *fn2-nntp-state-peer*)))
-                                     *fn2-nntp-state-authenticated*))
+                                     *fn2-nntp-state-authenticated* (if (posp row-peer-grant) *fn2-nntp-state-peer* 0)))
                        (auth-pending *fn2-conn-auth-none*) (login-candidate 0) (login-loaded 0) (login-off 0) (login-len 0)
                        (login-mode *fn2-conn-login-none*) (login-failures 0) (tx-off 0) (after *fn2-conn-after-command*))
                  (:do (rcode) (fn2-conn-authinfo-reply *fn2-nntp-reply-authinfo-accepted* 0 row-mask
@@ -136,7 +137,10 @@
    (:case status
      ((:line)
       (:set (line-s s) (line-e p))
-      (:next :dispatch)
+      (:if (posp row-peer-role-grant)
+           ((:set (peer-login 0) (peer-step 0) (peer-head 0) (peer-grant 0))
+            (:next :peer-role))
+           ((:next :dispatch)))
       (:charge :bytes *fn2-conn-frame-bytes* :steps *fn2-work-transition* :runnable t))
      ((:overflow :long-line)
       (:do (ccode) (fn2-account-charge-core row-principal-slot *fn2-account-charge-requests* 1))
@@ -162,14 +166,12 @@
    (:let refused (if (and (not (equal row-account-ref *fn2-none*)) (equal row-refused 0)) 0 1))
    (:do (ucode) (fn2-account-unbook-ref (if (equal refused 1) ref *fn2-none*)))
    (:let posting (fn2-conn-posting-p))
-   (:let peering (fn2-conn-peering-p))
    (:do (code after) (fn2-conn-greet-op refused posting row-mask row-tx-slot row-tx-gen))
    (:set (tx-off 0) (after after) (refused refused) (posting posting)
          (account-ref (if (equal refused 1) *fn2-none* ref))
-         (mask (logior (if (and (equal peering 1) (not (equal row-peer-family 0))) *fn2-nntp-state-peer* 0)
-                       (logior *fn2-nntp-state-reader* *fn2-nntp-state-anonymous*
-                               (logior (if (fn2-tls-enabled-p) *fn2-nntp-state-tls-available* 0)
-                                       (if (fn2-compress-enabled-p) *fn2-nntp-state-compress-available* 0))))))
+         (mask (logior *fn2-nntp-state-reader* *fn2-nntp-state-anonymous*
+                       (if (fn2-tls-enabled-p) *fn2-nntp-state-tls-available* 0)
+                       (if (fn2-compress-enabled-p) *fn2-nntp-state-compress-available* 0))))
    (:next :reply)
    (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))
   (:command
@@ -258,6 +260,25 @@
                       (:set (start start) (pos start) (feed-mode mode) (feed-discard why) (fed fed))
                       (:charge :bytes *fn2-conn-feed-cost* :steps *fn2-work-transition* :runnable t))
                      (:otherwise (:stop :machine-phase))))))))
+  ;; The current role grant must still be the immutable one pinned at login.
+  ;; A normal login with no role remains a reader until authenticating again.
+  (:peer-role
+   (:do (code step head grant) (fn2-conn-peer-role-step id row-generation row-peer-step row-peer-head row-peer-grant)
+    :case (((:more) (:set (peer-step step) (peer-head head) (peer-grant grant))
+                    (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+           ((:ok :access)
+            (:let granted (and (eq code :ok) (posp head) (posp grant)))
+            (:if (equal row-peer-login 1)
+                 ((:set (peer-step 0) (peer-head 0) (peer-grant (if granted grant 0)))
+                  (:next :peer-bind))
+                 ((:let same (and granted (equal grant row-peer-role-grant)))
+                  (:set (peer-step 0) (peer-head 0) (peer-grant 0)
+                        (peer-role-grant (if same row-peer-role-grant 0))
+                        (mask (if same row-mask (logand row-mask (lognot *fn2-nntp-state-peer*)))))
+                  (:next :dispatch)))
+            (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+           (:otherwise (:next :closing) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t)))))
+  (:peer-bind (:goto login-transfer))
   (:dispatch
    (:let s row-line-s)
    (:let p row-line-e)
@@ -335,7 +356,9 @@
         ((:if (equal row-login-loaded 1)
               ((:do (answer) (fn2-conn-authinfo-check id row-generation row-rx-slot row-rx-gen
                                                     row-login-off row-login-len row-tx-slot row-tx-gen)
-                    :case (((:ok) (:goto login-transfer))
+                    :case (((:ok) (:set (peer-login 1) (peer-step 0) (peer-head 0) (peer-grant 0))
+                                  (:next :peer-role)
+                                  (:charge :bytes 2048 :steps *fn2-work-transition* :runnable t))
                            ((:absent) (:goto login-refused))
                            (:otherwise (:stop :machine-phase)))))
               ((:goto login-refused))))))
@@ -404,7 +427,8 @@
                  (:do (tcode) (fn2-tls-release-token row-tls-token row-tls-token-gen id row-generation)
                   :case ((:otherwise (:stop :machine-phase))))
                  (:set (start 0) (pos 0) (overflow 0) (group 0) (current 0) (pin 0)
-                       (auth-pending *fn2-conn-auth-none*)
+                       (auth-pending *fn2-conn-auth-none*) (login-principal 0) (login-candidate 0)
+                       (peer-role-grant 0) (peer-step 0) (peer-head 0) (peer-grant 0) (peer-login 0)
                        (mask (logior *fn2-nntp-state-reader* *fn2-nntp-state-anonymous* *fn2-nntp-state-tls*
                                      (logand row-mask *fn2-nntp-state-compress-available*)))
                        (tls-token *fn2-none*) (tls-token-gen 0) (tls-op *fn2-none*) (tls-op-gen 0)

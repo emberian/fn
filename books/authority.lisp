@@ -70,8 +70,8 @@
 ;; fn2-outcome's accepted code, as D's transaction writes it (txn.lisp's
 ;; *fn2-txn-outcome-accepted*, a later book)
 (defconst *fn2-auth-outcome-code-accepted* *fn2-txn-outcome-accepted*)
-(assert-event (and (equal (caddr *fn2-authority-right-layout*) '(:consume :read :append))
-                   (equal (caddr *fn2-authority-scope-layout*) '(:own-consumers :stream))
+(assert-event (and (equal (caddr *fn2-authority-right-layout*) '(:consume :read :append :peer :peer-feed :peer-accept))
+                   (equal (caddr *fn2-authority-scope-layout*) '(:own-consumers :stream :principal))
                    (equal *fn2-authority-right-append* 2)))
 (defun fn2-auth-octet-listp (x)
   (declare (xargs :guard t))
@@ -962,9 +962,11 @@
    (:set (grantee ge) (gright rt) (gscope sc) (gtarget tg) (enabled en) (ehead eh) (gop opid))
    (:cond ((not (or (equal row-admin 1) (and (equal row-opcode *fn2-auth-op-get*) (equal row-principal ge))))
            (:set (reason *fn2-auth-reason-access*)) (:goto refuse))
-          ((not (if (equal rt *fn2-authority-right-consume*)
-                    (and (equal sc *fn2-authority-scope-own-consumers*) (equal tg 0))
-                  (and (equal sc *fn2-authority-scope-stream*) (not (equal tg 0)))))
+          ((not (cond ((equal rt *fn2-authority-right-consume*)
+                       (and (equal sc *fn2-authority-scope-own-consumers*) (equal tg 0)))
+                      ((equal rt *fn2-authority-right-peer*)
+                       (and (equal sc *fn2-authority-scope-principal*) (equal tg 0)))
+                      (t (and (equal sc *fn2-authority-scope-stream*) (posp tg)))))
            (:set (reason *fn2-auth-reason-scope*)) (:goto refuse))
           (t (:do (kcode) (fn2-auth-known ge) :accept (:ok :absent) :why "an unknown grantee is a refusal")
              (:cond ((eq kcode :absent) (:set (reason *fn2-auth-reason-unknown-principal*)) (:goto refuse))
@@ -1249,24 +1251,25 @@
    (fn2-core-preserves fn2-auth-xl-core (tx sid nk k0 k1 k2 k3 vfield budget fn2-core)
     :position 2 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
    (in-theory (disable fn2-auth-xl-core))
-   ;; (fn2-authority-allows tx pid right target step head grant budget):
-   ;; whether durable principal PID holds RIGHT on stream TARGET
+   ;; (fn2-authority-allows tx pid right scope target step head grant budget):
+   ;; whether durable principal PID holds RIGHT on (SCOPE, TARGET)
    ;; for transaction TX, in bounded steps: STEP 0 reads the principal's
-   ;; authority head, 1 its current grant of (RIGHT :stream TARGET), 2 that
+   ;; authority head, 1 its current grant of (RIGHT SCOPE TARGET), 2 that
    ;; grant's immutable row; :more carries (step head grant) to the next
    ;; call. :ok (step head grant): GRANT is enabled under HEAD, or GRANT 0
    ;; when no grant governs (the owner's bootstrap authority, or a core
    ;; serving no authority); :access when no current grant, or a disabled
    ;; one, allows it. The head is read first, so a decision any later grant
    ;; event changes fails the dependency on HEAD at stage.
-   (defun fn2-authority-allows (tx pid right target step head grant budget fn2-core)
+   (defun fn2-authority-allows (tx pid right scope target step head grant budget fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-    (b* (((unless (fn2-auth-served fn2-core)) (mv :ok 0 0 0 fn2-core))
+    (b* ((appendp (and (equal right *fn2-authority-right-append*) (equal scope *fn2-authority-scope-stream*)))
+         ((unless (fn2-auth-served fn2-core)) (mv (if appendp :ok :access) 0 0 0 fn2-core))
          ((unless (and (posp pid) (unsigned-byte-p 60 pid) (unsigned-byte-p 60 target)
-                       (unsigned-byte-p 60 right) (unsigned-byte-p 60 grant) (unsigned-byte-p 60 head)))
+                       (unsigned-byte-p 60 right) (unsigned-byte-p 60 scope) (unsigned-byte-p 60 grant) (unsigned-byte-p 60 head)))
           (mv :state 0 0 0 fn2-core))
          ((mv oc owner) (fn2-ctl-owner-principal fn2-core))
-         ((when (and (eq oc :ok) (equal pid owner))) (mv :ok 0 0 0 fn2-core)))
+         ((when (and appendp (eq oc :ok) (equal pid owner))) (mv :ok 0 0 0 fn2-core)))
      (cond
       ((equal step 0)
        (mv-let (c h fn2-core)
@@ -1278,7 +1281,7 @@
          (otherwise (mv :state 0 0 0 fn2-core)))))
       ((equal step 1)
        (mv-let (c g fn2-core)
-         (fn2-auth-xl-core tx *fn2-grant-current-sid* 4 pid right *fn2-authority-scope-stream* target
+         (fn2-auth-xl-core tx *fn2-grant-current-sid* 4 pid right scope target
                            *fn2-grant-current-entry-field-grant* budget fn2-core)
         (case c
          (:ok (if (and (posp g) (unsigned-byte-p 60 g)) (mv :more 2 head g fn2-core) (mv :access 1 head 0 fn2-core)))
@@ -1292,20 +1295,20 @@
          (:ok (if (equal en 1) (mv :ok 2 head grant fn2-core) (mv :access 2 head grant fn2-core)))
          (:more (mv :more 2 head grant fn2-core))
          (otherwise (mv :state 2 head grant fn2-core))))))))
-   (fn2-core-preserves fn2-authority-allows (tx pid right target step head grant budget fn2-core) :position 4 :rows nil)
+   (fn2-core-preserves fn2-authority-allows (tx pid right scope target step head grant budget fn2-core) :position 4 :rows nil)
    (defthm fn2-authority-allows-types
-    (and (natp (mv-nth 1 (fn2-authority-allows tx pid right target step head grant budget fn2-core)))
-         (< (mv-nth 1 (fn2-authority-allows tx pid right target step head grant budget fn2-core)) 3)
-         (unsigned-byte-p 60 (mv-nth 2 (fn2-authority-allows tx pid right target step head grant budget fn2-core)))
-         (unsigned-byte-p 60 (mv-nth 3 (fn2-authority-allows tx pid right target step head grant budget fn2-core))))
+    (and (natp (mv-nth 1 (fn2-authority-allows tx pid right scope target step head grant budget fn2-core)))
+         (< (mv-nth 1 (fn2-authority-allows tx pid right scope target step head grant budget fn2-core)) 3)
+         (unsigned-byte-p 60 (mv-nth 2 (fn2-authority-allows tx pid right scope target step head grant budget fn2-core)))
+         (unsigned-byte-p 60 (mv-nth 3 (fn2-authority-allows tx pid right scope target step head grant budget fn2-core))))
     :hints (("Goal" :in-theory (enable fn2-authority-allows))))
    (defthm fn2-authority-allows-natps
-    (and (natp (mv-nth 1 (fn2-authority-allows tx pid right target step head grant budget fn2-core)))
-         (natp (mv-nth 2 (fn2-authority-allows tx pid right target step head grant budget fn2-core)))
-         (natp (mv-nth 3 (fn2-authority-allows tx pid right target step head grant budget fn2-core))))
-    :rule-classes ((:type-prescription :corollary (natp (mv-nth 1 (fn2-authority-allows tx pid right target step head grant budget fn2-core))))
-                   (:type-prescription :corollary (natp (mv-nth 2 (fn2-authority-allows tx pid right target step head grant budget fn2-core))))
-                   (:type-prescription :corollary (natp (mv-nth 3 (fn2-authority-allows tx pid right target step head grant budget fn2-core)))))
+    (and (natp (mv-nth 1 (fn2-authority-allows tx pid right scope target step head grant budget fn2-core)))
+         (natp (mv-nth 2 (fn2-authority-allows tx pid right scope target step head grant budget fn2-core)))
+         (natp (mv-nth 3 (fn2-authority-allows tx pid right scope target step head grant budget fn2-core))))
+    :rule-classes ((:type-prescription :corollary (natp (mv-nth 1 (fn2-authority-allows tx pid right scope target step head grant budget fn2-core))))
+                   (:type-prescription :corollary (natp (mv-nth 2 (fn2-authority-allows tx pid right scope target step head grant budget fn2-core))))
+                   (:type-prescription :corollary (natp (mv-nth 3 (fn2-authority-allows tx pid right scope target step head grant budget fn2-core)))))
     :hints (("Goal" :in-theory (disable fn2-authority-allows-types) :use fn2-authority-allows-types)))
    (in-theory (disable fn2-authority-allows))))
 

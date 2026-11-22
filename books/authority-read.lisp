@@ -8,6 +8,10 @@
 (defconst *fn2-authority-head-sid* 19)
 (defconst *fn2-authority-right-consume* 0)
 (defconst *fn2-authority-right-read* 1)
+(defconst *fn2-authority-right-peer* 3)
+(defconst *fn2-authority-right-peer-feed* 4)
+(defconst *fn2-authority-right-peer-accept* 5)
+(defconst *fn2-authority-scope-principal* 2)
 (defconst *fn2-authority-scope-own-consumers* 0)
 (defconst *fn2-authority-scope-stream* 1)
 
