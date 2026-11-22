@@ -57,3 +57,23 @@
           fn2-core-commit-root fn2-core-extents fn2-core-alloc-edges fn2-core-ops fn2-core-control
           fn2-core-mk fn2-core-fc-context)
  :doc "Collect or seal one bounded turn of a protected history page.")
+
+; The first accepted SEND loan publishes the sealed frame. A parked issue
+; retains the exact cursor so the next attempt repeats current authorization.
+(defun fn2-conn-xfnc-first-send-p (cursor generation fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (and (fn2-xfnc-linked-request-p cursor generation fn2-core)
+      (equal (fn2-cursor-row-peer-wire-phase cursor fn2-core) *fn2-xfnc-wire-phase-confirm*)))
+(defcost fn2-conn-xfnc-first-send-p
+ :tables (fn2-core-machines fn2-conn-table fn2-cursor-table)
+ :doc "Read the exact linked cursor's sealed page phase.")
+
+(fn2-csnapshot-op fn2-conn-xfnc-first-send-check (cursor generation) 1
+ (if (fn2-conn-xfnc-first-send-p cursor generation fn2-core)
+     (fn2-xfnc-render-page-turn cursor generation fn2-core)
+   (mv :state fn2-core)))
+(in-theory (disable fn2-conn-xfnc-first-send-check))
+(defcost fn2-conn-xfnc-first-send-check :answers t :bytes 2048
+ :tables (fn2-core-reads fn2-core-ranges fn2-core-seeks fn2-core-run-cursors
+          fn2-core-run-paths fn2-core-fields fn2-core-pool fn2-cursor-table)
+ :doc "Confirm a sealed peer frame within one 2048-byte authority lookup immediately before its first SEND loan.")
