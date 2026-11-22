@@ -265,6 +265,28 @@ class InvalidReplyOutcome(unittest.TestCase):
                 self.assertEqual(proc.returncode, 3, proc.stdout)
                 self.assertEqual(json.loads(proc.stdout)["op"], 71)
 
+    def test_accepted_append_requires_its_settled_receipt(self) -> None:
+        args = ("stream", "append", "--group", "local.test", "--body", "hello", "--op", "7")
+        event = (2**32 + 7).to_bytes(8, "big")
+        numbers = b" local.test:2 local.other:1"
+        receipt = b"\x01" + b"".join(i.to_bytes(8, "big") for i in (711, 712, 1)) + event
+
+        def result(mid=b"<ok@test>", pairs=numbers, reference=receipt, pos=event, evidence="committed"):
+            return (fn_admin.octets16(mid) + bytes(4) + pos + fn_admin.octets16(pairs)
+                    + fn_admin.octets16(reference) + bytes([fn_admin.EVIDENCE_TYPES.index(evidence)]))
+
+        proc = self.run_command(cns_reply(result()), *args)
+        self.assertEqual(proc.returncode, 0, proc.stdout)
+        reply = json.loads(proc.stdout)
+        self.assertEqual((bytes.fromhex(reply["numbers"]), bytes.fromhex(reply["receipt"])), (numbers, receipt))
+        for invalid in (result(mid=b""), result(pairs=b""), result(reference=b""), result(reference=receipt[:-1]),
+                        result(reference=b"\x02" + receipt[1:]), result(pos=bytes(8)),
+                        result(pos=(8).to_bytes(8, "big")), result(evidence="uncertain")):
+            with self.subTest(result=invalid):
+                proc = self.run_command(cns_reply(invalid), *args)
+                self.assertEqual(proc.returncode, 3, proc.stdout)
+                self.assertEqual(json.loads(proc.stdout)["op"], 7)
+
     def test_invalid_principal_create_reply_is_uncertain(self) -> None:
         proc = self.run_command(
             auth_reply("principal-create", b""), "principal", "create", "alice"

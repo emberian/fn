@@ -528,6 +528,12 @@ def decode_cns_reply(verb: str, frame: bytes) -> dict:
         if conflict and (not mid_raw or evidence == "none" or numbers or receipt
                          or (evidence == "committed") != (position != 0)):
             raise WireError("inconsistent conflict evidence result")
+        if cls == "accepted":
+            if evidence != "committed" or not mid_raw or not numbers or not position:
+                raise WireError("incomplete committed APPEND result")
+            # v1 local receipt: version, origin lineage/domain/incarnation, then event.
+            if len(receipt) != 33 or receipt[0] != 1 or receipt[-8:] != pos_raw:
+                raise WireError("APPEND receipt does not identify the reported event")
         out.update(
             message_id=mid_raw.decode("latin-1"),
             domain=int.from_bytes(dom_raw, "big"),
