@@ -26,7 +26,11 @@
  '(progn
  fn2-retirement-adapter-prelude
  (defun fn2-retirement-admit (extent epoch allocation slot gen okind oslot ogen fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+   :guard-hints (("Goal"
+     :in-theory (disable fn2-core-wfp fn2-alloc-handle-code fn2-extents-state)
+     :use ((:instance fn2-alloc-handle-code-ok-slotp (i extent) (counter allocation)
+                      (fn2-extents (fn2-core-extents fn2-core))))))))
   (b* (((unless (and (unsigned-byte-p 32 extent) (unsigned-byte-p 60 epoch)
                      (unsigned-byte-p 60 allocation) (unsigned-byte-p 32 slot)
                      (unsigned-byte-p 60 gen) (posp okind) (unsigned-byte-p 8 okind)
@@ -89,7 +93,9 @@
             (mv (if (eq cancelled :ok) code :uncertain) admitted event fn2-core))))))
    (mv code admitted event fn2-core)))
  (fn2-core-preserves fn2-retirement-admit
-  (extent epoch allocation slot gen okind oslot ogen fn2-core) :position 3 :rows nil)
+  (extent epoch allocation slot gen okind oslot ogen fn2-core) :position 3 :rows nil
+  :hints (("Goal" :in-theory (disable fn2-core-wfp
+    fn2-alloc-handle-code fn2-extents-state))))
 
  (defun fn2-retirement-submit (extent epoch allocation okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
