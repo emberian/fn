@@ -35,6 +35,7 @@
 (defun fn2-xfnc-put-batch-item (base source source-gen hs he es ee position tx tx-gen at
                                okind oslot ogen fn2-fields fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-pool)
+                  :guard-hints (("Goal" :in-theory (disable fn2-pool-copy-range fn2-pool-workspace-code fn2-pool-fill-value)))
                   :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
   (b* ((size (fn2-xfnc-item-span-size hs he es ee))
        ((unless (and (posp size) (posp position) (unsigned-byte-p 60 position) (natp base)
