@@ -74,3 +74,20 @@
     (mv code kind cap-index cap-nonce range-slot range-gen range-off range-len
         storage-offset fua may-release cancel-slot cancel-gen
         wake-deadline wake-observation-gen))))
+
+
+; Outbound address words belong to this queued Connect. Transfer them before
+; ACK, while the descriptor and its exact generation still name the action.
+(defun fn2-host-connect-target (slot gen fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (if (fn2-core-stopped-p fn2-core) (mv :stopped 0 0 0 0 0 0)
+    (stobj-let ((fn2-ops (fn2-core-ops fn2-core)))
+      (code family port w0 w1 w2 w3)
+      (let ((code (fn2-op-phase-code slot gen *fn2-op-phase-queued* fn2-ops)))
+        (cond ((not (eq code :ok)) (mv code 0 0 0 0 0 0))
+              ((not (and (fn2-op-slotp slot fn2-ops)
+                         (equal (fn2-op-kind slot fn2-ops) *fn2-action-connect*)))
+               (mv :state 0 0 0 0 0 0))
+              (t (mv-let (family port w0 w1 w2 w3) (fn2-op-peer slot fn2-ops)
+                   (mv :ok family port w0 w1 w2 w3)))))
+      (mv code family port w0 w1 w2 w3))))
