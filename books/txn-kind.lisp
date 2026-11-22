@@ -22,7 +22,8 @@
 (defconst *fn2-txn-outcome-conflict* 2)
 
 ;; Successor write-slot geometry in C-S3 (*fn2-succ-slots*):
-;; 0..7 are fixed per-POST slots, *fn2-txn-slot-depend* (20) holds the authority
+;; Eight per-POST slots include the address occurrence after the first
+;; group's count fold and overview. *fn2-txn-slot-depend* (20) holds the authority
 ;; head read dependency (matching authority.lisp's *fn2-auth-depend-slot*), and
 ;; each group uses two slots (counts, overview). Each group after the first
 ;; also uses a membership slot from the far end of the stripe. Therefore G

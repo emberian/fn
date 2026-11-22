@@ -41,12 +41,16 @@
 (defconst *fn2-txn-slot-index* 4)
 (defconst *fn2-txn-slot-article* 5)
 (defconst *fn2-txn-slot-outcome* 6)
-(defconst *fn2-txn-slot-addr* 7)
+;; The address carries the first count fold's assigned number. Its slot
+;; follows that fold and the first overview, before the next group pair.
+(defconst *fn2-txn-slot-addr* (+ 1 *fn2-txn-slot-accepts*))
 
 (defun fn2-txn-group-slot (k)
   (declare (xargs :guard (natp k)))
-  (let ((s (+ *fn2-txn-slot-accepts* (* 2 (nfix k)))))
-    (if (< s *fn2-txn-slot-depend*) s (+ 1 s))))
+  (if (zp k)
+      (- *fn2-txn-slot-accepts* 1)
+    (let ((s (+ *fn2-txn-slot-accepts* (* 2 k))))
+      (if (< s *fn2-txn-slot-depend*) s (+ 1 s)))))
 (defthm fn2-txn-group-slot-natp
   (natp (fn2-txn-group-slot k))
   :rule-classes :type-prescription)
@@ -58,6 +62,8 @@
   (- *fn2-succ-slots* ordinal))
 (assert-event
  (and (<= 7 *fn2-txn-groups-max*)
+      (< (+ 1 (fn2-txn-group-slot 0)) *fn2-txn-slot-addr*)
+      (< *fn2-txn-slot-addr* (fn2-txn-group-slot 1))
       (< (+ 1 (fn2-txn-group-slot (- *fn2-txn-groups-max* 1)))
          (fn2-txn-stream-slot (- *fn2-txn-groups-max* 1)))))
 ;; The article row's values: a born article is live, version 1; the
