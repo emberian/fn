@@ -16,6 +16,14 @@
 (defcost fn2-xfnc-expired-p :child fn2-sched-timer-expired-p
  :doc "Whether the counted-body deadline has expired.")
 
+;; The connection kind's auto-emitter only scans its own declaration book.
+;; Generate these faces here so the counted arms see the scheduler contracts.
+(make-event
+ (value (cons 'progn
+              (append (fn2-arms-op-face-events 'fn2-xfnc-arm-timer 'fn2-sched-arm-delay-ms (w state))
+                      (fn2-arms-op-face-events 'fn2-xfnc-clear-timer 'fn2-sched-clear-deadline (w state))
+                      (fn2-arms-op-face-events 'fn2-xfnc-expired-p 'fn2-sched-timer-expired-p (w state))))))
+
 (defun fn2-xfnc-policy (fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
                  :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
