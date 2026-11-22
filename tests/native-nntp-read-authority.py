@@ -48,10 +48,13 @@ def logged_in(port, cert, principal, password):
     peer = Peer(port)
     try:
         peer.sock.settimeout(30)
+        assert b"AUTHINFO USER" not in peer.capabilities()
         peer.upgrade(cert, False)
+        assert b"AUTHINFO USER" in peer.capabilities()
         assert peer.command(b"AUTHINFO USER " + principal.encode("ascii")).startswith(b"381 ")
         answer = peer.command(b"AUTHINFO PASS " + password.encode("ascii"))
         assert answer.startswith(b"281 "), ("AUTHINFO PASS", answer[:3])
+        assert b"AUTHINFO USER" not in peer.capabilities()
         yield peer
     finally:
         peer.close()
