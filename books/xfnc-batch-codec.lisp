@@ -6,6 +6,9 @@
 (include-book "peer-view-member")
 (include-book "xfnc-request")
 (fn2-book-layer :e)
+(local (in-theory (disable fn2-fieldsp fn2-fields-wfp fn2-fields-rows fn2-fields-value
+                           fn2-fields-ref-off fn2-fields-ref-len fn2-fields-ref-slot fn2-fields-ref-gen
+                           fn2-poolp fn2-pool-wfp fn2-pool-rows)))
 
 (defconst *fn2-xfnc-batch-version* 1)
 (defconst *fn2-xfnc-batch-interpretation* 1)
@@ -257,7 +260,7 @@
                      (equal 0 (fn2-fields-value (+ base *fn2-fnct-k28-reply-field-class*) fn2-fields))
                      (equal 0 (fn2-fields-ref-len (+ base *fn2-fnct-k28-reply-field-reason*) fn2-fields))
                      (<= start off) (< off end)
-                     (equal (+ off (fn2-fields-ref-len result fn2-fields)) end)))
+                     (equal (+ off (nfix (fn2-fields-ref-len result fn2-fields))) end)))
         (mv :frame 0 0 fn2-fields)))
     (mv :ok off end fn2-fields)))
 (fn2-pool-block-shape fn2-xfnc-get-batch-result-span-shape

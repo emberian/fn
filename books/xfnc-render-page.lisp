@@ -4,6 +4,9 @@
 (include-book "xfnc-read-page")
 (include-book "xfnc-reply")
 (fn2-book-layer :e)
+(local (in-theory (disable fn2-fieldsp fn2-fields-wfp fn2-fields-rows fn2-fields-value
+                           fn2-fields-ref-off fn2-fields-ref-len fn2-fields-ref-slot fn2-fields-ref-gen
+                           fn2-poolp fn2-pool-wfp fn2-pool-rows)))
 
 ; Stream the RESULT field's octets in subsequent turns. The prefix is the
 ; kind 28 layout through RESULT's length word, with its ordinary class/reason.
