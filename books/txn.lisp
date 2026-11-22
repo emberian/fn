@@ -385,19 +385,13 @@
   ;; :ready stages and admits in one scheduler turn. Only article
   ;; submissions need an overview or Xref. Evidence uses the same emit/bind.
   (ready-capacity :on-refusal ((:stop :machine-phase))
-   (:let capacity-charge
-     (+ *fn2-txn-ready-bytes*
-        (if (equal row-cancel-progress 3)
-            (+ *fn2-txn-ready-withdrawal-fixed-bytes*
-               (* *fn2-txn-ready-per-target-bytes* (min *fn2-txn-groups-max* (+ 1 row-cancel-count))))
-          0)))
    (:if (equal row-tmode *fn2-txn-mode-evidence*)
         ((:set (word *fn2-upload-word-conflict*) (ecommit *fn2-txn-ecommit-refused*)))
         ((:set (word *fn2-upload-word-unaffordable*))))
-   (:next :refused) (:charge :bytes capacity-charge :steps *fn2-work-transition* :runnable t))
+   (:next :refused) (:charge :steps *fn2-work-transition* :runnable t))
   (submit :on-refusal ((:stop :machine-phase))
    (:let submit-charge
-     (+ *fn2-txn-ready-bytes*
+     (+ *fn2-txn-submit-bytes*
         (if (equal row-cancel-progress 3)
             (+ *fn2-txn-ready-withdrawal-fixed-bytes*
                (* *fn2-txn-ready-per-target-bytes* (min *fn2-txn-groups-max* (+ 1 row-cancel-count))))

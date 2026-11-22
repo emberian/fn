@@ -101,8 +101,10 @@
 (defconst *fn2-txn-stage-quantum* 4096)
 (defconst *fn2-txn-xref-bytes* 2048)
 (defconst *fn2-txn-admit-bytes* 4096)
+(defconst *fn2-txn-submit-bytes* (+ 8192 8192 *fn2-txn-admit-bytes*))
+;; A :goto adds the caller's stage and Xref costs to the submit charge.
 (defconst *fn2-txn-ready-bytes*
-  (+ *fn2-txn-stage-quantum* 8192 8192 *fn2-txn-xref-bytes* *fn2-txn-admit-bytes*))
+  (+ *fn2-txn-stage-quantum* *fn2-txn-xref-bytes* *fn2-txn-submit-bytes*))
 
 ;; Reserve a stage quantum for each additional active slot: target version
 ;; dependency and replacement, and one report plus fold per membership.
