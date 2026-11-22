@@ -13,7 +13,10 @@
   (case reason
     (:frame *fn2-cns-reason-frame*)
     (:access *fn2-cns-reason-access*)
-    (:query *fn2-cns-reason-query*)
+    ((:absent :query) *fn2-cns-reason-query*)
+    (:scope *fn2-cns-reason-scope*)
+    (:behind *fn2-cns-reason-behind*)
+    (:beyond-frontier *fn2-cns-reason-beyond-frontier*)
     (:meter *fn2-cns-reason-meter*)
     (:cursor-version *fn2-cns-reason-cursor-version*)
     (:unknown-consumer *fn2-cns-reason-unknown-consumer*)

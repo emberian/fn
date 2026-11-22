@@ -6,7 +6,7 @@
 (include-book "conn-authinfo-read")
 (include-book "xfnc-reader")
 (include-book "conn-xfnc-input")
-(include-book "xfnc-reply")
+(include-book "conn-xfnc-query")
 (fn2-tls-events)
 
 (defconst *fn2-upload-word-framing* (fn2-upload-word-code :framing))
@@ -107,6 +107,44 @@
              (:issue (fn2-issue-receive row-cap-index row-cap-nonce row-rx-slot row-rx-gen len
                                         :principal row-principal-slot)
                      :ok ((:wait :completion :bytes (+ *fn2-conn-feed-cost* len)))))))
+  (xfnc-publish
+   (:do () (fn2-conn-cursor-cancel row-query row-query-gen))
+   (:do () (fn2-conn-wake row-query))
+   (:set (query *fn2-none*) (query-gen 0) (xfnc-verb 0) (xfnc-answer *fn2-conn-xfnc-answer-none*) (xfnc-reason 0) (tx-off 0) (after *fn2-conn-after-command*))
+   (:next :reply)
+   (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+  (xfnc-query
+   (:if (equal row-query *fn2-none*)
+        ((:do (taken x xgen)
+          (fn2-machine-take-fn2-cursor *fn2-none* id row-generation *fn2-conn-kind* row-mask
+                                        row-rx-slot row-rx-gen row-line-s row-line-e
+                                        row-tx-slot row-tx-gen row-group row-current row-pin row-posting)
+          :case (((:ok)
+                  (:do (bound) (fn2-xfnc-bind-cursor x xgen id row-generation)
+                   :case ((:otherwise (:stop :machine-phase))))
+                  (:set (query x) (query-gen xgen))
+                  (:charge :steps *fn2-work-transition* :runnable t))
+                 ((:none) (:next :xfnc-request) (:charge :steps *fn2-work-transition* :runnable t))
+                 (:otherwise (:park :taken fn2-cursor :steps *fn2-work-transition*)))))
+        ((:cond
+          ((not (equal row-xfnc-answer *fn2-conn-xfnc-answer-none*))
+           (:do (render) (fn2-conn-xfnc-result row-query row-query-gen row-xfnc-answer row-xfnc-reason)
+            :case (((:ok) (:goto xfnc-publish))
+                   (:otherwise (:next :closing) (:charge :bytes 2048 :steps *fn2-work-transition* :runnable t)))))
+          (t
+           (:do (result reason) (fn2-conn-xfnc-query row-query row-query-gen row-xfnc-verb)
+            :case (((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                   ((:wait) (:charge :bytes 4096 :steps *fn2-work-transition*))
+                   ((:state) (:next :closing) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+                   (:otherwise
+                    ;; A READ with a valid cursor still needs the typed
+                    ;; section 13.4 batch codec before it can yield a page.
+                    (:set (xfnc-answer (case result
+                                         (:register *fn2-conn-xfnc-answer-register*)
+                                         (:uncertain *fn2-conn-xfnc-answer-uncertain*)
+                                         (otherwise *fn2-conn-xfnc-answer-refused*)))
+                          (xfnc-reason reason))
+                    (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t)))))))))
   (xfnc-receive
    (:let fill (fn2-conn-fill row-rx-slot))
    (:let cap (fn2-conn-cap row-rx-slot))
@@ -308,7 +346,7 @@
      (:if (or (not (equal off 0)) (> len discard-max))
           ((:next :closing) (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))
           ((:do (tc deadline) (fn2-xfnc-arm-timer id body-ms) :case ((:otherwise (:stop :machine-phase))))
-           (:set (xfnc-left len) (xfnc-discard (if (> len request-max) 1 0))
+           (:set (xfnc-left len) (xfnc-phase *fn2-xfnc-rx-header-phase*) (xfnc-discard (if (> len request-max) 1 0))
                  (xfnc-timer 1) (xfnc-verb 0) (xfnc-op 0) (xfnc-op-gen 0))
            (:next :xfnc-input) (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))))
     ((equal login *fn2-conn-authinfo-capabilities*)
@@ -491,21 +529,24 @@
              (:otherwise (:stop :machine-phase)))))
     (t
      (:do (request-max discard-max body-ms) (fn2-xfnc-policy))
-     (:do (code next left verb) (fn2-conn-xfnc-input id row-generation row-xfnc-discard row-start
+     (:do (code next left verb) (fn2-conn-xfnc-input-stage id row-generation row-xfnc-phase row-xfnc-discard row-start
                                                     row-xfnc-left request-max discard-max)
-      :case (((:ready)
+      :case (((:hash) (:set (xfnc-phase *fn2-xfnc-rx-hash-phase*))
+              (:charge :bytes *fn2-fnct-header-octets* :steps *fn2-work-transition* :runnable t))
+             ((:trailer) (:set (xfnc-phase *fn2-xfnc-rx-trailer-phase*))
+              (:charge :bytes *fn2-pool-block-bytes* :steps *fn2-work-transition* :runnable t))
+             ((:ready)
               (:let begin row-start)
               (:set (line-s begin) (line-e next) (start next) (pos next) (xfnc-verb verb))
               (:do (tc) (fn2-xfnc-clear-timer id) :case ((:otherwise (:stop :machine-phase))))
               (:set (xfnc-timer 0) (xfnc-op 0) (xfnc-op-gen 0))
-              (:next :xfnc-request) (:charge :bytes 2048 :steps *fn2-work-transition* :runnable t))
+              (:next :query) (:charge :bytes (+ *fn2-fnct-trailer-octets* 1) :steps *fn2-work-transition* :runnable t))
              ((:frame :discarded)
               ;; :frame follows validation of the complete declared extent.
-              (:let end (if (eq code :frame) (+ row-start row-xfnc-left) next))
-              (:set (start end) (pos end) (xfnc-verb 0))
+              (:set (start next) (pos next) (xfnc-verb 0))
               (:do (tc) (fn2-xfnc-clear-timer id) :case ((:otherwise (:stop :machine-phase))))
               (:set (xfnc-timer 0) (xfnc-op 0) (xfnc-op-gen 0))
-              (:next :xfnc-request) (:charge :bytes 2048 :steps *fn2-work-transition* :runnable t))
+              (:next :xfnc-request) (:charge :bytes *fn2-pool-block-bytes* :steps *fn2-work-transition* :runnable t))
              ((:discard-more) (:set (start next) (pos next) (xfnc-left left))
               (:charge :bytes 2048 :steps *fn2-work-transition* :runnable t))
              ((:discard-need-more)
@@ -517,14 +558,14 @@
              ((:need-more) (:goto xfnc-receive))
              ((:compact) (:set (compacting 1) (cursor 0))
               (:charge :bytes 2048 :steps *fn2-work-transition* :runnable t))
-             (:otherwise (:next :closing) (:charge :bytes 2048 :steps *fn2-work-transition* :runnable t)))))))
+             (:otherwise (:next :closing) (:charge :bytes *fn2-pool-block-bytes* :steps *fn2-work-transition* :runnable t)))))))
   (:xfnc-request
    (:do (reply-code)
         (fn2-xfnc-reply-refusal id row-generation
          (case row-xfnc-verb (1 :register) (2 :read) (otherwise :none))
          (if (equal row-xfnc-verb 0) :frame :unavailable))
     :case (((:ok) (:set (tx-off 0) (after *fn2-conn-after-command*))
-            (:next :reply) (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))
+            (:set (xfnc-verb 0)) (:next :reply) (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))
            (:otherwise (:next :closing) (:charge :steps *fn2-work-transition* :runnable t)))))
   (:closing
    (:if (not (equal row-pending 0))
@@ -573,6 +614,9 @@
                   :case ((:otherwise (:stop :pool-release :steps *fn2-work-state*))))
              (:do (acode) (fn2-account-unbook-ref row-account-ref)
                   :case ((:otherwise (:stop :account :steps *fn2-work-state*))))
+             (:if (posp row-xfnc-verb)
+                  ((:do (aborted) (fn2-xfnc-peer-cancel qry qgen)
+                    :case ((:otherwise (:stop :machine-phase))))) ())
              (:do () (fn2-conn-cursor-cancel qry qgen))
              (:do () (fn2-conn-wake (if (equal upl *fn2-none*) qry upl)))
              (:let next (fn2-machine-free-head *fn2-conn-admission-ordinal*))
@@ -592,7 +636,8 @@
   (:retired (:idle))
   ;; :query (section 15.3).
   (:query
-   (:if (equal row-query *fn2-none*)
+   (:cond ((posp row-xfnc-verb) (:goto xfnc-query))
+          (t (:if (equal row-query *fn2-none*)
         ((:do (tcode x xgen)
               (fn2-machine-take-fn2-cursor *fn2-none* id row-generation *fn2-conn-kind* row-mask
                                            row-rx-slot row-rx-gen row-line-s row-line-e
@@ -644,7 +689,7 @@
                  (:charge :steps *fn2-work-transition* :runnable t))
                 (t (:do () (fn2-conn-cursor-go row-query row-query-gen))
                    (:do () (fn2-conn-wake row-query))
-                   (:charge :steps *fn2-work-transition*)))))))
+                   (:charge :steps *fn2-work-transition*)))))))))
  :observes
  ((:receive-result :from (:command :article-input :xfnc-input :closing)
    (:if (and (or (equal outcome *fn2-outcome-done*) (equal outcome *fn2-outcome-short*))

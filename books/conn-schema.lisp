@@ -54,8 +54,9 @@
  :fields ((cap-index :u32) (cap-nonce :u32)
           (rx-slot :link) (rx-gen :u60) (tx-slot :link) (tx-gen :u60)
           (start :u32) (pos :u32) (overflow :bool) (compacting :bool) (cursor :u32)
-          (xfnc-left :u32) (xfnc-discard :bool) (xfnc-timer :bool) (xfnc-verb :u8)
+          (xfnc-left :u32) (xfnc-phase :u8) (xfnc-discard :bool) (xfnc-timer :bool) (xfnc-verb :u8)
           (xfnc-op :u32) (xfnc-op-gen :u60)
+          (xfnc-answer (:enum fn2-conn-xfnc-answer (:none :register :refused :uncertain))) (xfnc-reason :u8)
           (tx-off :u32) (after (:enum fn2-conn-after (:command :article-input :upgrading :closing :query :compress-upgrading)))
           (pending :u32) (borrows :u32) (mask :u8) (ordinal :u32) (access-ref :u32)
           (auth-pending (:enum fn2-conn-auth (:none :user :sasl :redeem)))
@@ -106,7 +107,7 @@
  ;; ranges reserved whole (A's generated fn2-machine-admit-fn2-conn).
  :admission (:phase :greeting :ranges (:rx-range :tx-range)
              :copy (principal-slot account-ref peer-family peer-port peer-w0 peer-w1 peer-w2 peer-w3)
-             :clear (start pos overflow compacting cursor xfnc-left xfnc-discard xfnc-timer xfnc-verb xfnc-op xfnc-op-gen
+             :clear (start pos overflow compacting cursor xfnc-left xfnc-phase xfnc-discard xfnc-timer xfnc-verb xfnc-op xfnc-op-gen xfnc-answer xfnc-reason
                      tx-off pending borrows ordinal refused
                      auth-pending login-principal peer-role-grant peer-step peer-head peer-grant peer-login login-candidate login-off login-len login-loaded login-mode login-failures
                      upgrade-target tls-token-gen tls-op-gen upgrade-stage tls-ok access-ref upload-gen rule request feed-mode feed-discard fed word

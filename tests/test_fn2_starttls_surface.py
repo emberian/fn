@@ -18,7 +18,7 @@ import time
 from test_fn2_user_surface import FN, LiveNode, ROOT, run_fn
 
 sys.path.insert(0, str(ROOT / "tools"))
-from fn_admin import decode_cns_reply
+from fn_admin import build_cns_request, decode_cns_reply
 
 
 class Peer:
@@ -71,6 +71,17 @@ class Peer:
         else:
             self.sock.sendall(data)
         return self.line()
+
+    def xfnc(self, verb, **fields):
+        frame = build_cns_request(verb, **fields)
+        request = f"XFNC {len(frame)}\r\n".encode("ascii") + frame
+        assert self.tls.write(request) == len(request)
+        self.flush()
+        status, extent = self.line().split(b" ")
+        assert extent.isdigit() and 0 < int(extent) <= 4096, extent
+        reply = decode_cns_reply(verb, self.take(int(extent)))
+        assert status == {"accepted": b"290", "refused": b"490", "uncertain": b"491"}[reply["outcome"]]
+        return reply
 
     def capabilities(self):
         assert self.command(b'CAPABILITIES').startswith(b'101 ')
@@ -165,7 +176,7 @@ def exercise_peer_frame_boundary(peer):
     # The final write includes the next NNTP line. Each rejected extent
     # must consume exactly its own bytes on the authenticated TLS socket.
     for declared, parts in ((8, (b"bad", b"frame")),
-                            (129, (b"x" * 64, b"x" * 65))):
+                            (513, (b"x" * 256, b"x" * 257))):
         header = f"XFNC {declared}\r\n".encode("ascii")
         for chunk in (header + parts[0], parts[1] + b"DATE\r\n"):
             assert peer.tls.write(chunk) == len(chunk)
@@ -231,6 +242,13 @@ def exercise_peer_provision(port, cert, control_socket):
         login(promoted)
         assert promoted.command(b"MODE STREAM").startswith(b"203 ")
         exercise_peer_frame_boundary(promoted)
+        request = dict(consumer=b"\x07", start="history", streams=[b"local.test"])
+        assert promoted.xfnc("register", **request) == {"outcome": "refused", "reason": "access"}
+        assert grant("set", "consume")["outcome"] == "accepted"
+        registered = promoted.xfnc("register", **request)
+        assert registered["outcome"] == "accepted" and registered["position"] == 0, registered
+        assert promoted.xfnc("register", **request) == registered
+
         exercise_peer_replay(promoted, grant)
         revoked = grant("set", "peer", "--revoke")
         found = grant("get", "peer")
@@ -252,6 +270,11 @@ def exercise_peer_provision(port, cert, control_socket):
     try:
         login(after_regrant)
         assert after_regrant.command(b"MODE STREAM").startswith(b"203 ")
+        # A different connection can submit the registration. Changing the
+        # role grant changes the view and the old cursor requires a rebase.
+        cursor = bytes.fromhex(registered["cursor"])
+        result = after_regrant.xfnc("read", cursor=cursor, max_items=1, max_octets=256)
+        assert result == {"outcome": "refused", "reason": "rebase-required"}, result
     finally:
         after_regrant.close()
 
@@ -273,7 +296,7 @@ def main():
     control_socket = Path(f"/tmp/fn2-pr-{os.getpid()}-{time.time_ns()}.sock")
     node = LiveNode(directory, image, 'tls', [
         '--host', '127.0.0.1', '--port', '0', '--peering', '--control-sock', str(control_socket),
-        '--max-consumer-request-octets', '128', '--max-consumer-discard-octets', '256',
+        '--max-consumer-request-octets', '512', '--max-consumer-discard-octets', '1024',
         '--consumer-body-timeout-ms', '5000',
         '--tls-certificate', str(cert),
         '--tls-key', str(key), '--tls-window', '512', '--tls-handshakes', '1', '--tls-handshake-ms', '1000'])

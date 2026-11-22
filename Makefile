@@ -197,7 +197,9 @@ ACL2_BOOKS = \
   books/conn-answer \
   books/tls-schema \
   books/conn-schema \
+  books/conn-xfnc-query \
   books/conn-xfnc-input \
+  books/xfnc-request \
   books/xfnc-reply \
   books/conn-authinfo-read \
   books/conn-read-principal \

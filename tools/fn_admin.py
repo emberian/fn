@@ -384,7 +384,8 @@ def build_cns_request(verb: str, **kw) -> bytes:
     code = CNS_CODES[verb]
     if verb == "register":
         start_byte = 0 if kw.get("start") == "now" else 1
-        body = bytes([code]) + octets_var(kw["consumer"]) + octets16(b"") + bytes([start_byte])
+        streams = b"".join(octets_var(name) for name in kw.get("streams", ()))
+        body = bytes([code]) + octets_var(kw["consumer"]) + octets16(streams) + bytes([start_byte])
     elif verb == "rebase":
         start_byte = {"keep": 0, "now": 1, "history": 2}[kw["start"]]
         body = bytes([code]) + octets16(kw["cursor"]) + octets16(b"") + bytes([start_byte])
