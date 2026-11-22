@@ -10,6 +10,7 @@ import os
 from contextlib import contextmanager, ExitStack
 from pathlib import Path
 import secrets
+import shutil
 import stat
 import struct
 import subprocess
@@ -21,6 +22,7 @@ from harness.launcher import require_launcher_sigkill
 from test_fn2_starttls_surface import Peer
 from test_fn2_user_surface import FN, LiveNode, ROOT, run_fn
 
+from acl2_slots import configured_acl2
 from fn_admin import build_cns_request, cursor_consumer_and_position_width, decode_cns_reply, fnct_open, leb_decode
 
 SENDER_ORIGIN = 811
@@ -328,10 +330,14 @@ def pull_and_reopen(directory, a, b, a_socket, b_socket, a_auth, b_auth):
 
 
 def observer_environment(mode):
-    real = Path(os.environ["FN_ACL2"]).resolve(strict=True)
+    selected = configured_acl2()
+    executable = shutil.which(os.path.expanduser(selected))
+    if executable is None:
+        raise SystemExit(f"BLOCKED configured ACL2 launcher unavailable: {selected}")
+    real = Path(executable).resolve(strict=True)
     observer = ROOT / "tests/native-peer-cut-launcher.py"
-    if real.resolve() == observer.resolve() or not os.access(real, os.X_OK):
-        raise ValueError("FN_ACL2 must select a qualified real launcher")
+    if real in (observer.resolve(), (ROOT / "tools/acl2").resolve()):
+        raise SystemExit(f"BLOCKED cut observer requires the underlying ACL2 executable: {real}")
     return dict(os.environ, FN_ACL2=str(observer), FN2_TEST_REAL_ACL2=str(real),
                 FN2_TEST_PEER_CUT_MODE=mode)
 
