@@ -6,7 +6,7 @@
 (include-book "storage-block-io")
 (include-book "pool-ranges")
 (include-book "peer-history-member")
-(include-book "event-read-verify")
+(include-book "event-read-verify-domain")
 (fn2-book-layer :c)
 
 (defmacro fn2-journal-retention-core-events ()
