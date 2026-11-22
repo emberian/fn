@@ -1,4 +1,4 @@
-; Run the actual APPEND reply projection and result selection. Stub the
+; Run the actual CNS reply owner check and APPEND result selection. Stub the
 ; core readers, pool and generated codecs at their interfaces. The recorded
 ; fields are codec inputs, not an independent serialization.
 ; Run: sbcl --script tests/cns-append-evidence-controls.lsp [source-root]
@@ -56,17 +56,25 @@
 (define-enum 'fn2-upload-word *upload-words*)
 (defparameter *fn2-ctl-state-waiting* :waiting)
 (defparameter *fn2-ctl-kind* 2)
+(defparameter *fn2-cns-state-free* :free)
+(defparameter *fn2-cns-state-retired* :retired)
 (defparameter *fn2-format-message-id-max* 250)
 
 (defun fn2-ctl-snapshot-read-code (id core) (declare (ignore id core)) :ok)
 (defun fn2-cns-snapshot-read-code (id core) (declare (ignore id core)) :ok)
-(defun fn2-machine-generation (id core) (declare (ignore id core)) 3)
+(defun fn2-machine-generation (id core) (declare (ignore core)) (if (= id 1) 3 4))
+(defun fn2-cns-row-phase (cns core) (declare (ignore cns core)) :park)
+(defun fn2-cns-row-ctl (cns core) (declare (ignore cns core)) 1)
+(defun fn2-cns-row-ctl-gen (cns core) (declare (ignore cns core)) 3)
+(defun fn2-cns-row-request (cns core) (declare (ignore cns core)) 5)
+(defun fn2-cns-row-tx-slot (cns core) (declare (ignore cns core)) 12)
+(defun fn2-cns-row-tx-gen (cns core) (declare (ignore cns core)) 6)
 (defun fn2-ctl-row-request (ctl core) (declare (ignore ctl core)) 5)
 (defun fn2-ctl-row-phase (ctl core) (declare (ignore ctl core)) :waiting)
 (defun fn2-ctl-row-cns (ctl core) (declare (ignore ctl core)) 2)
-(defun fn2-ctl-row-cns-gen (ctl core) (declare (ignore ctl core)) 4)
+(defun fn2-ctl-row-cns-gen (ctl core) (declare (ignore ctl)) (getf core :child-gen 4))
 (defun fn2-ctl-row-rx-slot (ctl core) (declare (ignore ctl core)) 12)
-(defun fn2-ctl-row-rx-gen (ctl core) (declare (ignore ctl core)) 6)
+(defun fn2-ctl-row-rx-gen (ctl core) (declare (ignore ctl)) (getf core :rx-gen 6))
 (defun fn2-ctl-row-principal (ctl core) (declare (ignore ctl core)) 7)
 (defun fn2-ctl-fc-row (ctl core) (declare (ignore ctl core)) (mv :ok 8))
 (defun fn2-cns-row-posted (cns core) (declare (ignore cns)) (getf core :posted))
@@ -101,10 +109,14 @@
 
 (defvar *fn2-cns-reason-words*)
 (defvar *fn2-cns-upload-word-strings*)
+(let ((forms (source-forms "books/ctl-stream-events.lisp")))
+ (dolist (name '(fn2-ctl-stream-live-p fn2-ctl-stream-child-live-p))
+  (eval (or (source-form 'defun name forms) (error "Missing source function ~s" name)))))
 (let ((forms (source-forms "books/cns.lisp")))
+ (eval (cons 'defparameter (cdr (source-form 'defconst '*fn2-cns-reason-scope* forms))))
  (handler-bind ((style-warning #'muffle-warning))
   (dolist (name '(fn2-cns-word-strings fn2-cns-reason-word fn2-cns-reply-class
-                  fn2-cns-put-result fn2-cns-reply-pool fn2-cns-post-reply))
+                  fn2-cns-put-result fn2-cns-reply-pool fn2-cns-reply-ownerp fn2-cns-post-reply))
    (when (eq name 'fn2-cns-reason-word)
     (set '*fn2-cns-reason-words* (second (third (source-form 'defconst '*fn2-cns-reason-words* forms))))
     (set '*fn2-cns-upload-word-strings* (fn2-cns-word-strings *upload-words*)))
@@ -131,4 +143,14 @@
  (assert (equal (apply #'projection case) '(:fault nil))))
 (assert (equal (projection *fn2-cns-posted-refused* 0 *fn2-upload-word-refused*)
                '(:ok (1 "refused" 0 nil))))
-(format t "CNS APPEND EVIDENCE SOURCE CONTROLS PASS: three conflict outcomes, event checks, empty generic refusal~%")
+(dolist (verb (list *fn2-cns-verb-read* *fn2-cns-verb-wait*))
+ (dolist (binding '(() (:child-gen 3) (:rx-gen 5)))
+  (let ((*codec-input* nil) (*append-result* nil))
+   (multiple-value-bind (code next)
+       (fn2-cns-post-reply 1 3 5 verb *fn2-cns-outcome-refused* *fn2-cns-reason-scope*
+                           0 0 0 0 0 0 0 0 0 0 0 12 6 2 4 13 8 0
+                           (list* :pool "" binding))
+    (if binding
+        (assert (and (eq code :dropped) (null *codec-input*) (equal next (list* :pool "" binding))))
+      (assert (and (eq code :ok) (equal *codec-input* '(1 "scope" 0 nil)))))))))
+(format t "CNS APPEND EVIDENCE SOURCE CONTROLS PASS: three conflict outcomes, event checks, empty generic refusal, live and stale READ/WAIT bindings~%")

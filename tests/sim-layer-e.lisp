@@ -430,6 +430,37 @@
                     (equal (cdr final-state) (list *fn2-no-deadline* 0 0)))
                fn2-core))
          ok))))
+  (local
+   (defun fn2-sle-set-ctl-child-generation (ctl gen fn2-core)
+     (declare (xargs :stobjs fn2-core :verify-guards nil))
+     (let ((slot (fn2-machine-slot ctl fn2-core)))
+       (stobj-let ((fn2-ctl (fn2-ctl-table fn2-core))) (fn2-ctl)
+         (fn2-ctl-set-cns-gen slot gen fn2-ctl)
+         fn2-core))))
+  (local
+   (defun fn2-sle-wait-reply-owner-control (ctl cns fn2-core)
+     (declare (xargs :stobjs fn2-core :verify-guards nil))
+     (b* ((ctlgen (fn2-machine-generation ctl fn2-core))
+          (cgen (fn2-machine-generation cns fn2-core))
+          (request (fn2-cns-row-request cns fn2-core))
+          (slot (fn2-cns-row-tx-slot cns fn2-core))
+          (gen (fn2-cns-row-tx-gen cns fn2-core))
+          (off (fn2-ctl-row-tx-off ctl fn2-core))
+          (len (fn2-ctl-row-tx-len ctl fn2-core))
+          ((unless (fn2-cns-reply-ownerp ctl ctlgen request cns cgen slot gen fn2-core))
+           (mv nil fn2-core))
+          ;; Only CTL's reverse generation is stale. The CNS row, its
+          ;; forward tuple, CTL request, and CTL RX ownership are still live.
+          (fn2-core (fn2-sle-set-ctl-child-generation ctl (+ 1 cgen) fn2-core))
+          ((mv rc fn2-core)
+           (fn2-cns-post-reply ctl ctlgen request *fn2-cns-verb-wait*
+             *fn2-cns-outcome-refused* *fn2-cns-reason-scope* 1 1 1 0 0 0 0 0 0 0 0
+             slot gen cns cgen (fn2-cns-row-ns-slot cns fn2-core)
+             (fn2-cns-row-ns-gen cns fn2-core) 0 fn2-core))
+          (dropped (and (eq rc :dropped) (equal off (fn2-ctl-row-tx-off ctl fn2-core))
+                        (equal len (fn2-ctl-row-tx-len ctl fn2-core))))
+          (fn2-core (fn2-sle-set-ctl-child-generation ctl cgen fn2-core)))
+       (mv dropped fn2-core))))
   ;; Keep both consumers and an upload transaction live. The APPEND client
   ;; is introduced only after the actual waiting client's edge is observed.
   (local
@@ -472,6 +503,8 @@
                             (equal (fnc-replies '(register wait) received) '((:accepted "" 0)))
                             (equal (fnc-reply-cursor 'register received) expected)))
                (mv nil fn2-core))
+              ((mv owned fn2-core) (fn2-sle-wait-reply-owner-control ctl request fn2-core))
+              ((unless owned) (mv nil fn2-core))
               (fn2-core (fn2-listener-take-credit *fn2-ctl-admission-ordinal* fn2-core))
               ((mv acode fn2-core) (fn2-machine-admit-fn2-ctl 1 77 3 0 fn2-core))
               ((unless (eq acode :ok)) (mv nil fn2-core))
