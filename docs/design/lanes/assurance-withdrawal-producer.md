@@ -35,35 +35,30 @@ its exact target Message-ID. TXN looks that name up in the existing local
 accepted-article index. It rechecks the live generation, request and owning
 transfer, then checks the target's original submitter or the unbound
 owner-socket administrator. Forwarded articles do not acquire local
-authorship from their headers or peer account. Authorized cancels currently
-return the existing storage refusal. The target writer has no published
-mutation yet.
+authorship from their headers or peer account.
 
-The Forge author replay admitted the revised schema declarations, the
-folded/duplicate Control fixture, and the bounded C lookup body on its warm
-parent prefix. The generated group fold for a cancel filed in a target group
-assigned the next number and preserved the count in the focused stobj control.
-A target number above the predecessor watermark and an empty count both
-refused. The composed D transaction, native TLS/peer/owner checks, and the
-GROUP assertions after reopen remain unexecuted. The native control is
-`tests/native-delivered-withdrawal.py`.
+The served cancellation continuation stages the target version dependency,
+complete ARTICLE replacement, per-membership count updates and reports in
+the same successor as the cancel article. The dependency is a scalar
+projection checked against the published and unpublished predecessors. Each
+affected membership reserves two successor slots. The ready reservation
+accounts for the two fixed slots and the actual membership count. If a
+cancel article files in one of the affected groups, that group uses the
+shared accept-and-withdraw fold. The C publication wake scan recognizes
+withdrawal reports on their target streams. CNS's group reader still needs
+to merge those reports into its positioned output.
 
-The next transactional slice needs a copy of the target ARTICLE's scalar
-fields and its three reference spans in an owned workspace. A current-target
-check must survive staging against the unpublished predecessor as well as
-the published cut so racing cancels cannot apply two count decrements.
-The existing integer-only fold and whole-integer dependency cannot carry
-the ARTICLE's octet fields. Placement reads can use the accepted birth and
-placement principal to find the original address occurrence, then use its
-additional count to enumerate the immutable ordinal rows. The count changes,
-positioned reports, target version and cancel outcome must share that
-successor and B's publication barrier. The 29-slot geometry currently fits
-the ordinary seven-group article. A maximum-width cancel plus target-group
-work needs additional staging capacity and a checked ready budget. CNS's
-existing address/member selection must merge the positioned reports for the
-target streams and wake readers past the original occurrence.
+Forge source author replay admitted the ordered withdrawal schema. The
+group-fold control exercised both refusal cases and the combined filing and
+withdrawal. The charge-compiler control exercised the emitted reservation
+for two memberships. `tests/withdrawal-producer-unit.lisp` drives seed,
+crosspost and cancel through the actual owner APPEND scheduler simulator,
+then checks both published reports and counts. Its assertions are pending
+execution after dependency admission. Native TLS, peer and owner outcomes,
+and the GROUP assertions after reopen remain unverified.
+`tests/native-delivered-withdrawal.py` is the native control.
 
-## Actual caller and representation gaps
+## Initial trace and representation gaps
 
 - `upload-scan.lisp:39..52` recognizes CONTROL's name/presence. Its retained
   ranges at 223..228 cover only Message-ID, Newsgroups and Path. It retains no
