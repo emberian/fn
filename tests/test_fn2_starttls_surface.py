@@ -102,7 +102,7 @@ class Peer:
         raise AssertionError('handshake did not finish within bounded exchanges')
 
 
-def exercise_peer_replay(peer):
+def exercise_peer_replay(peer, grant):
     old = b"<replay@example.invalid>"
     fresh = b"<fresh@example.invalid>"
 
@@ -135,6 +135,17 @@ def exercise_peer_replay(peer):
     assert peer.command(b"IHAVE " + rejected).startswith(b"335 ")
     assert peer.command(article(b"<different@example.invalid>", b"mismatched body")).startswith(b"437 ")
     assert peer.command(b"GROUP local.test") == b"211 3 1 3 local.test"
+
+    # Recheck the destination at transfer after a successful offer.
+    pending = b"<stream-policy@example.invalid>"
+    assert peer.command(b"CHECK " + pending) == b"238 " + pending
+    assert grant("set", "peer-accept", "local.test", "--revoke")["outcome"] == "accepted"
+    assert transfer(pending, b"stream policy") == b"439 " + pending
+    assert peer.command(b"GROUP local.test") == b"211 3 1 3 local.test"
+    assert peer.command(b"CHECK " + pending) == b"238 " + pending
+    assert grant("set", "peer-accept", "local.test")["outcome"] == "accepted"
+    assert transfer(pending, b"stream policy") == b"239 " + pending
+    assert peer.command(b"GROUP local.test") == b"211 4 1 4 local.test"
 
 
 def exercise_peer_provision(port, cert, control_socket):
@@ -192,7 +203,7 @@ def exercise_peer_provision(port, cert, control_socket):
     try:
         login(promoted)
         assert promoted.command(b"MODE STREAM").startswith(b"203 ")
-        exercise_peer_replay(promoted)
+        exercise_peer_replay(promoted, grant)
         revoked = grant("set", "peer", "--revoke")
         found = grant("get", "peer")
         assert found["found"] and not found["enabled"] and found["grant"] == revoked["grant"], found
@@ -204,8 +215,17 @@ def exercise_peer_provision(port, cert, control_socket):
     try:
         login(after_revoke)
         assert after_revoke.command(b"MODE STREAM").startswith(b"501 ")
+        assert grant("set", "peer")["outcome"] == "accepted"
+        assert after_revoke.command(b"MODE STREAM").startswith(b"501 ")
     finally:
         after_revoke.close()
+
+    after_regrant = Peer(port)
+    try:
+        login(after_regrant)
+        assert after_regrant.command(b"MODE STREAM").startswith(b"203 ")
+    finally:
+        after_regrant.close()
 
 
 def main():
