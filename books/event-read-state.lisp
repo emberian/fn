@@ -15,6 +15,12 @@
   (body-off :u32) (body-len :u32)
   (record-fetch-next :u8) (record-fetch-acc :u32) (record-fetch-off :u32)
   (seal-span-started :bool) (seal-span-next :u32) (seal-span-length :u32) (op-slot :u32) (op-gen :u60) (pending :bool)
+  ; Resumable projection over the current private journal member. The scope
+  ; and leaf identify these offsets across register/read, revoke and reuse.
+  (view-token :u60) (view-principal :u60) (view-stream :u60) (view-authority :u60)
+  (view-event :u60) (view-slot :u32) (view-gen :u60) (view-first :u32) (view-end :u32)
+  (view-off :u32) (view-hs :u32) (view-he :u32) (view-es :u32) (view-ee :u32)
+  (view-member :bool) (view-other :bool)
   ; Physical identity captured from the owner-bound configured origin.
   (history :u60) (history-incarnation :u60)))
 
