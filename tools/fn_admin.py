@@ -1231,15 +1231,40 @@ def nntp_endpoint(args: argparse.Namespace) -> tuple[str, int]:
     return host, port
 
 
+def nntp_status(reader, phase: str) -> tuple[int, str]:
+    line = reader.readline()
+    if not line:
+        raise WireError(f"eof-{phase}")
+    if not line.endswith(b"\r\n"):
+        raise WireError(f"incomplete NNTP reply {phase}")
+    status = line[:-2]
+    code = status.partition(b" ")[0]
+    if len(code) != 3 or not code.isdigit() or b"\r" in status:
+        raise WireError(f"malformed NNTP reply {phase}")
+    return int(code), status.decode("latin-1")
+
+
+def nntp_reader_status(reader, command: str, expected: int) -> tuple[bool, str]:
+    code, status = nntp_status(reader, command)
+    if code == expected:
+        return True, status
+    if 400 <= code < 600:
+        return False, status
+    raise WireError(f"unexpected NNTP {command} reply: {status}")
+
+
 def nntp_connect(host: str, port: int) -> tuple[socket.socket, object, str]:
     sock = socket.create_connection((host, port), timeout=30.0)
     reader = sock.makefile("rb")
-    banner = reader.readline()
-    if not banner or not banner.startswith((b"200 ", b"201 ")):
+    try:
+        code, banner = nntp_status(reader, "greeting")
+        if code not in (200, 201):
+            raise WireError(f"unexpected NNTP greeting: {banner}")
+    except (OSError, WireError):
         reader.close()
         sock.close()
-        raise WireError(f"unexpected NNTP greeting: {banner!r}")
-    return sock, reader, banner.decode("latin-1").rstrip("\r\n")
+        raise
+    return sock, reader, banner
 
 
 def nntp_read_multiline(reader) -> list[bytes]:
@@ -1250,7 +1275,9 @@ def nntp_read_multiline(reader) -> list[bytes]:
             raise WireError("EOF inside NNTP multiline response")
         if line == b".\r\n":
             return out
-        raw = line[:-2] if line.endswith(b"\r\n") else line.rstrip(b"\n")
+        if not line.endswith(b"\r\n"):
+            raise WireError("incomplete line in NNTP multiline response")
+        raw = line[:-2]
         if raw.startswith(b".."):
             raw = raw[1:]
         out.append(raw)
@@ -1279,8 +1306,8 @@ def cmd_groups(args: argparse.Namespace) -> int:
     sock, reader, _ = nntp_connect(host, port)
     try:
         sock.sendall(b"LIST ACTIVE\r\n")
-        status = reader.readline().decode("latin-1").rstrip("\r\n")
-        if not status.startswith("215 "):
+        ok, status = nntp_reader_status(reader, "LIST ACTIVE", 215)
+        if not ok:
             return emit({"outcome": "refused", "status": status}, args.json)
         raw_lines = nntp_read_multiline(reader)
         groups = []
@@ -1304,19 +1331,6 @@ def cmd_groups(args: argparse.Namespace) -> int:
         nntp_quit(sock, reader)
 
 
-def nntp_post_status(reader, phase: str) -> tuple[int, str]:
-    line = reader.readline()
-    if not line:
-        raise WireError(f"eof-{phase}")
-    if not line.endswith(b"\r\n"):
-        raise WireError(f"incomplete NNTP reply {phase}")
-    status = line[:-2]
-    code = status.partition(b" ")[0]
-    if len(code) != 3 or not code.isdigit() or b"\r" in status:
-        raise WireError(f"malformed NNTP reply {phase}")
-    return int(code), status.decode("latin-1")
-
-
 def cmd_post(args: argparse.Namespace) -> int:
     host, port = nntp_endpoint(args)
     lines = read_article_source(args.group, args.subject, args.sender, args.msgid, args.body, args.file)
@@ -1328,7 +1342,7 @@ def cmd_post(args: argparse.Namespace) -> int:
     command_mode = False
     try:
         sock.sendall(b"POST\r\n")
-        code, status = nntp_post_status(reader, "before-340")
+        code, status = nntp_status(reader, "before-340")
         if code != 340:
             if not 400 <= code < 600:
                 raise WireError(f"unexpected NNTP POST reply: {status}")
@@ -1337,7 +1351,7 @@ def cmd_post(args: argparse.Namespace) -> int:
         else:
             body_attempted = True
             sock.sendall(wire_body)
-            code, status = nntp_post_status(reader, "after-post-send")
+            code, status = nntp_status(reader, "after-post-send")
             if code not in (240, 403, 440, 441):
                 raise WireError(f"unexpected NNTP POST completion: {status}")
             command_mode = True
@@ -1374,12 +1388,12 @@ def cmd_article(args: argparse.Namespace) -> int:
     try:
         if group is not None:
             sock.sendall(f"GROUP {group}\r\n".encode("utf-8"))
-            g_status = reader.readline().decode("latin-1").rstrip("\r\n")
-            if not g_status.startswith("211 "):
+            ok, g_status = nntp_reader_status(reader, "GROUP", 211)
+            if not ok:
                 return emit({"outcome": "refused", "status": g_status}, args.json)
         sock.sendall(f"{verb} {target}\r\n".encode("utf-8"))
-        status = reader.readline().decode("latin-1").rstrip("\r\n")
-        if not status.startswith(("220 ", "221 ")):
+        ok, status = nntp_reader_status(reader, verb, 221 if args.head else 220)
+        if not ok:
             return emit({"outcome": "refused", "status": status}, args.json)
         lines = nntp_read_multiline(reader)
         text = "\n".join(ln.decode("utf-8", errors="replace") for ln in lines)
