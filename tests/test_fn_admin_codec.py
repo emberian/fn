@@ -157,14 +157,15 @@ class PeerPositionCodec(unittest.TestCase):
             fn_admin.build_auth_request("peer-position", principal=129, consumer=0)
 
     def test_found_layout_carries_the_exact_persistent_scope_and_chain(self):
-        ids = b"".join(fn_admin.leb_encode(n) for n in (23, 813, 1, 5, 24, 129))
+        ids = b"".join(fn_admin.leb_encode(n) for n in (23, 813, 1, 5, 24, 129, 1037, 17))
         chain = bytes(range(32))
-        prefix = ids + b"\x00\x01" + (2**32 + 7).to_bytes(8, "big")
+        prefix = ids + (281).to_bytes(4, "big") + b"\x00\x01" + (2**32 + 7).to_bytes(8, "big")
         tail = prefix + b"\x01" + chain
         self.assertEqual(fn_admin.decode_auth_reply("peer-position", auth_reply("peer-position", b"\x01" + tail)), {
             "outcome": "accepted", "reason": "none", "found": True,
             "target_stream": 23, "source_domain": 813, "source_incarnation": 1,
             "source_revision": 5, "source_view": 24, "source_view_version": 129,
+            "source_principal": 1037, "query_version": 17, "cursor_epoch": 281,
             "interpretation": 1, "position": 2**32 + 7, "chain": chain.hex(),
         })
         self.assertEqual(fn_admin.decode_auth_reply("peer-position", auth_reply("peer-position", b"\x00")),

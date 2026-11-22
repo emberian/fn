@@ -395,8 +395,10 @@ def decode_auth_reply(verb: str, frame: bytes) -> dict:
         out["found"] = bool(found[0])
         if out["found"]:
             for field in ("target_stream", "source_domain", "source_incarnation", "source_revision",
-                          "source_view", "source_view_version"):
+                          "source_view", "source_view_version", "source_principal", "query_version"):
                 out[field], i = leb_decode(p, i)
+            epoch, i = _take(p, i, 4, "peer cursor epoch")
+            out["cursor_epoch"] = int.from_bytes(epoch, "big")
             interpretation, i = _take(p, i, 2, "peer position interpretation")
             position, i = _take(p, i, 8, "peer position")
             digest, i = _take(p, i, 33, "peer position chain")

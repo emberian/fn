@@ -41,6 +41,7 @@
     (peer-position ((found :bool)))
     (peer-position-found ((target-stream (:id stream)) (source-domain (:id domain)) (source-incarnation (:id incarnation))
                           (source-revision (:id version)) (source-view (:id stream)) (source-view-version (:id version))
+                          (source-principal (:id principal)) (query-version (:id version)) (cursor-epoch :u32be)
                           (interpretation :u16be) (position :u64be) (chain :digest)))
     (principal-create ((principal (:id principal))))
     (principal-set-password ((principal (:id principal))))
