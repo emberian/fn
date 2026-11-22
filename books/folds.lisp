@@ -22,7 +22,15 @@
  :fold (:events ((:accept (group number) :assign ((number (+ high 1))) :when (< high number)
                   :set ((count (+ count 1)) (low (if (= count 0) number (min low number))) (high number)))
                  (:withdraw (group number) :when (and (< 0 count) (<= number high))
-                  :set ((count (- count 1)))))
+                  :set ((count (- count 1))))
+                 ;; A cancel may file in a group of its own target. Both
+                 ;; effects read the same published predecessor at stage,
+                 ;; so they must share one fold and one number assignment.
+                 (:accept-and-withdraw (group number target-number)
+                  :assign ((number (+ high 1)))
+                  :when (and (and (< 0 count) (< 0 target-number))
+                             (and (<= target-number high) (< high number)))
+                  :set ((high number))))
         :init :empty :coverage :history-start
         :observe (count low high)))
 

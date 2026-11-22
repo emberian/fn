@@ -112,6 +112,20 @@
 (fn2-ft-assign fn2-group-counts :accept 5 ((group (:id group))) (((1) 2 3 5)) ((:accept 1 0) (:accept 2 9)))
 (assert-event (equal (fn2-fold-assign-image 5 *fn2-group-counts-entry* '((group (:id group))) '(((1) 2 3 5)) '(:accept 1 0) t)
                      '(:ok (:accept 1 6))))
+;; When the cancel itself files into the target's group, the same event
+;; assigns one new number and keeps the count. A number above the
+;; predecessor watermark cannot discharge any existing article.
+(assert-event
+ (and (equal (fn2-fold-assign-image 5 *fn2-group-counts-entry* '((group (:id group)))
+                                    '(((1) 2 3 5)) '(:accept-and-withdraw 1 0 3) t)
+             '(:ok (:accept-and-withdraw 1 6 3)))
+      (equal (fn2-fold-image 5 *fn2-group-counts-entry* '((group (:id group)))
+                             '(((1) 2 3 5)) '((:accept-and-withdraw 1 6 3)) t '((1)))
+             (fn2-group-counts-fold-observe-all '(((1) 2 3 6)) '((1))))
+      (equal (fn2-fold-image 5 *fn2-group-counts-entry* '((group (:id group)))
+                             '(((1) 2 3 5)) '((:accept-and-withdraw 1 6 6)) t '((1)))
+             (fn2-group-counts-fold-observe-all '(((1) 2 3 5)) '((1))))))
+
 ;; Six events over two groups (one withdrawal refused: group 2 is empty
 ;; then); the weak relation observes LOW alone.
 (fn2-ft-cut fn2-group-counts 5 ((group (:id group)))
