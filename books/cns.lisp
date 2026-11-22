@@ -1353,16 +1353,15 @@
    ;; WITHDRAWN exposes the state of the addressed article. A revocation
    ;; during article lookup must turn it into the same refusal as absence.
    (:let withdrawn (equal row-reason *fn2-cns-reason-withdrawn*))
-   (:if withdrawn
-     ((:do (acode astep ahead agrant)
-           (fn2-cns-authority-allows id row-generation *fn2-cns-right-read* *fn2-cns-scope-stream*
-                                     row-istream row-xstep row-xhead row-xgrant 4096)
-       :case (((:more) (:set (xstep astep) (xhead ahead) (xgrant agrant))
-               (:next :fetch-authorize)
-               (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))
-      (:if (not (eq acode :ok)) ((:set (reason *fn2-cns-reason-unavailable*))) ()))
-     ())
-   (:do (pcode) (fn2-cns-post-reply row-ctl row-ctl-gen row-request row-verb row-outcome row-reason
+   (:do (acode astep ahead agrant)
+        (fn2-cns-authority-allows id row-generation *fn2-cns-right-read* *fn2-cns-scope-stream*
+                                  row-istream row-xstep row-xhead row-xgrant 4096)
+    :when withdrawn :else (:ok 0 0 0)
+    :case (((:more) (:set (xstep astep) (xhead ahead) (xgrant agrant))
+            (:next :fetch-authorize)
+            (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))
+   (:let reply-reason (if (eq acode :ok) row-reason *fn2-cns-reason-unavailable*))
+   (:do (pcode) (fn2-cns-post-reply row-ctl row-ctl-gen row-request row-verb row-outcome reply-reason
                                     row-consumer row-epoch row-version row-cpos row-pub-frontier row-count row-more
                                     row-ioff row-ilen row-ipos
                                     row-tx-slot row-tx-gen
