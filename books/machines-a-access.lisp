@@ -247,7 +247,10 @@
 (defthm fn2-machine-admission-ready-ord-range
   (implies (fn2-machine-admission-ready-ord o fn2-core)
            (and (natp (fn2-machine-admission-ready-ord o fn2-core))
-                (< (fn2-machine-admission-ready-ord o fn2-core) *fn2-machine-admitted-max*))))
+                (< (fn2-machine-admission-ready-ord o fn2-core) *fn2-machine-admitted-max*)))
+  :hints (("Goal" :induct (fn2-machine-admission-ready-ord o fn2-core)
+                  :in-theory (disable fn2-machine-pool-has-p
+                                      fn2-machine-partition-classes))))
 (defun fn2-machine-admission-ready-p (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (if (fn2-machine-admission-ready-ord 0 fn2-core) t nil))
@@ -505,6 +508,24 @@
 (in-theory (disable fn2-machine-scribe-id))
 
 
+; Reattach the listener with its generated child facts. The rest of the
+; core stays opaque while the row loop proves its own preservation.
+(defun fn2-listener-install-fact (install args plan suffix predicate)
+  (declare (xargs :mode :program))
+  (let ((plan-fact (fn2-columns-sym plan suffix)))
+    `(defthm ,(fn2-columns-sym install suffix)
+       (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+                (,predicate (,install ,@args fn2-core)))
+       :hints (("Goal"
+                :in-theory (disable fn2-corep fn2-core-wfp ,plan-fact
+                                    fn2-listener-table update-fn2-listener-table)
+                :use ((:instance ,plan-fact
+                        (fn2-listener (fn2-listener-table fn2-core))
+                        (left (fn2-listener-rows (fn2-listener-table fn2-core))))))))))
+(defmacro fn2-listener-install-preserves (install args plan)
+  `(progn ,(fn2-listener-install-fact install args plan "-TYPE" 'fn2-corep)
+          ,(fn2-listener-install-fact install args plan "-WFP" 'fn2-core-wfp)))
+
 ; Initialization policy belongs to listeners and is copied to each admitted
 ; connection. No echo/discard policy lives in the shared directory.
 (defun fn2-listener-mode-rows (left mode fn2-listener)
@@ -528,17 +549,7 @@
   (if (not (unsigned-byte-p 1 mode)) (fn2-machine-refuse-write fn2-core)
     (stobj-let ((fn2-listener (fn2-listener-table fn2-core))) (fn2-listener)
       (fn2-listener-mode-rows (fn2-listener-rows fn2-listener) mode fn2-listener) fn2-core)))
-(defthm fn2-listener-set-mode-all-type
-  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-           (fn2-corep (fn2-listener-set-mode-all mode fn2-core)))
-  :hints (("Goal" :use ((:instance fn2-listener-mode-rows-type
-                         (fn2-listener (fn2-listener-table fn2-core))
-                         (left (fn2-listener-rows (fn2-listener-table fn2-core)))))
-                  :in-theory (enable fn2-core-wfp))))
-(defthm fn2-listener-set-mode-all-wfp
-  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-           (fn2-core-wfp (fn2-listener-set-mode-all mode fn2-core)))
-  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+(fn2-listener-install-preserves fn2-listener-set-mode-all (mode) fn2-listener-mode-rows)
 (in-theory (disable fn2-listener-set-mode-all))
 ; The admitted kind every listener admits into (D 4.5), from the profile, and
 ; the kind its :local peers are admitted into (the profile's
@@ -570,17 +581,7 @@
       (fn2-machine-refuse-write fn2-core)
     (stobj-let ((fn2-listener (fn2-listener-table fn2-core))) (fn2-listener)
       (fn2-listener-target-rows (fn2-listener-rows fn2-listener) target local fn2-listener) fn2-core)))
-(defthm fn2-listener-set-target-all-type
-  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-           (fn2-corep (fn2-listener-set-target-all target local fn2-core)))
-  :hints (("Goal" :use ((:instance fn2-listener-target-rows-type
-                         (fn2-listener (fn2-listener-table fn2-core))
-                         (left (fn2-listener-rows (fn2-listener-table fn2-core)))))
-                  :in-theory (enable fn2-core-wfp))))
-(defthm fn2-listener-set-target-all-wfp
-  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-           (fn2-core-wfp (fn2-listener-set-target-all target local fn2-core)))
-  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+(fn2-listener-install-preserves fn2-listener-set-target-all (target local) fn2-listener-target-rows)
 (in-theory (disable fn2-listener-set-target-all))
 
 ; Each listener's principal slot (D7's S1), from the profile key
@@ -610,17 +611,7 @@
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-listener (fn2-listener-table fn2-core))) (fn2-listener)
     (fn2-listener-principal-rows (fn2-listener-rows fn2-listener) slots fn2-listener) fn2-core))
-(defthm fn2-listener-set-principals-type
-  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-           (fn2-corep (fn2-listener-set-principals slots fn2-core)))
-  :hints (("Goal" :use ((:instance fn2-listener-principal-rows-type
-                         (fn2-listener (fn2-listener-table fn2-core))
-                         (left (fn2-listener-rows (fn2-listener-table fn2-core)))))
-                  :in-theory (enable fn2-core-wfp))))
-(defthm fn2-listener-set-principals-wfp
-  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-           (fn2-core-wfp (fn2-listener-set-principals slots fn2-core)))
-  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+(fn2-listener-install-preserves fn2-listener-set-principals (slots) fn2-listener-principal-rows)
 (in-theory (disable fn2-listener-set-principals))
 
 (fn2-resolve :access)
