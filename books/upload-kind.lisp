@@ -238,7 +238,7 @@
           (c0-slot :link) (c0-gen :u60) (c1-slot :link) (c1-gen :u60)
           (filled :u60) (hashed :u60) (source-lines :u32)
           (scan-off :u32) (ofield :u8) (visible :bool) (nfields :u16) (nlines :u16) (seen :u32)
-          (mo :u32) (ml :u32) (no :u32) (nl :u32) (po :u32) (pl :u32)
+          (mo :u32) (ml :u32) (no :u32) (nl :u32) (po :u32) (pl :u32) (co :u32) (cl :u32)
           (head-status (:enum fn2-upload-head (:scanning :done :malformed :line-length :header-fields
                                                 :header-lines :header-octets)))
           (word :u8) (inj :u8) (txn :link) (txn-gen :u60) (stopped :bool) (next-free :link)
@@ -316,7 +316,7 @@
                    :class (:bytes (:from fn2-input-config fn2-upload-stream-request-bytes))))
          :set ((lease *fn2-upload-lease-held*))
          :copy (conn conn-gen request rule principal-slot op)
-         :clear (request-principal submitter filled hashed source-lines scan-off visible nfields nlines seen mo ml no nl po pl
+         :clear (request-principal submitter filled hashed source-lines scan-off visible nfields nlines seen mo ml no nl po pl co cl
                  head-status word inj txn-gen stopped pepoch palloc pdone sevent soutcome scount sready
                  ilen cepoch calloc cfree mfill munit mstep mdrain stored-hashed location-hashed rootepoch rootalloc stream-active stream-end stream-resets stream-stage-used stream-eof stream-stored-finalized stream-provisional stream-repack))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)

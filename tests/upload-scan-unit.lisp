@@ -29,13 +29,36 @@
 (defun fn2-usu-drive (fuel budget st slot gen fn2-pool)
   (declare (xargs :stobjs fn2-pool :verify-guards nil :measure (nfix fuel)))
   (if (zp fuel) (mv :fuel st)
-    (b* (((list off field visible fields lines seen mo ml no nl po pl) st)
-         ((mv status off field visible fields lines seen mo ml no nl po pl &)
-          (fn2-upload-scan budget off field visible fields lines seen mo ml no nl po pl slot gen 1 1 1 fn2-pool))
-         (st (list off field visible fields lines seen mo ml no nl po pl)))
+    (b* (((list off field visible fields lines seen mo ml no nl po pl co cl) st)
+         ((mv status off field visible fields lines seen mo ml no nl po pl co cl &)
+          (fn2-upload-scan budget off field visible fields lines seen mo ml no nl po pl co cl slot gen 1 1 1 fn2-pool))
+         (st (list off field visible fields lines seen mo ml no nl po pl co cl)))
       (if (eq status :budget) (fn2-usu-drive (- fuel 1) budget st slot gen fn2-pool)
         (mv status st)))))
-(defconst *fn2-usu-start* (list 0 *fn2-upload-field-none* nil 0 0 0 0 0 0 0 0 0))
+(defconst *fn2-usu-start* (list 0 *fn2-upload-field-none* nil 0 0 0 0 0 0 0 0 0 0 0))
+
+(defun fn2-usu-control-span ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-pool
+    (mv-let (valid fn2-pool)
+      (b* ((source (fn2-usu-crlf
+                     (list "Control: CaNcEl"
+                           (concatenate 'string (coerce (list (code-char 9)) 'string) "<T@X>")
+                           "Control: cancel <other@x>" "")))
+           (fn2-pool (fn2-pool-init '((1 . 65536)) 1 1000 fn2-pool))
+           ((mv & slot gen fn2-pool) (fn2-pool-reserve 0 1 1 1 fn2-pool))
+           (fn2-pool (fn2-usu-feed (fn2-usu-octets (coerce source 'list)) slot gen fn2-pool))
+           ((mv status st) (fn2-usu-drive 200 *fn2-upload-line-cost* *fn2-usu-start* slot gen fn2-pool))
+           ((list & & & & & seen & & & & & & co cl) st)
+           (expected (concatenate 'string "CANCEL"
+                     (coerce (list (code-char 13) (code-char 10) (code-char 9)) 'string) "<T@X>")))
+        (mv (and (eq status :header-done) (equal co 9)
+                 (fn2-upload-seen-p seen *fn2-upload-field-control*)
+                 (fn2-upload-seen-p seen (+ *fn2-upload-seen-dup* *fn2-upload-field-control*))
+                 (fn2-gram-match co cl expected slot gen 1 1 1 fn2-pool))
+            fn2-pool))
+      valid)))
+(assert-event (fn2-usu-control-span))
 
 ; The word for SOURCE under RULE: the octets arrive as PREFIX octets, a scan,
 ; then the rest (SPLIT nil: all at once), scanned with BUDGET per call. The
@@ -54,7 +77,7 @@
            ((mv status st) (fn2-usu-drive 200 budget *fn2-usu-start* slot gen fn2-pool))
            (fn2-pool (fn2-usu-feed (nthcdr k octets) slot gen fn2-pool))
            ((mv status st) (if (eq status :more) (fn2-usu-drive 200 budget st slot gen fn2-pool) (mv status st)))
-           ((list & & & & & seen mo ml & & po pl) st)
+           ((list & & & & & seen mo ml & & po pl & &) st)
            ((mv word injected)
             (fn2-upload-verdict rule status seen mo ml po pl (len octets) bound cslot cgen 0 (length cmid) 1 1 1
                                 slot gen 1 1 1 fn2-pool)))

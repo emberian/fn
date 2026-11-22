@@ -7,10 +7,10 @@
 ; chunk (a profile check: the chunk is at least the header cap).
 ;
 ; The scan is a bounded continuation over physical header lines. Its state
-; is twelve scalars (the upload row's fields): OFF, the next line's first
+; is fourteen scalars (the upload row's fields): OFF, the next line's first
 ; octet; FIELD, the open field's code; VISIBLE, whether the open field has a
 ; visible octet yet; FIELDS and LINES, the counts; SEEN, the field bits; and
-; the exact value ranges of the first Message-ID, Newsgroups and Path
+; the exact value ranges of the first Message-ID, Newsgroups, Path and Control
 ; fields. Header syntax is fn1's (specs/article-parser.md, "Header syntax"):
 ; field-name ":" (WSP body / ""), continuations start with WSP, header
 ; octets are SP, HTAB or VCHAR, a field closes only once its value holds a
@@ -132,7 +132,7 @@
 
 ; ------------------------------------------------------------------------
 ; One physical header line at OFF. Returns (mv status off field visible
-; fields lines seen mo ml no nl po pl cost): STATUS :line (a line consumed),
+; fields lines seen mo ml no nl po pl co cl cost): STATUS :line (a line consumed),
 ; :header-done (the blank line: OFF is the body's first octet), :more (no
 ; CRLF yet within the filled octets), or a refusal word (:malformed,
 ; :line-length, :header-fields, :header-lines, :header-octets). COST is
@@ -142,13 +142,13 @@
   (booleanp (mv-nth 0 (fn2-upload-octets left i visible slot gen okind oslot ogen fn2-pool)))
   :hints (("Goal" :in-theory (enable fn2-upload-octets)))
   :rule-classes :type-prescription)
-(defmacro fn2-upload-line-mv (status off field visible fields lines seen mo ml no nl po pl cost)
-  `(mv ,status ,off ,field ,visible ,fields ,lines ,seen ,mo ,ml ,no ,nl ,po ,pl ,cost))
+(defmacro fn2-upload-line-mv (status off field visible fields lines seen mo ml no nl po pl co cl cost)
+  `(mv ,status ,off ,field ,visible ,fields ,lines ,seen ,mo ,ml ,no ,nl ,po ,pl ,co ,cl ,cost))
 
-(defun fn2-upload-line (off field visible fields lines seen mo ml no nl po pl slot gen okind oslot ogen fn2-pool)
+(defun fn2-upload-line (off field visible fields lines seen mo ml no nl po pl co cl slot gen okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool
                   :guard (and (fn2-pool-wfp fn2-pool) (natp off) (natp field) (natp fields) (natp lines)
-                              (natp seen) (natp mo) (natp ml) (natp no) (natp nl) (natp po) (natp pl))
+                              (natp seen) (natp mo) (natp ml) (natp no) (natp nl) (natp po) (natp pl) (natp co) (natp cl))
                   :guard-hints (("Goal" :in-theory (disable fn2-pool-read fn2-pool-compare fn2-gram-read
                                                             fn2-upload-field-code fn2-upload-set-bit)))))
   (b* ((nfill (fn2-gram-fill slot fn2-pool))
@@ -157,34 +157,34 @@
        ((mv code at) (if (zp n) (mv :ok 0)
                        (fn2-pool-scan slot gen off n *fn2-pool-scan-crlf* okind oslot ogen fn2-pool)))
        (at (nfix at))
-       ((unless (eq code :ok)) (fn2-upload-line-mv :fault off field visible fields lines seen mo ml no nl po pl n))
+       ((unless (eq code :ok)) (fn2-upload-line-mv :fault off field visible fields lines seen mo ml no nl po pl co cl n))
        ((when (<= n at))
         ;; no CRLF among the n octets: a line past the cap is refused; else
         ;; wait for more octets
         (if (<= *fn2-upload-line-cost* avail)
-            (fn2-upload-line-mv :line-length off field visible fields lines seen mo ml no nl po pl n)
-          (fn2-upload-line-mv :more off field visible fields lines seen mo ml no nl po pl n)))
+            (fn2-upload-line-mv :line-length off field visible fields lines seen mo ml no nl po pl co cl n)
+          (fn2-upload-line-mv :more off field visible fields lines seen mo ml no nl po pl co cl n)))
        (len at) (next (+ off len 2)) (cost (+ len 2))
        ((when (< *fn2-upload-line-max* len))
-        (fn2-upload-line-mv :line-length off field visible fields lines seen mo ml no nl po pl cost))
+        (fn2-upload-line-mv :line-length off field visible fields lines seen mo ml no nl po pl co cl cost))
        ((when (< *fn2-upload-header-octets* next))
-        (fn2-upload-line-mv :header-octets off field visible fields lines seen mo ml no nl po pl cost))
+        (fn2-upload-line-mv :header-octets off field visible fields lines seen mo ml no nl po pl co cl cost))
        ;; a field closes only with a visible octet in its value
        (closed (or (equal field *fn2-upload-field-none*) visible))
        ((when (zp len))
-        (if closed (fn2-upload-line-mv :header-done next *fn2-upload-field-none* nil fields lines seen mo ml no nl po pl cost)
-          (fn2-upload-line-mv :malformed off field visible fields lines seen mo ml no nl po pl cost)))
+        (if closed (fn2-upload-line-mv :header-done next *fn2-upload-field-none* nil fields lines seen mo ml no nl po pl co cl cost)
+          (fn2-upload-line-mv :malformed off field visible fields lines seen mo ml no nl po pl co cl cost)))
        (lines (+ 1 lines))
        ((when (< *fn2-upload-header-lines* lines))
-        (fn2-upload-line-mv :header-lines off field visible fields lines seen mo ml no nl po pl cost))
+        (fn2-upload-line-mv :header-lines off field visible fields lines seen mo ml no nl po pl co cl cost))
        ((mv ok b) (fn2-gram-read slot gen off okind oslot ogen fn2-pool))
-       ((unless ok) (fn2-upload-line-mv :fault off field visible fields lines seen mo ml no nl po pl cost)))
+       ((unless ok) (fn2-upload-line-mv :fault off field visible fields lines seen mo ml no nl po pl co cl cost)))
     (if (fn2-upload-wspp b)
         ;; a continuation of the open field
         (b* (((when (equal field *fn2-upload-field-none*))
-              (fn2-upload-line-mv :malformed off field visible fields lines seen mo ml no nl po pl cost))
+              (fn2-upload-line-mv :malformed off field visible fields lines seen mo ml no nl po pl co cl cost))
              ((mv ok visible) (fn2-upload-octets len off visible slot gen okind oslot ogen fn2-pool))
-             ((unless ok) (fn2-upload-line-mv :malformed off field visible fields lines seen mo ml no nl po pl cost))
+             ((unless ok) (fn2-upload-line-mv :malformed off field visible fields lines seen mo ml no nl po pl co cl cost))
              (first (not (fn2-upload-bit seen (+ *fn2-upload-seen-dup* (min field 15)))))
              (seen (cond ((and first (equal field *fn2-upload-field-mid*))
                           (fn2-upload-set-bit seen *fn2-upload-seen-mid-folded*))
@@ -193,22 +193,24 @@
                          (t seen)))
              ;; the first Newsgroups' range covers its folded value
              (nl (if (and first (equal field *fn2-upload-field-ng*)) (- (+ off len) no) nl)))
-          (fn2-upload-line-mv :line next field visible fields lines seen mo ml no (nfix nl) po pl cost))
+          (fn2-upload-line-mv :line next field visible fields lines seen mo ml no (nfix nl) po pl co
+                              (if (and first (equal field *fn2-upload-field-control*))
+                                  (nfix (- (+ off len) co)) cl) cost))
       ;; a field line: the previous field must be closed
-      (b* (((unless closed) (fn2-upload-line-mv :malformed off field visible fields lines seen mo ml no nl po pl cost))
+      (b* (((unless closed) (fn2-upload-line-mv :malformed off field visible fields lines seen mo ml no nl po pl co cl cost))
            (fields (+ 1 fields))
            ((when (< *fn2-upload-header-fields* fields))
-            (fn2-upload-line-mv :header-fields off field visible fields lines seen mo ml no nl po pl cost))
+            (fn2-upload-line-mv :header-fields off field visible fields lines seen mo ml no nl po pl co cl cost))
            ((mv ok colon) (fn2-upload-name len off off slot gen okind oslot ogen fn2-pool))
            (colon (nfix colon))
-           ((unless ok) (fn2-upload-line-mv :malformed off field visible fields lines seen mo ml no nl po pl cost))
+           ((unless ok) (fn2-upload-line-mv :malformed off field visible fields lines seen mo ml no nl po pl co cl cost))
            (end (+ off len))
            ((mv ok2 b2) (if (< (+ 1 colon) end) (fn2-gram-read slot gen (+ 1 colon) okind oslot ogen fn2-pool) (mv t 32)))
            ((unless (and ok2 (fn2-upload-wspp b2)))
-            (fn2-upload-line-mv :malformed off field visible fields lines seen mo ml no nl po pl cost))
+            (fn2-upload-line-mv :malformed off field visible fields lines seen mo ml no nl po pl co cl cost))
            (vlen (nfix (- end (+ 1 colon))))
            ((mv ok visible) (fn2-upload-octets vlen (+ 1 colon) nil slot gen okind oslot ogen fn2-pool))
-           ((unless ok) (fn2-upload-line-mv :malformed off field visible fields lines seen mo ml no nl po pl cost))
+           ((unless ok) (fn2-upload-line-mv :malformed off field visible fields lines seen mo ml no nl po pl co cl cost))
            (code (fn2-upload-field-code off (nfix (- colon off)) slot gen okind oslot ogen fn2-pool))
            (again (and (< code *fn2-upload-field-other*) (fn2-upload-bit seen code)))
            (seen (cond ((not (< code *fn2-upload-field-other*)) seen)
@@ -226,29 +228,31 @@
                             (if (and first (equal code *fn2-upload-field-ng*)) vl nl)
                             (if (and first (equal code *fn2-upload-field-path*)) vstart po)
                             (if (and first (equal code *fn2-upload-field-path*)) vl pl)
+                            (if (and first (equal code *fn2-upload-field-control*)) vstart co)
+                            (if (and first (equal code *fn2-upload-field-control*)) vl cl)
                             cost)))))
 
 (in-theory (disable fn2-upload-line))
 ; The scan: lines while at least a line's worth of BUDGET remains. Returns
-; (mv status off field visible fields lines seen mo ml no nl po pl spent);
+; (mv status off field visible fields lines seen mo ml no nl po pl co cl spent);
 ; STATUS :budget when the budget ran out between lines.
-(defun fn2-upload-scan (budget off field visible fields lines seen mo ml no nl po pl slot gen okind oslot ogen fn2-pool)
+(defun fn2-upload-scan (budget off field visible fields lines seen mo ml no nl po pl co cl slot gen okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool :measure (nfix budget)
                   :guard (and (fn2-pool-wfp fn2-pool) (natp budget) (natp off) (natp field) (natp fields)
-                              (natp lines) (natp seen) (natp mo) (natp ml) (natp no) (natp nl) (natp po) (natp pl))
+                              (natp lines) (natp seen) (natp mo) (natp ml) (natp no) (natp nl) (natp po) (natp pl) (natp co) (natp cl))
                   :verify-guards nil
                   :hints (("Goal" :in-theory (disable fn2-upload-line)))))
   (if (< (nfix budget) *fn2-upload-line-cost*)
-      (fn2-upload-line-mv :budget off field visible fields lines seen mo ml no nl po pl 0)
-    (b* (((mv status off2 field2 visible2 fields2 lines2 seen2 mo2 ml2 no2 nl2 po2 pl2 cost)
-          (fn2-upload-line off field visible fields lines seen mo ml no nl po pl slot gen okind oslot ogen fn2-pool)))
+      (fn2-upload-line-mv :budget off field visible fields lines seen mo ml no nl po pl co cl 0)
+    (b* (((mv status off2 field2 visible2 fields2 lines2 seen2 mo2 ml2 no2 nl2 po2 pl2 co2 cl2 cost)
+          (fn2-upload-line off field visible fields lines seen mo ml no nl po pl co cl slot gen okind oslot ogen fn2-pool)))
       (if (and (eq status :line) (posp cost))
-          (b* (((mv status off field visible fields lines seen mo ml no nl po pl spent)
+          (b* (((mv status off field visible fields lines seen mo ml no nl po pl co cl spent)
                 (fn2-upload-scan (- (nfix budget) (min cost (nfix budget))) (nfix off2) (nfix field2) visible2 (nfix fields2)
-                                 (nfix lines2) (nfix seen2) (nfix mo2) (nfix ml2) (nfix no2) (nfix nl2) (nfix po2) (nfix pl2)
+                                 (nfix lines2) (nfix seen2) (nfix mo2) (nfix ml2) (nfix no2) (nfix nl2) (nfix po2) (nfix pl2) (nfix co2) (nfix cl2)
                                  slot gen okind oslot ogen fn2-pool)))
-            (fn2-upload-line-mv status off field visible fields lines seen mo ml no nl po pl (+ cost (nfix spent))))
-        (fn2-upload-line-mv status off2 field2 visible2 fields2 lines2 seen2 mo2 ml2 no2 nl2 po2 pl2 cost)))))
+            (fn2-upload-line-mv status off field visible fields lines seen mo ml no nl po pl co cl (+ cost (nfix spent))))
+        (fn2-upload-line-mv status off2 field2 visible2 fields2 lines2 seen2 mo2 ml2 no2 nl2 po2 pl2 co2 cl2 cost)))))
 
 ; ------------------------------------------------------------------------
 ; Message-ID syntax as the stored-article check reads it (H's model,
