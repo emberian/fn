@@ -1215,7 +1215,7 @@
         (fn2-txn-put-identity tx ms mg mo ml ds dg doff okind oslot ogen h principal 0 fn2-core))
        ((unless (and (eq code :ok) (not (equal op 0)))) (mv code fn2-core)))
     (fn2-outcome-put tx *fn2-txn-slot-outcome*
-      (principal principal) (operation op) (request ds dg doff)
+      (principal principal) (operation op) (id-source *fn2-outcome-id-source-supplied*) (request ds dg doff)
       (outcome *fn2-txn-outcome-conflict*) (event :event 0)
       (verb *fn2-outcome-verb-append*) (mid ms mg mo ml)
       :owner (okind oslot ogen) fn2-core)))
