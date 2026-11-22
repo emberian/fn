@@ -8,7 +8,7 @@
 (fn2-book-layer :e)
 
 (defconst *fn2-authinfo-pass-max*
-  (- *fn2-nntp-line-cap* (length "AUTHINFO PASS ") 2))
+  (- *fn2-nntp-line-cap* (+ (length "AUTHINFO PASS ") 2)))
 
 (defun fn2-authinfo-token-span-p (slot gen off len kind id ogen fn2-pool)
  (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
