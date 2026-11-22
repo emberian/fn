@@ -705,6 +705,26 @@
 (in-theory (disable fn2-answer-discard-token))
 
 (local (in-theory (disable fn2-nntp-parse-line)))
+
+;; A refused counted command has no resynchronization point. Even a
+;; coalesced body stays behind the reply barrier until the connection closes.
+(defun fn2-answer-xfnc-gate (parse-code mask tslot tgen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
+  (let ((cmd *fn2-nntp-command-xfnc*))
+    (cond ((not (logtest (nfix mask) *fn2-nntp-state-tls*))
+           (fn2-answer-say cmd *fn2-nntp-reply-xfnc-protect* mask 0 tslot tgen okind oslot ogen fn2-pool))
+          ((not (logtest (nfix mask) *fn2-nntp-state-authenticated*))
+           (fn2-answer-say cmd *fn2-nntp-reply-xfnc-auth-required* mask 0 tslot tgen okind oslot ogen fn2-pool))
+          ((not (eq parse-code :ok))
+           (fn2-answer-say cmd *fn2-nntp-reply-xfnc-syntax* mask 0 tslot tgen okind oslot ogen fn2-pool))
+          ;; The eligible branch needs an RX counted-body handoff. The
+          ;; reader query handoff only produces output from a parsed line.
+          (t (fn2-answer-say *fn2-nntp-command-none* *fn2-nntp-reply-fault*
+                             mask 0 tslot tgen okind oslot ogen fn2-pool)))))
+(fn2-pool-preserves fn2-answer-xfnc-gate (parse-code mask tslot tgen okind oslot ogen fn2-pool)
+ :position 1 :rows nil)
+(in-theory (disable fn2-answer-xfnc-gate))
+
 ;; One complete command line [s, e) of the RX slot, answered into the TX
 ;; slot. Returns (mv code after pending fn2-pool); CODE :ok or the failing
 ;; renderer's code (the machine stops on any other).
@@ -714,24 +734,27 @@
     (fn2-nntp-parse-line s e mask rslot rgen okind oslot ogen fn2-pool)
     (declare (ignore f3 a3 b3))
     (let ((none *fn2-nntp-command-none*))
-      (case code
-        (:ok (if (fn2-answer-subform-p tag (nfix nargs) f0 (nfix a0) (nfix b0) f1 (nfix a1) (nfix b1)
-                                     f2 (nfix a2) (nfix b2) mask rslot rgen okind oslot ogen fn2-pool)
-                 (fn2-answer-ok tag f0 (nfix a0) (nfix b0) (eq f1 :span) mask pending posting reading seen flags real
-                                     rslot rgen tslot tgen okind oslot ogen fn2-pool)
-               (mv-let (rc fn2-pool) (fn2-answer-say none *fn2-nntp-reply-syntax* mask 0 tslot tgen okind oslot ogen fn2-pool)
-                 (mv rc :command pending fn2-pool))))
-        (:state (mv-let (rc fn2-pool) (fn2-answer-say tag (fn2-nntp-state-refusal tag) mask 0 tslot tgen okind oslot ogen fn2-pool)
-                  (mv rc :command pending fn2-pool)))
-        (:unknown (mv-let (rc fn2-pool) (fn2-answer-say none *fn2-nntp-reply-unknown* mask 0 tslot tgen okind oslot ogen fn2-pool)
+      (if (equal tag *fn2-nntp-command-xfnc*)
+          (mv-let (rc fn2-pool) (fn2-answer-xfnc-gate code mask tslot tgen okind oslot ogen fn2-pool)
+            (mv rc :closing pending fn2-pool))
+        (case code
+          (:ok (if (fn2-answer-subform-p tag (nfix nargs) f0 (nfix a0) (nfix b0) f1 (nfix a1) (nfix b1)
+                                       f2 (nfix a2) (nfix b2) mask rslot rgen okind oslot ogen fn2-pool)
+                   (fn2-answer-ok tag f0 (nfix a0) (nfix b0) (eq f1 :span) mask pending posting reading seen flags real
+                                       rslot rgen tslot tgen okind oslot ogen fn2-pool)
+                 (mv-let (rc fn2-pool) (fn2-answer-say none *fn2-nntp-reply-syntax* mask 0 tslot tgen okind oslot ogen fn2-pool)
+                   (mv rc :command pending fn2-pool))))
+          (:state (mv-let (rc fn2-pool) (fn2-answer-say tag (fn2-nntp-state-refusal tag) mask 0 tslot tgen okind oslot ogen fn2-pool)
                     (mv rc :command pending fn2-pool)))
-        (:syntax (mv-let (rc fn2-pool) (fn2-answer-say none *fn2-nntp-reply-syntax* mask 0 tslot tgen okind oslot ogen fn2-pool)
-                   (mv rc :command pending fn2-pool)))
-        (:discard (mv-let (rc fn2-pool) (fn2-answer-discard-token s e rslot rgen tslot tgen okind oslot ogen fn2-pool)
-                    (mv rc :discard pending fn2-pool)))
-        ;; :malformed (H pin P-UTF8-WS): 501, then close.
-        (otherwise (mv-let (rc fn2-pool) (fn2-answer-say none *fn2-nntp-reply-syntax* mask 0 tslot tgen okind oslot ogen fn2-pool)
-                     (mv rc :closing pending fn2-pool)))))))
+          (:unknown (mv-let (rc fn2-pool) (fn2-answer-say none *fn2-nntp-reply-unknown* mask 0 tslot tgen okind oslot ogen fn2-pool)
+                      (mv rc :command pending fn2-pool)))
+          (:syntax (mv-let (rc fn2-pool) (fn2-answer-say none *fn2-nntp-reply-syntax* mask 0 tslot tgen okind oslot ogen fn2-pool)
+                     (mv rc :command pending fn2-pool)))
+          (:discard (mv-let (rc fn2-pool) (fn2-answer-discard-token s e rslot rgen tslot tgen okind oslot ogen fn2-pool)
+                      (mv rc :discard pending fn2-pool)))
+          ;; :malformed (H pin P-UTF8-WS): 501, then close.
+          (otherwise (mv-let (rc fn2-pool) (fn2-answer-say none *fn2-nntp-reply-syntax* mask 0 tslot tgen okind oslot ogen fn2-pool)
+                       (mv rc :closing pending fn2-pool))))))))
 (fn2-pool-preserves fn2-answer (s e mask pending posting reading seen flags real rslot rgen tslot tgen okind oslot ogen fn2-pool) :position 3 :rows nil
  :hints (("Goal" :in-theory (disable nfix fn2-nntp-state-refusal))))
 (in-theory (disable fn2-answer))
@@ -743,7 +766,7 @@
                               *fn2-nntp-command-mode* *fn2-nntp-command-date* *fn2-nntp-command-authinfo*
                               *fn2-nntp-command-xredeem* *fn2-nntp-command-list* *fn2-nntp-command-post*
                               *fn2-nntp-command-ihave* *fn2-nntp-command-takethis*
-                              *fn2-nntp-command-starttls* *fn2-nntp-command-compress*))
+                              *fn2-nntp-command-starttls* *fn2-nntp-command-compress* *fn2-nntp-command-xfnc*))
       (fn2-answer-query-p tag)
       (not (equal (fn2-answer-interim-reply tag) *fn2-nntp-reply-none*))))
 (defun fn2-answer-all-tabled-p (n)

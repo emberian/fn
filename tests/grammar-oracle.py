@@ -65,17 +65,22 @@ def main(argv):
         help_text = re.sub(r"\\(.)", r"\1", m.group(1))
     bad = []
     keywords = {r[0] for r in rows}
-    if keywords != model.KEYWORDS:
-        bad.append(f"keywords: declared-only {sorted(keywords - model.KEYWORDS)}, model-only {sorted(model.KEYWORDS - keywords)}")
+    # The fn1-derived model covers the legacy line protocol. XFNC's
+    # counted-carrier admission is exercised by conn-answer-unit.lisp.
+    extensions = {"XFNC": "docs/e-surface.md sections 5 and 11"}
+    expected_keywords = model.KEYWORDS | extensions.keys()
+    if keywords != expected_keywords:
+        bad.append(f"keywords: declared-only {sorted(keywords - expected_keywords)}, missing {sorted(expected_keywords - keywords)}")
     if help_text is None or help_text.replace("\n", "\r\n").replace("\r\r\n", "\r\n").encode() != model.HELP:
         bad.append(f"HELP text differs: declared {help_text!r} vs model {model.HELP!r}")
     def norm(s): return s.replace("§§", "sections ").replace("§", "section ")
     for r in rows:
         kw, spec = r[0], r[5]
-        if kw not in model.SPECS:
-            bad.append(f"{kw}: no SPECS citation in the model")
-        elif norm(model.SPECS[kw]) != spec:
-            bad.append(f"{kw}: citation {spec!r} vs model {model.SPECS[kw]!r}")
+        citation = extensions.get(kw, model.SPECS.get(kw))
+        if citation is None:
+            bad.append(f"{kw}: no expected SPECS citation")
+        elif norm(citation) != spec:
+            bad.append(f"{kw}: citation {spec!r} vs expected {citation!r}")
     def model_verdict(kind, s):
         try:
             if kind == ":msgid":
