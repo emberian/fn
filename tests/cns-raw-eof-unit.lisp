@@ -27,6 +27,16 @@
       (list (take (min split (len wire)) wire)
             (nthcdr (min split (len wire)) wire)))))
 
+(defun fn2-cre-after-frames (n wire)
+  (declare (xargs :verify-guards nil :measure (nfix n)))
+  (if (zp n) wire
+    (fn2-cre-after-frames (- n 1) (nthcdr (len (fnc-frame-extent wire)) wire))))
+
+(defun fn2-cre-append-mid-p (wire expected)
+  (declare (xargs :verify-guards nil))
+  (let ((r (fnc-parse (cadr (assoc-eq 'append *fn2-fnct-results*)) (fnc-k28-result wire))))
+    (and r (not (equal expected "")) (equal (fnc-chars-string (car (cadr r))) expected))))
+
 (defun fn2-cre-run (n split)
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-core
@@ -48,13 +58,17 @@
             (fn2-ccu-session 0 (fn2-cre-fragments frames split) fn2-core)))
         (mv (list epoch status
                   (fnc-replies '(register append status append status) wire)
-                  (fn2-core-stop-reason fn2-core)) fn2-core))
+                  (fn2-core-stop-reason fn2-core) wire) fn2-core))
       answer)))
 
 (defun fn2-cre-ok (n split)
   (declare (xargs :verify-guards nil))
   (let* ((r (fn2-cre-run n split)) (replies (nth 2 r))
-         (accepted (nth 3 replies)) (position (car (nth 2 accepted))))
+         (accepted (nth 3 replies)) (position (car (nth 2 accepted)))
+         (wire (nth 4 r))
+         (refusal-wire (fn2-cre-after-frames 1 wire))
+         (accept-wire (fn2-cre-after-frames 3 wire))
+         (mid "<eof@example.invalid>"))
     ; :quiet alone also means a fatal core stop in fn2-cw-loop. Require
     ; both its idle termination and zero stop reason, plus real epoch setup.
     (and (eq (nth 0 r) :ok)
@@ -66,6 +80,10 @@
          (equal (nth 2 replies) '(:accepted "" (0 0 0)))
          (eq (car accepted) :accepted) (equal (cadr accepted) "")
          (posp position) (equal (cadr (nth 2 accepted)) 1)
+         (fn2-cre-append-mid-p accept-wire mid)
+         (not (fn2-cre-append-mid-p accept-wire ""))
+         (not (fn2-cre-append-mid-p accept-wire "<other@example.invalid>"))
+         (not (fn2-cre-append-mid-p refusal-wire mid))
          (equal (nth 4 replies) (list :accepted "" (list 0 position 1))))))
 
 ; Bad article lengths 1024/1025/1026 straddle the real feed quantum. The
