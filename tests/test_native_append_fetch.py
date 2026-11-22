@@ -92,8 +92,9 @@ class ExactFetch(unittest.TestCase):
     def test_unread_append_requires_independent_publication_before_socket_close(self):
         mid = "<unread@example.invalid>"
         previous = dict(domain=0, position=20)
-        item = dict(message_id=mid, domain=0, position=25)
-        for items, valid in (([item], True), ([], False), ([item, item], False),
+        observation = dict(message_id=mid, domain=0, position=25)
+        item = dict(observation, type="reference")
+        for items, valid in (([item], True), ([], False), ([item, item], False), ([dict(item, type="gap")], False),
                              ([dict(item, message_id="<other>")], False), ([dict(item, position=20)], False)):
             with self.subTest(items=items), mock.patch.object(campaign.client, "ControlSession") as session, \
                  mock.patch.object(campaign, "run_fn") as observer:
@@ -103,18 +104,22 @@ class ExactFetch(unittest.TestCase):
                 sender.sock.sendall.side_effect = lambda frame: events.append("submitted")
                 session.return_value.__exit__.side_effect = lambda *_: events.append("closed")
                 def wait_for_publication(*args):
-                    self.assertIn("wait", args)
-                    self.assertEqual(args[args.index("--cursor") + 1], "old-tail")
-                    events.append("observed")
-                    return {"outcome": "accepted", "items": items}
+                    if "wait" in args:
+                        self.assertEqual(args[args.index("--cursor") + 1], "old-tail")
+                        events.append("observed")
+                        return {"outcome": "accepted", "items": items}
+                    self.assertIn("fetch", args)
+                    self.assertEqual(args[args.index("--position") + 1], 25)
+                    events.append("fetched")
+                    return {"outcome": "accepted", "octets": 6, "article_hex": b"source".hex()}
                 observer.side_effect = wait_for_publication
                 args = (Path("."), "sock", "reader", "old-tail", previous, (mid, b"source", None), 75)
                 if valid:
-                    self.assertEqual(campaign.observe_unread_append(*args), item)
+                    self.assertEqual(campaign.observe_unread_append(*args), observation)
                 else:
                     with self.assertRaises(AssertionError):
                         campaign.observe_unread_append(*args)
-                self.assertEqual(events, ["submitted", "observed", "closed"])
+                self.assertEqual(events, ["submitted", "observed"] + (["fetched"] if valid else []) + ["closed"])
                 sender._recv_frame.assert_not_called()
                 sender.sock.recv.assert_not_called()
 

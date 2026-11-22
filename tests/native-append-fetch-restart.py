@@ -165,7 +165,10 @@ def observe_unread_append(directory, control, principal, tail_cursor, previous, 
         assert page["outcome"] == "accepted" and len(page["items"]) == 1, page
         item = page["items"][0]
         assert item["message_id"] == mid and item["domain"] == previous["domain"], page
-        assert item["position"] > previous["position"], page
+        assert item["position"] > previous["position"] and item["type"] in ("record", "reference"), page
+        fetched = run_fn(directory, "unread-append-fetched", "stream", "fetch", mid, "--as", principal,
+                         "--domain", item["domain"], "--position", item["position"], "--control-sock", control)
+        exact_fetch(fetched, article)
     return {key: item[key] for key in ("message_id", "domain", "position")}
 
 
