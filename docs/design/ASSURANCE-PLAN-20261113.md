@@ -9,21 +9,36 @@ must be derived from that store and the actual served call/attachment graph.
 
 | Path | Evidence in hand | First missing observation |
 | --- | --- | --- |
-| Protected NNTP reader | The current connection dispatcher records USER and returns 481 for the following PASS. The earlier native AUTHINFO suite launches the donor host with a TOML credential store. | Provision a credential through the current owner socket, reopen the image, authenticate over TLS and observe one allowed group and one denied group on that connection. |
+| Protected NNTP reader | The baseline dispatcher returns 481 for PASS. The protected-reader candidate now has a positive path through durable credentials and account attribution. The older native AUTHINFO suite launches the donor host with a TOML credential store. | Provision a credential through the current owner socket, reopen the image, authenticate over TLS and observe one allowed group and one denied group on that connection. |
 | Message-ID lookup | The reader candidate removes the eight-group search bound for article and overview forms. At `3b6ffd44d` STAT also searches for a membership. The grant decision and the staged native TCP fixture still need to meet at the served caller. | Use the authenticated reader and the ordinary wire commands to check visibility when only a secondary group is readable, then revoke that grant. |
 | Peer catch-up | The Forge-qualified `books/peer-view-member` at `2793bac02` checks the candidate history/evidence pair. The higher reader receives a principal, stream and authority from its caller. | Carry an authenticated peer and its current stream grant through the serving actor, send the selected item and resume from the receiver's verified position. |
 | Consumer restart | The successor fixture at `5bdd74d14` reopens the same image and checks every retired cursor, including the first epoch, after same-name registration. It reads the recovered position before subsequent mutations. | Execute that fixture against the qualified native successor. The exercised store-fold controls supply rows directly. |
 | Native APPEND | Forge certified `assembly-core` in `certify-20261122T211811Z-2555392`, `assembly-init` in `certify-20261122T212222Z-2560534`, and the corrected dispatch owner initialization in `certify-20261122T212619Z-2564904`. The TLS record-start contract discharges the actual external record-next guard. | Complete callback assembly, then observe durable acceptance, process death and byte-exact FETCH through the socket. |
 
-The native candidate at `8c37b5042` includes the actual TLS entry and its
-child, close and cancel guards (Forge `certify-20261122T213807Z-2577694`)
-and all four compression host guards (`certify-20261122T213918Z-2579059`).
-Five assembled row-access books also certified. The first failure compiling
-callback layer A is the generated UPLOAD take cost declaration. It places a
-read-only input configuration in the set of tables the operation may write.
-The provider reads that configuration through the generated core binding.
-Its configuration child must remain covered by the unchanged-state theorem.
-The full native host load and the socket restart scenario are still outstanding.
+Forge certified the actual host adapters on the `8c37b5042` source.
+The TLS external record, child, close and cancel guards passed in
+`certify-20261122T213807Z-2577694`, and the four compression entry guards
+passed in `certify-20261122T213918Z-2579059`. Five assembled row-access
+books also certified on this earlier source.
+
+Native candidate `65efbb083` repairs two UPLOAD admission defects. Generated
+ADMIT and TAKE still read their profile configuration through its core child.
+Omitting that child from the write set preserves its unchanged-state theorem.
+The TAKE target now declares the storage page it acquires on entry to HEAD.
+The actual posting-profile TAKE returned an owned page and two distinct chunk
+windows in a warm ACL2 control. The changed UPLOAD kind, article manifest
+and UPLOAD book have matching Forge records (108-book union,
+`certify-20261122T215727Z-2598751`). The assembled host and socket
+restart still require the current callback and executor roots.
+
+Protected-reader candidate `d8a55564d` connects the durable password lookup
+and transfer of account attribution to the NNTP dispatcher. Its native fixture
+provisions credentials on the owner socket, kills the process, reopens the
+image and compares a one-byte password mismatch with the valid login. A read
+grant on the ninth group is revoked on the same TLS connection after a
+successful crosspost read. These are executable acceptance cases awaiting
+the assembled image. The guarded trace policy rejects raw receive-byte
+capture on an authority-serving core before the host opens I/O.
 
 The CLI now rejects two noncanonical cursor/identity encodings and an
 identity outside the served 60-bit profile before settling a mutating reply
