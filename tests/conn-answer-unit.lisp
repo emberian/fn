@@ -63,6 +63,7 @@
       result)))
 
 (defconst *fn2-cau-reader* (logior *fn2-nntp-state-reader* *fn2-nntp-state-anonymous*))
+(defconst *fn2-cau-reader-tls* (logior *fn2-cau-reader* *fn2-nntp-state-tls*))
 (defconst *fn2-cau-peer* (logior *fn2-nntp-state-peer* *fn2-nntp-state-anonymous*))
 (defconst *fn2-cau-authed* (logior *fn2-nntp-state-reader* *fn2-nntp-state-authenticated*))
 (defconst *fn2-cau-s501* "501 syntax error")
@@ -108,11 +109,15 @@
     (date-range "DATE" ,*fn2-cau-reader* :none (t 1 ,(* 253402300800 1000000)) :command :none ("503 clock reading outside the representable range") nil)
     (date-arg "DATE 1" ,*fn2-cau-reader* :none (t 1 0) :command :none (,*fn2-cau-s501*) nil)
     ; RFC 4643 sections 2.3-2.4; H's shared pending slot; no credential store until E2.
-    (authinfo-user "AUTHINFO USER alice" ,*fn2-cau-reader* :redeem (nil 0 0) :command :user ("381 password required") t)
-    (authinfo-pass "AUTHINFO PASS secret" ,*fn2-cau-reader* :user (nil 0 0) :command :none ("481 authentication failed") t)
-    (authinfo-pass-alone "AUTHINFO PASS secret" ,*fn2-cau-reader* :none (nil 0 0) :command :none ("482 authentication commands issued out of sequence") t)
+    (authinfo-user-clear "AUTHINFO USER alice" ,*fn2-cau-reader* :none (nil 0 0) :command :none
+     ("483 a protected channel is required; use STARTTLS") t)
+    (authinfo-pass-clear "AUTHINFO PASS synthetic-token" ,*fn2-cau-reader* :user (nil 0 0) :command :none
+     ("483 a protected channel is required; use STARTTLS") t)
+    (authinfo-user "AUTHINFO USER alice" ,*fn2-cau-reader-tls* :redeem (nil 0 0) :command :user ("381 password required") t)
+    (authinfo-pass "AUTHINFO PASS secret" ,*fn2-cau-reader-tls* :user (nil 0 0) :command :none ("481 authentication failed") t)
+    (authinfo-pass-alone "AUTHINFO PASS secret" ,*fn2-cau-reader-tls* :none (nil 0 0) :command :none ("482 authentication commands issued out of sequence") t)
     ; H7-07: AUTHINFO PASS after a pending XREDEEM is out of sequence (RFC 4643; fn1's 481 is its bug).
-    (authinfo-pass-after-redeem "AUTHINFO PASS secret" ,*fn2-cau-reader* :redeem (nil 0 0) :command :redeem ("482 authentication commands issued out of sequence") t)
+    (authinfo-pass-after-redeem "AUTHINFO PASS secret" ,*fn2-cau-reader-tls* :redeem (nil 0 0) :command :redeem ("482 authentication commands issued out of sequence") t)
     (authinfo-user-arity "AUTHINFO USER" ,*fn2-cau-reader* :none (nil 0 0) :command :none (,*fn2-cau-s501*) t)
     (authinfo-user-extra "AUTHINFO USER a b" ,*fn2-cau-reader* :none (nil 0 0) :command :none (,*fn2-cau-s501*) t)
     (authinfo-sasl "AUTHINFO SASL PLAIN" ,*fn2-cau-reader* :none (nil 0 0) :command :none ("503 mechanism not recognized") t)

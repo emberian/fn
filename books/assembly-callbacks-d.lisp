@@ -107,6 +107,23 @@
         ((equal rule *fn2-conn-rule-takethis*) :takethis)
         (t :post)))
 
+(defun fn2-conn-authenticated-principal (conn gen fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (if (not (and (eq (fn2-conn-snapshot-read-code conn fn2-core) :ok)
+                (equal (fn2-machine-generation conn fn2-core) gen)))
+      (mv :state 0)
+    (let ((mask (fn2-conn-row-mask conn fn2-core))
+          (principal (fn2-conn-row-login-principal conn fn2-core))
+          (required (logior *fn2-nntp-state-tls* *fn2-nntp-state-authenticated*)))
+      (if (and (equal (logand mask required) required)
+               (posp principal) (unsigned-byte-p 60 principal)
+               (not (member-equal (fn2-conn-row-phase conn fn2-core)
+                       (list *fn2-conn-state-free* *fn2-conn-state-retired*
+                             *fn2-conn-state-closing* *fn2-conn-state-draining*))))
+          (mv :ok principal)
+        (mv :access 0)))))
+(in-theory (disable fn2-conn-authenticated-principal))
+
 (defun fn2-conn-run-answer (s e mask pending posting reading rslot rgen tslot tgen oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (mv-let (seen flags real) (fn2-conn-clock fn2-core)
