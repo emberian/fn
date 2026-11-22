@@ -15,9 +15,16 @@
            (equal (fn2-machine-phase boot fn2-core) *fn2-boot-state-ready*))
       (stobj-let ((fn2-origin (fn2-core-origin fn2-core))) (code revision)
        (let ((revision (fn2-origin-history-revision fn2-origin)))
-        (if (posp revision) (mv :ok revision) (mv :unavailable 0)))
+        (if (and (posp revision) (unsigned-byte-p 60 revision))
+            (mv :ok revision) (mv :unavailable 0)))
        (mv code revision))
     (mv :unavailable 0))))
+(defthm fn2-core-ready-history-revision-shape
+ (and (unsigned-byte-p 60 (mv-nth 1 (fn2-core-ready-history-revision fn2-core)))
+      (iff (eq (mv-nth 0 (fn2-core-ready-history-revision fn2-core)) :ok)
+           (posp (mv-nth 1 (fn2-core-ready-history-revision fn2-core))))))
+(defcost fn2-core-ready-history-revision :answers (:ok :unavailable)
+ :doc "Read the positive sender revision bound by ready BOOT.")
 (in-theory (disable fn2-core-ready-history-revision))
 
 (defcost fn2-xfnc-policy
