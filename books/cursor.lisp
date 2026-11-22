@@ -417,7 +417,9 @@
   (b* (((mv & b d) (fn2-cursor-location-check-of bytes len hashes index lslot lgen okind oslot ogen fn2-b3 fn2-digests fn2-pool)))
    (and (fn2-digestsp d) (fn2-digests-wfp d) (equal (fn2-digests-rows d) (fn2-digests-rows fn2-digests))
         (fn2-b3p b) (fn2-b3-wfp b) (equal (fn2-b3-rows b) (fn2-b3-rows fn2-b3))
-        (equal (len (nth *fn2-b3-wordsi* b)) (len (nth *fn2-b3-wordsi* fn2-b3)))))))
+        (equal (len (nth *fn2-b3-wordsi* b)) (len (nth *fn2-b3-wordsi* fn2-b3))))))
+ :hints (("Goal" :in-theory (disable fn2-digestsp fn2-digests-wfp fn2-digests-rows
+                                    fn2-b3p fn2-b3-wfp fn2-b3-rows))))
 (in-theory (disable fn2-cursor-location-check-of))
 
 ;; The entry of the next block of stored octets named through a source
@@ -790,6 +792,8 @@
  :doc "Append a number and TAB, a number line, CR LF, or the terminator.")
 (defcost fn2-cursor-keep-prefix :child fn2-pool-truncate :answers t :tables (fn2-core-pool)
  :doc "Retain the trusted location digest vector while replacing the next read unit.")
+(defcost fn2-cursor-location-blocks :child fn2-am-blocks
+ :doc "Count the storage units named by a raw article location.")
 (defcost fn2-cursor-location-check :child fn2-cursor-location-check-of :answers (:ok :io :hash :bounds)
  :bytes 8192 :tables (fn2-core-b3 fn2-core-digests)
  :doc "Verify one completed location unit against the published article's ordered digest vector before decoding or serving it.")
@@ -1371,13 +1375,14 @@
      (:do (zc) (fn2-cursor-reset row-lslot row-lgen) :accept (:ok))
      (:do (pc) (fn2-cursor-pad *fn2-article-location-hashes-max* row-lslot row-lgen) :accept (:ok))
      (:do (hc copied left) (fn2-read-octets (+ 1 (* 2 row-slot)) *fn2-article-entry-field-location-hashes*
-                                          0 *fn2-article-location-hashes-max* row-lslot row-lgen 0)
+                                          0 *fn2-article-location-hashes-max* row-lslot row-lgen 0
+                                          *fn2-cursor-kind* id row-generation)
       :accept (:ok :stale) :why ":stale: restart location and commitment together")
      (:do (rc) (fn2-read-release (+ 1 (* 2 row-slot))) :accept (:ok))
      (:cond ((eq hc :stale) (:set (step 20)) (:charge :bytes 256 :steps *fn2-work-transition* :runnable t))
             ((and (equal left 0) (posp copied) (equal (mod copied 32) 0)
                   (<= copied *fn2-article-location-hashes-max*)
-                  (or (equal row-mkind 1) (equal copied (* 32 (ceiling row-alen *fn2-commit-unit-bytes*)))))
+                  (or (equal row-mkind 1) (equal copied (* 32 (fn2-cursor-location-blocks row-alen)))))
              (:set (lhashlen copied) (step 23)) (:charge :bytes 256 :steps *fn2-work-transition* :runnable t))
             (t (:set (step 25)) (:goto art-fail))))
   ;; a failed read: the lease returned; before the 22x line the reply is
