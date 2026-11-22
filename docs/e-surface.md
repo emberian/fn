@@ -792,7 +792,8 @@ REBASE refuse a view that cannot be represented by the current v1 issuer before 
 TXN emits one address row per principal and event. It records the first accepted group's stream
 and the number of additional streams. For each further accepted group it emits one unique
 article-stream row keyed by the same article event and a positive ordinal. The stream ID comes
-from the group lookup used for append authority and numbering. The address, memberships and
+from the group lookup used for append authority and numbering. Repeated destinations use
+their first ordinal, and the stored article retains the submitted Newsgroups field. The address, memberships and
 overview rows enter the same transaction and replay from that transaction's log records.
 Only the address row contributes an occurrence or a stream wake. A reader may try the primary
 stream and then advance one membership ordinal at a time under the same authority head.

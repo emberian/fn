@@ -294,10 +294,10 @@
 (defcost fn2-authority-depend :answers (:ok :state) :faults (:state)
   :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields)
   :doc "Declare the transaction's read dependency on the principal's authority head it decided under (once; nothing when no grant governed).")
-(defcost fn2-txn-group-of :answers (:absent :bad-magic :bounds :done :end :entry :format :invariant :length :lost :miss :more
+(defcost fn2-txn-group-of :answers (:absent :repeated :bad-magic :bounds :done :end :entry :format :invariant :length :lost :miss :more
   :noncanonical :ok :owner :part :payload :schema :stale :state :truncated :unknown-tag :wide)
   :bytes 4096
-  :tables (fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
+  :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-id-decides fn2-core-fc fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
   :doc "The group at the scan's name: the one the append check in progress holds (XSTEP > 0), else one source of its name lookup.")
 (defcost fn2-txn-wake-upload :tables (fn2-core-machines)
   :doc "Wake the upload this transaction held, if it still names it, so it drains.")
@@ -319,10 +319,10 @@
           ((eq status :run) (:set (gcur next) (gskip (if skip2 1 0)))
                             (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
           ((eq status :end) (:set (gcur next)) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
-          (t (:do (code group) (fn2-txn-group-of gslot row-xstep row-xgroup c0 g0 (+ no start) len :budget 4096 :owner upload)
+          (t (:do (code group) (fn2-txn-group-of gslot row-ngroups row-xstep row-xgroup c0 g0 (+ no start) len :budget 4096 :owner upload)
               :accept ()
               :case (((:more) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
-                     ((:absent) (:set (gcur next)) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                     ((:absent :repeated) (:set (gcur next)) (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
                      ((:ok)
                       (:cond ((>= row-ngroups (fn2-txn-groups-limit))
                               (:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
@@ -723,15 +723,49 @@
                 (natp (mv-nth 2 (fn2-txn-next-name base cur end skip slot gen okind oslot ogen fn2-core)))
                 (natp (mv-nth 3 (fn2-txn-next-name base cur end skip slot gen okind oslot ogen fn2-core)))))
   :hints (("Goal" :in-theory (enable fn2-txn-next-name))))
+;; Read the durable group ID already declared in each prior count accept. A
+;; repeated name or a directory alias denotes one destination. The raw key
+;; is available before Stage assigns that group's number.
+(defun fn2-txn-prior-group (tx k group b0 fn2-succ-txns fn2-succ-slots fn2-fields)
+  (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-fields) :measure (nfix k)
+                  :guard (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-succ-slots-wfp fn2-succ-slots)
+                              (fn2-fields-wfp fn2-fields) (natp b0))))
+  (if (zp k) :ok
+    (b* ((i (fn2-txn-group-slot (1- k)))
+         ((mv code s sid kind arity) (fn2-succ-declared tx i fn2-succ-txns fn2-succ-slots))
+         (j (fn2-fold-key-arg *fn2-txn-counts-sid* :accept *fn2-group-counts-entry-field-group*))
+         ((unless (and (eq code :ok) (equal sid *fn2-txn-counts-sid*)
+                       (eq (fn2-succ-kindkw kind) :accept) (natp j) (< j arity)
+                       (natp s) (< s (fn2-succ-slots-rows fn2-succ-slots))
+                       (fn2-succ-has (fn2-succ-slots-set s fn2-succ-slots) j)))
+          :state)
+         (raw (+ b0 (* *fn2-succ-block* i) *fn2-succ-raw* j))
+         ((unless (< raw (fn2-fields-rows fn2-fields))) :state))
+      (if (equal (fn2-fields-value raw fn2-fields) group) :repeated
+        (fn2-txn-prior-group tx (1- k) group b0 fn2-succ-txns fn2-succ-slots fn2-fields)))))
+(in-theory (disable fn2-txn-prior-group))
 ;; The group at the Newsgroups scan's current name: while the append check
 ;; for it is in progress (XSTEP > 0) the group it holds, else one source of
 ;; the name's lookup (fn2-group-lookup).
-(defun fn2-txn-group-of (tx xstep xgroup slot gen off len okind oslot ogen budget fn2-core)
+(defun fn2-txn-group-of (tx k xstep xgroup slot gen off len okind oslot ogen budget fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (if (and (posp xstep) (unsigned-byte-p 60 xgroup))
       (mv :ok xgroup fn2-core)
-    (fn2-group-lookup tx slot gen off len okind oslot ogen budget fn2-core)))
-(fn2-core-preserves fn2-txn-group-of (tx xstep xgroup slot gen off len okind oslot ogen budget fn2-core) :position 2 :rows nil
+    (b* (((mv code group fn2-core) (fn2-group-lookup tx slot gen off len okind oslot ogen budget fn2-core))
+         ((unless (eq code :ok)) (mv code group fn2-core))
+         ((unless (and (natp k) (<= k *fn2-txn-groups-max*))) (mv :state 0 fn2-core))
+         (status
+          (stobj-let ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-succ-slots (fn2-core-succ-slots fn2-core))
+                      (fn2-fields (fn2-core-fields fn2-core)) (fn2-id-decides (fn2-core-id-decides fn2-core))
+                      (fn2-fc (fn2-core-fc fn2-core)))
+            (status)
+            (mv-let (sc base) (fn2-idc-stripe tx (fn2-fc-rows fn2-fc) fn2-id-decides fn2-fields)
+              (if (and (eq sc :ok) (natp base))
+                  (fn2-txn-prior-group tx k group base fn2-succ-txns fn2-succ-slots fn2-fields)
+                :state))
+            status)))
+      (mv status group fn2-core))))
+(fn2-core-preserves fn2-txn-group-of (tx k xstep xgroup slot gen off len okind oslot ogen budget fn2-core) :position 2 :rows nil
   :hints (("Goal" :in-theory (enable fn2-txn-group-of))))
 (in-theory (disable fn2-txn-group-of))
 ;; Copy before either the claim or the upload can drain. The destination

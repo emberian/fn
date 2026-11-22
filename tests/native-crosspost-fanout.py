@@ -40,7 +40,9 @@ def main():
         for op, label, destinations in [(71, "singleton", groups[:1]), (72, "seven-groups", groups)]:
             mid = f"<{label}@example.invalid>".encode("ascii")
             head, whole = fixture.restart.article(mid, 2)
-            newsgroups = b"Newsgroups: " + ",".join(destinations).encode("ascii")
+            # The full post repeats an admitted destination after reaching the cap.
+            named = destinations + ([destinations[1]] if articles else [])
+            newsgroups = b"Newsgroups: " + ",".join(named).encode("ascii")
             assert head.count(b"Newsgroups: local.test") == whole.count(b"Newsgroups: local.test") == 1
             head[head.index(b"Newsgroups: local.test")] = newsgroups
             whole[whole.index(b"Newsgroups: local.test")] = newsgroups
