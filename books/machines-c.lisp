@@ -10,6 +10,7 @@
 (include-book "machines-b")
 (include-book "successor-schema-geometry")
 (include-book "c-snapshot")
+(include-book "peer-import-state")
 (fn2-book-layer :c)
 
 ; ---------------------------------------------------------------------------
@@ -101,6 +102,8 @@
  :why "One exact-owner resident commit/event cut held until release.")
 (fn2-idc-child fn2-core-id-decides fn2-id-decides (fn2-id-decides-init (fn2-profile-t profile) fn2-id-decides)
  "One identity decision per transaction survives the transaction's yields (C-S1).")
+(fn2-idc-child fn2-core-peer-imports fn2-peer-imports (fn2-peer-imports-init (fn2-profile-t profile) fn2-peer-imports)
+ "The private observation snapshot retained until import settlement or abort.")
 (fn2-idc-child fn2-core-overlays fn2-overlays (fn2-overlays-init (fn2-b-capacity :identity-overlays *fn2-idc-overlays-default* profile) fn2-overlays)
  "Bounded sorted overlays hold facts not yet sealed into runs.")
 (fn2-idc-child fn2-core-overlay-index fn2-overlay-index
