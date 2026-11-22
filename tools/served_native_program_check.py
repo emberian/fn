@@ -55,7 +55,7 @@ ORDERS = {
     'fn2-device-worker': ['@device-syscall', 'fn2-device-perform', '@device-syscall-return'],
     'fn2-n-storage-completions': ['fn2-device-take-completion', '@device-return',
                                 'fn2-device-io-observation', 'fn2-n-complete'],
-    'fn2-n-post-completions': ['fn2-host-post-accept-result', 'fn2-host-post-result', '@post'],
+    'fn2-n-post-completions': ['fn2-host-post-accept-result', 'fn2-host-post-result', 'fn2-n-record', '@post'],
     'fn2-sim-take-one': ['fn2-outbox-peek', 'fn2-sim-register', 'fn2-outbox-ack'],
     'fn2-sim-crash': ['fn2-sim-crash-flight-writes', 'fn2-sim-crash-state',
                       'fn2-own-restart', 'fn2-core-init'],
@@ -171,6 +171,7 @@ CONTRACTS = {
         '(fn2-sim-terminal-post slot gen event outcome reason count aux0 aux1 '
         'fault word now release early fn2-core fn2-sim fn2-own)'],
     'fn2-n-post-completions': [
+        '(fn2-n-boundary host "post" slot (fn2-nop-gen op))',
         '(fn2-host-post-result 0 slot (fn2-nop-gen op) event (fn2-nop-outcome op) (fn2-nop-reason op) '
         '(fn2-nop-count op) (fn2-nop-aux0 op) (fn2-nop-aux1 op) core)'],
     'fn2-own-post-result': [
@@ -311,6 +312,7 @@ def check(root=ROOT):
             'physical_cut_replay': {
                 'entry': 'fn2-native-device-cut-replay',
                 'labels': ['device-submit', 'device-syscall', 'device-syscall-return', 'device-return'],
+                'conditional_labels': {'post': 'performed file READ, WRITE or FENCE with matching terminal and physical return'},
                 'scope': 'observed ordinal/incarnation and actual-core replay plus complete process-visible file effects; not OS power-loss refinement',
                 'qualification': 'requires current model certification and selected-image cut campaign',
             },
