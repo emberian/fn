@@ -73,12 +73,27 @@ holds the article, principal and stream read grant fixed while revoking and
 restoring consume. The source control distinguished the old and new branches.
 The assembled callback and native cursor campaign remain outstanding.
 
-On the conflict APPEND branch the schema-9 writer now passes the required
-operation-key source. The transaction declaration has a current 140-book
-Forge record, `certify-20261122T202141Z-2490157`. Its emitted write operation
-still needs the assembled TXN callback. The native retry fixture checks both
-the stored conflict and the effect of reusing its operation ID with changed
-input after revocation and restart.
+On candidate `f480ae571`, a conflict APPEND returns the article refusal
+and the evidence disposition separately. Positive evidence includes its
+committed event position. The native retry fixture requires the exact conflict
+receipt after restart and revocation and checks that FETCH at the evidence
+position returns no article. Forge certified the 140-book transaction
+declaration in `certify-20261122T203833Z-2508994`. The emitted callback and
+the native retry still await qualification. Accepted APPENDs also still owe
+their per-group numbers and receipt.
+
+On the same candidate, handing a withdrawn FETCH reply to the control
+connection rechecks read authority on the selected stream. The branch uses
+the verb, outcome and reason together because the same numeric reason means
+`header-octets` on APPEND. The focused source control rejects the earlier
+unhandled authority denial. The generated handoff still needs qualification.
+
+The first attempt to assemble the machine index stopped while counting
+structured pool-class requirements. The generator used a scalar-key lookup
+for a byte-window descriptor. The structural lookup and update on foundation
+`efec77080` passed the 13-book `books/machines` record
+`certify-20261122T204135Z-2512179`. The joint index and its dependent
+callbacks need records on that foundation before the native gates can run.
 
 ## Integration frontier — 2026-11-16 01:35 UTC
 
