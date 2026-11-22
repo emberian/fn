@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import secrets
 from pathlib import Path
 import socket
 import subprocess
@@ -65,6 +66,87 @@ class PeerGrantEncoding(unittest.TestCase):
         for right, stream in (("peer", "12"), ("peer-feed", None), ("peer-accept", None)):
             with self.subTest(right=right), self.assertRaises(ValueError):
                 fn_admin.resolve_grant_scope(right, stream, "")
+
+
+class PeerPullActivation(unittest.TestCase):
+    @staticmethod
+    def receive_frame(conn: socket.socket) -> bytes:
+        with conn.makefile("rb") as source:
+            head = source.read(10)
+            return head + source.read(fn_admin.fnct_payload_length(head) + 32)
+
+    def run_owner_pull(self, secret: bytes, result: bytes) -> tuple[subprocess.CompletedProcess, list]:
+        with tempfile.TemporaryDirectory() as directory:
+            path = str(Path(directory) / "ctl.sock")
+            observed = []
+            errors = []
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as listener:
+                listener.bind(path)
+                listener.listen(3)
+                listener.settimeout(5)
+
+                def serve():
+                    try:
+                        for reply in (auth_reply("principal-bind", b"\x81\x01\x02"),
+                                      auth_reply("stream-resolve", b"\x17"), result):
+                            client, _ = listener.accept()
+                            with client:
+                                client.settimeout(5)
+                                observed.append(fn_admin.fnct_open(self.receive_frame(client)))
+                                client.sendall(reply)
+                    except Exception as exc:
+                        errors.append(exc)
+
+                thread = threading.Thread(target=serve)
+                thread.start()
+                argv = [
+                    str(ROOT / "fn"), "peer", "pull", "--control-sock", path, "--json",
+                    "--local-principal", "my-peer", "--local-group", "local.test", "--consumer", "305",
+                    "--expected-history", "813", "--expected-incarnation", "1", "--expected-view", "9",
+                    "--remote-stream", "remote.test", "--remote-address", "127.0.0.1",
+                    "--remote-port", "8119", "--timeout-ms", "30000", "--remote-user", "remote-peer",
+                ]
+                self.assertFalse(any(secret in arg.encode() for arg in argv))
+                process = subprocess.run(argv, cwd=ROOT, input=secret + b"\n", capture_output=True, timeout=10)
+                thread.join(5)
+                self.assertFalse(thread.is_alive())
+            self.assertFalse(errors, errors)
+            self.assertTrue(secret not in process.stdout + process.stderr,
+                            "peer pull output exposed the stdin password")
+            return process, observed
+
+    def test_owner_wire_pins_inputs_and_reports_only_activation_handle(self):
+        secret = secrets.token_hex(24).encode("ascii")
+        result, seen = self.run_owner_pull(secret, auth_reply("peer-pull", b"\x07\x82\x01"))
+        self.assertEqual(result.returncode, fn_admin.EXIT_ACCEPTED, result.stderr)
+        self.assertEqual(json.loads(result.stdout),
+                         {"outcome": "accepted", "reason": "none", "attempt": 7, "generation": 130})
+        self.assertTrue(seen == [
+            (29, b"\x01\x00\x07my-peer"),
+            (29, b"\x04\x00\x0alocal.test"),
+            (29, b"\x06\x81\x01\x17\xb1\x02\xad\x06\x01\x09\x00\x0bremote.test"
+                 b"\x7f\x00\x00\x01\x1f\xb7\x00\x00\x75\x30\x00\x0bremote-peer"
+                 b"\x00\x30" + secret),
+        ], "peer pull did not send the expected owner frames")
+
+    def test_truncated_activation_reply_reports_uncertainty_without_password(self):
+        secret = secrets.token_hex(24).encode("ascii")
+        result, seen = self.run_owner_pull(secret, auth_reply("peer-pull", b"\x07"))
+        self.assertEqual(len(seen), 3)
+        self.assertEqual(result.returncode, fn_admin.EXIT_UNCERTAIN, result.stderr)
+        self.assertEqual(json.loads(result.stdout)["outcome"], "uncertain")
+
+    def test_owner_refusal_returns_reason_without_an_attempt_handle(self):
+        secret = secrets.token_hex(24).encode("ascii")
+        refused = fn_admin.fnct_seal(30, b"\x06\x01\x00\x06access")
+        result, _ = self.run_owner_pull(secret, refused)
+        self.assertEqual(result.returncode, fn_admin.EXIT_REFUSED, result.stderr)
+        self.assertEqual(json.loads(result.stdout), {"outcome": "refused", "reason": "access"})
+
+    def test_activation_reply_requires_exact_widths_and_layout(self):
+        for fields in (b"\x07\x00", b"\x07\x01\x00", fn_admin.leb_encode(1 << 32) + b"\x01"):
+            with self.subTest(fields=fields), self.assertRaises(fn_admin.WireError):
+                fn_admin.decode_auth_reply("peer-pull", auth_reply("peer-pull", fields))
 
 
 class ReplyDecoding(unittest.TestCase):
