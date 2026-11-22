@@ -254,6 +254,74 @@
             (fn2-upload-line-mv status off field visible fields lines seen mo ml no nl po pl co cl (+ cost (nfix spent))))
         (fn2-upload-line-mv status off2 field2 visible2 fields2 lines2 seen2 mo2 ml2 no2 nl2 po2 pl2 co2 cl2 cost)))))
 
+; The retained Control span has passed physical-line validation. Thus
+; CR and LF within the span are the CRLF of a folded line.
+(defun fn2-upload-control-whitep (byte)
+  (declare (xargs :guard (natp byte)))
+  (or (fn2-upload-wspp byte) (equal byte 13) (equal byte 10)))
+
+(defun fn2-upload-control-skip (fuel at end whitespace slot gen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :measure (nfix fuel)
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp fuel) (natp at) (natp end))))
+  (cond ((>= at end) (mv :end (nfix at)))
+        ((zp fuel) (mv :more (nfix at)))
+        (t (mv-let (ok byte) (fn2-gram-read slot gen at okind oslot ogen fn2-pool)
+             (cond ((not ok) (mv :fault (nfix at)))
+                   ((iff whitespace (fn2-upload-control-whitep byte))
+                    (fn2-upload-control-skip (- fuel 1) (+ at 1) end whitespace
+                                             slot gen okind oslot ogen fn2-pool))
+                   (t (mv :stop (nfix at))))))))
+(defthm fn2-upload-control-skip-position-natp
+  (natp (mv-nth 1 (fn2-upload-control-skip fuel at end whitespace slot gen okind oslot ogen fn2-pool)))
+  :rule-classes :type-prescription)
+(in-theory (disable fn2-upload-control-skip))
+
+(defconst *fn2-upload-control-step-bytes* 1056)
+(defconst *fn2-upload-control-whitespace-quantum* 512)
+(defconst *fn2-upload-control-max-mid* 250)
+
+; PHASE 0 recognizes the keyword. PHASE 1 reads its one Message-ID. PHASE 2
+; consumes trailing whitespace. Return (status phase position target length).
+; Any non-cancel keyword leaves the ordinary article path alone.
+(defun fn2-upload-control-span-step (phase at end target length seen slot gen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp phase) (natp at) (natp end)
+                              (natp target) (natp length) (natp seen))
+                  :guard-hints (("Goal" :in-theory (disable fn2-gram-match fn2-gram-arg-msgid
+                                                            fn2-gram-read)))))
+  (b* (((unless (fn2-upload-bit seen *fn2-upload-field-control*)) (mv :ordinary 0 0 0 0))
+       ((mv status here)
+        (fn2-upload-control-skip *fn2-upload-control-whitespace-quantum* at end t
+                                 slot gen okind oslot ogen fn2-pool))
+       ((when (eq status :fault)) (mv :fault 0 0 0 0))
+       ((when (eq status :more)) (mv :more phase here target length)))
+    (cond
+     ((equal phase 0)
+      (cond ((or (eq status :end) (< end (+ here 6))
+                 (not (fn2-gram-match here 6 "CANCEL" slot gen okind oslot ogen fn2-pool)))
+             (mv :ordinary 0 0 0 0))
+            ((equal end (+ here 6)) (mv :invalid 0 0 0 0))
+            (t (mv-let (ok byte) (fn2-gram-read slot gen (+ here 6) okind oslot ogen fn2-pool)
+                 (cond ((not ok) (mv :fault 0 0 0 0))
+                       ((not (fn2-upload-control-whitep byte)) (mv :ordinary 0 0 0 0))
+                       ((fn2-upload-bit seen (+ *fn2-upload-seen-dup* *fn2-upload-field-control*))
+                        (mv :invalid 0 0 0 0))
+                       (t (mv :more 1 (+ here 6) 0 0)))))))
+     ((equal phase 1)
+      (if (eq status :end) (mv :invalid 0 0 0 0)
+        (b* (((mv c tail) (fn2-upload-control-skip (+ 1 *fn2-upload-control-max-mid*)
+                                                   here end nil slot gen okind oslot ogen fn2-pool))
+             ((when (eq c :fault)) (mv :fault 0 0 0 0))
+             (n (nfix (- tail here)))
+             ((unless (and (not (eq c :more)) (<= n *fn2-upload-control-max-mid*)))
+              (mv :invalid 0 0 0 0))
+             ((mv valid & & &) (fn2-gram-arg-msgid here n slot gen okind oslot ogen fn2-pool))
+             ((unless valid) (mv :invalid 0 0 0 0)))
+          (if (eq c :end) (mv :cancel 2 tail here n) (mv :more 2 tail here n)))))
+     ((and (equal phase 2) (eq status :end)) (mv :cancel 2 here target length))
+     (t (mv :invalid 0 0 0 0)))))
+(in-theory (disable fn2-upload-control-span-step))
+
 ; ------------------------------------------------------------------------
 ; Message-ID syntax as the stored-article check reads it (H's model,
 ; stored_msgid): "<" dot-atom "@" (dot-atom / "[" dtext* "]") ">", at most

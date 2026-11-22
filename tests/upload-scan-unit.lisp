@@ -37,28 +37,43 @@
         (mv status st)))))
 (defconst *fn2-usu-start* (list 0 *fn2-upload-field-none* nil 0 0 0 0 0 0 0 0 0 0 0))
 
-(defun fn2-usu-control-span ()
+(defun fn2-usu-control-drive (fuel phase at end target length seen slot gen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :verify-guards nil :measure (nfix fuel)))
+  (if (zp fuel) (mv :fuel 0 0)
+    (mv-let (status phase next target length)
+      (fn2-upload-control-span-step phase at end target length seen slot gen 1 1 1 fn2-pool)
+      (if (eq status :more)
+          (fn2-usu-control-drive (- fuel 1) phase next end target length seen slot gen fn2-pool)
+        (mv status target length)))))
+
+(defun fn2-usu-control-span (duplicate)
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-pool
     (mv-let (valid fn2-pool)
       (b* ((source (fn2-usu-crlf
-                     (list "Control: CaNcEl"
-                           (concatenate 'string (coerce (list (code-char 9)) 'string) "<T@X>")
-                           "Control: cancel <other@x>" "")))
+                     (append
+                      (list "Control: CaNcEl"
+                            (concatenate 'string (coerce (list (code-char 9)) 'string) "<T@X>"))
+                      (if duplicate (list "Control: cancel <other@x>") nil)
+                      (list ""))))
            (fn2-pool (fn2-pool-init '((1 . 65536)) 1 1000 fn2-pool))
            ((mv & slot gen fn2-pool) (fn2-pool-reserve 0 1 1 1 fn2-pool))
            (fn2-pool (fn2-usu-feed (fn2-usu-octets (coerce source 'list)) slot gen fn2-pool))
            ((mv status st) (fn2-usu-drive 200 *fn2-upload-line-cost* *fn2-usu-start* slot gen fn2-pool))
            ((list & & & & & seen & & & & & & co cl) st)
            (expected (concatenate 'string "CANCEL"
-                     (coerce (list (code-char 13) (code-char 10) (code-char 9)) 'string) "<T@X>")))
+                     (coerce (list (code-char 13) (code-char 10) (code-char 9)) 'string) "<T@X>"))
+           ((mv control target length)
+            (fn2-usu-control-drive 20 0 co (+ co cl) 0 0 seen slot gen fn2-pool)))
         (mv (and (eq status :header-done) (equal co 9)
                  (fn2-upload-seen-p seen *fn2-upload-field-control*)
-                 (fn2-upload-seen-p seen (+ *fn2-upload-seen-dup* *fn2-upload-field-control*))
-                 (fn2-gram-match co cl expected slot gen 1 1 1 fn2-pool))
+                 (equal duplicate (fn2-upload-seen-p seen (+ *fn2-upload-seen-dup* *fn2-upload-field-control*)))
+                 (fn2-gram-match co cl expected slot gen 1 1 1 fn2-pool)
+                 (if duplicate (eq control :invalid)
+                   (and (eq control :cancel) (equal target (+ co 9)) (equal length 5))))
             fn2-pool))
       valid)))
-(assert-event (fn2-usu-control-span))
+(assert-event (and (fn2-usu-control-span nil) (fn2-usu-control-span t)))
 
 ; The word for SOURCE under RULE: the octets arrive as PREFIX octets, a scan,
 ; then the rest (SPLIT nil: all at once), scanned with BUDGET per call. The
