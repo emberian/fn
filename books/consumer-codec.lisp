@@ -309,6 +309,11 @@
     (fetch ((article (:octets32 2147483647))))
     (append ((message-id (:octets16 250)) (domain :u32be) (position :u64be) (numbers (:octets16 4160))
              (receipt (:octets16 1024)) (evidence (:enum fn2-fnct-evidence (:none :committed :uncertain :refused)))))))
+; A versioned node-local acceptance receipt names the exact settled event
+; in the same immutable origin as the transaction's identity-history row.
+(deflayout fn2-fnct-append-receipt
+ '((version :u8) (lineage :u64be) (domain :u64be) (incarnation :u64be) (event :u64be)))
+(defconst *fn2-fnct-append-receipt-octets* (+ 1 (* 4 8)))
 ; One item of a page (e-surface.md 4.1): its type, position, the reasons bit
 ; set, the streams it was selected through, its Message-ID and its body (the
 ; record's octets; a reference's octet count and content identity; empty for

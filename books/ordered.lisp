@@ -81,7 +81,8 @@
          (id-source (:enum fn2-outcome-id-source (:assigned :supplied))))
    :value ((request :digest) (outcome :u16) (event (:id event))
            (verb (:enum fn2-outcome-verb (:append :grant-set)))
-           (mid (:octets ,*fn2-format-message-id-max*)))
+           (mid (:octets ,*fn2-format-message-id-max*))
+           (numbers (:octets ,*fn2-overview-octets-max*)))
    :merge :unique))
 
 ; Consumer names (E's consumer port): a principal's registered wire name

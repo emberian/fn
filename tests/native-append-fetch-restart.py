@@ -51,18 +51,19 @@ def exact_fetch(reply, expected):
     return actual
 
 
-def read_genesis(image):
-    """The two immutable units on this 128-extent, single-group image."""
+def read_genesis(image, groups=(b"local.test",)):
+    """The immutable genesis header and group rows on the 128-extent image."""
     with image.open("rb") as store:
         # The native profile reserves the first 8 MiB for allocation. Read
         # the physical file independently of the offsets reported by BOOT.
         store.seek(8 * 1024 * 1024)
         header = store.read(4096)
-        group = store.read(4096)
-    assert len(header) == len(group) == 4096, "short genesis read"
+        rows = [store.read(4096) for _ in groups]
+    assert len(header) == 4096 and all(len(row) == 4096 for row in rows), "short genesis read"
     assert header.startswith(b"F2BT\x02\x00\x00"), "missing genesis header after the arena"
-    assert group.startswith(b"F2BT\x02\x01\x01") and b"local.test" in group, "missing genesis group"
-    return header, group
+    assert all(row.startswith(b"F2BT\x02\x01\x01") for row in rows), "missing genesis group"
+    assert all(sum(name in row for row in rows) == 1 for name in groups), "missing or duplicate genesis group"
+    return (header, *rows)
 
 
 def checked_status(reply, accepted_articles, registered_position, previous=None):
@@ -151,9 +152,12 @@ def check_retry_occurrences(directory, phase, control, principal, registered, ac
         page += 1
 
 
-def crossing_article(mid, body_variant=0):
+def crossing_article(mid, body_variant=0, crosspost=False):
     """A valid, exact 6 KiB article crossing the transport's 4 KiB window."""
     _, lines = restart.article(mid.encode("ascii"), 100)
+    if crosspost:
+        group = lines.index(b"Newsgroups: local.test")
+        lines[group] = b"Newsgroups: local.test,local.other"
     # Vary every body window, not just the Message-ID in the first unit.
     # A reused extent from the other article must change the exact FETCH bytes.
     assert body_variant in (0, 1)
@@ -207,12 +211,13 @@ def main():
     submissions = []
     for index in range(2):
         mid = f"<native-append-fetch-{index}@example.invalid>"
-        article = crossing_article(mid, body_variant=index)
+        article = crossing_article(mid, body_variant=index, crosspost=index == 1)
         article_path = directory / f"submitted-{index}.article"
         article_path.write_bytes(article)
         submissions.append((mid, article, article_path))
-    initialize(directory, image)
-    genesis = read_genesis(image)
+    initialize(directory, image, startup_args=("--group", "local.other"))
+    genesis_groups = (b"local.test", b"local.other")
+    genesis = read_genesis(image, genesis_groups)
     receipts = []
     node = restart.Node(directory, image, "serve", "append", control_sock=control,
                         env=environment())
@@ -220,13 +225,14 @@ def main():
         node.marker(b"LISTENING-LOCAL ")
         created = run_fn(directory, "principal", "principal", "create", principal, "--control-sock", control)
         assert created["outcome"] == "accepted", created
-        for right in ("append", "read"):
-            grant = run_fn(directory, f"grant-{right}", "grant", "set", principal, right,
-                           "local.test", "--control-sock", control)
-            assert grant["outcome"] == "accepted", grant
-        reader = run_fn(directory, "grant-nntp-reader", "grant", "set", "anonymous", "read",
-                        "local.test", "--control-sock", control)
-        assert reader["outcome"] == "accepted", reader
+        for group in ("local.test", "local.other"):
+            for right in ("append", "read"):
+                grant = run_fn(directory, f"grant-{group}-{right}", "grant", "set", principal, right,
+                               group, "--control-sock", control)
+                assert grant["outcome"] == "accepted", grant
+            reader = run_fn(directory, f"grant-nntp-reader-{group}", "grant", "set", "anonymous", "read",
+                            group, "--control-sock", control)
+            assert reader["outcome"] == "accepted", reader
         consume = run_fn(directory, "grant-consume", "grant", "set", principal, "consume",
                          "--control-sock", control)
         assert consume["outcome"] == "accepted", consume
@@ -243,7 +249,7 @@ def main():
                 assert accepted == other, (accepted, other)
             elif args.durable_retry:
                 alternate_mid = "<native-append-fetch-alternate@example.invalid>"
-                alternate = crossing_article(alternate_mid, body_variant=1)
+                alternate = crossing_article(alternate_mid, body_variant=1, crosspost=True)
                 assert all(a[4096:] != submissions[0][1][4096:] for a in (article, alternate))
                 alternate_path = directory / "submitted-alternate.article"
                 alternate_path.write_bytes(alternate)
@@ -262,6 +268,11 @@ def main():
                                        operation, article_path)
             assert accepted["outcome"] == "accepted" and accepted["evidence"] == "committed", accepted
             assert accepted["message_id"] == mid and accepted["position"] > 0, accepted
+            receipt = bytes.fromhex(accepted["receipt"])
+            assert len(receipt) == 33 and receipt[0] == 1, accepted
+            actual_origin_event = tuple(int.from_bytes(receipt[i:i + 8], "big") for i in range(1, 33, 8))
+            assert actual_origin_event == (711, 712, 1, accepted["position"]), accepted
+            assert accepted["numbers"], accepted
             accepted_articles.append(accepted)
         assert len({(a["domain"], a["position"]) for a in accepted_articles}) == len(submissions)
         status_before = checked_status(
@@ -299,7 +310,7 @@ def main():
             receipts[-1]["conflict_receipt"] = conflict
     finally:
         node.close()
-    assert read_genesis(image) == genesis, "APPEND changed immutable genesis bytes"
+    assert read_genesis(image, genesis_groups) == genesis, "APPEND changed immutable genesis bytes"
     (directory / "processes.json").write_text(json.dumps(receipts, indent=2) + "\n")
     node = restart.Node(directory, image, "serve", "fetch", control_sock=control,
                         env=environment())
@@ -353,7 +364,13 @@ def main():
         for mid, article, _ in submissions:
             lines = article.removesuffix(b"\r\n").split(b"\r\n")
             articles.append((mid.encode("ascii"), lines[:lines.index(b"")], lines))
-        (directory / "nntp-after.wire").write_bytes(restart.read_back(port, articles))
+        xrefs = {article[0]: bytes.fromhex(receipt["numbers"])
+                 for article, receipt in zip(articles, accepted_articles)}
+        (directory / "nntp-after.wire").write_bytes(restart.read_back(port, articles, xrefs=xrefs))
+        # The crosspost is article 2 in the first group and article 1 in the
+        # second. Check both actual NNTP status numbers and the full Xref.
+        (directory / "nntp-other-after.wire").write_bytes(
+            restart.read_back(port, articles[1:], group="local.other", xrefs=xrefs))
         # A fresh registration moves the durable tail without adding an addr
         # entry. Keep this write after the restart readbacks so it cannot
         # mask a missing APPEND fence at the first process-death cut.
@@ -369,7 +386,7 @@ def main():
                              cut="SIGKILL after exact FETCH, wrong-identity refusal and NNTP readback"))
     finally:
         node.close()
-    assert read_genesis(image) == genesis, "reopen changed immutable genesis bytes"
+    assert read_genesis(image, genesis_groups) == genesis, "reopen changed immutable genesis bytes"
     (directory / "processes.json").write_text(json.dumps(receipts, indent=2) + "\n")
     if args.durable_retry:
         print("NATIVE DURABLE APPEND RETRY PASS: same-key races had one occurrence each; original receipts replayed after restart and revocation")

@@ -141,10 +141,10 @@
  :doc "This APPEND still belongs to a receiving or waiting control connection, with the same request and child generation.")
 (defcost fn2-cns-principal :answers (:ok :state)
  :doc "The live control connection's durable principal for this request generation.")
-(defcost fn2-cns-read-append-outcome :answers (:found :more :absent :reused :dropped :state) :bytes 4096
+(defcost fn2-cns-read-append-outcome :answers (:found :more :absent :reused :dropped :state) :bytes 6144
  :tables (fn2-core-reads fn2-core-ranges fn2-core-seeks fn2-core-succ-txns fn2-core-run-cursors
           fn2-core-run-paths fn2-core-fields fn2-core-pool)
- :doc "One exact published operation lookup; a hit copies the persisted digest and Message-ID to this request.")
+ :doc "One exact published operation lookup; a hit copies the persisted digest, Message-ID and group pairs to this request.")
 (defcost fn2-cns-release-append-outcome :answers (:ok :state)
  :tables (fn2-core-reads fn2-core-ranges fn2-core-seeks fn2-core-succ-txns)
  :doc "Release an interrupted scalar-key lookup belonging to this exact APPEND request before freeing the row.")
@@ -221,7 +221,7 @@
 (defcost fn2-cns-lease-reset :child fn2-pool-reset :answers t :tables (fn2-core-pool)
  :doc "Empty the page's read lease before the next item is read into it.")
 
-(defcost fn2-cns-post-reply :answers (:ok :dropped :fault) :faults (:fault) :bytes 2048
+(defcost fn2-cns-post-reply :answers (:ok :dropped :fault) :faults (:fault) :bytes 8192
  :tables (fn2-ctl-table fn2-core-machines fn2-core-fields fn2-core-digests fn2-core-b3 fn2-core-pool)
  :doc "Encode the kind 28 reply in the control range and post its extent to the waiting control connection.")
 (defcost fn2-cns-decode-port :answers (:ok :refused) :bytes 2048
@@ -695,10 +695,17 @@
                  (:type-prescription :corollary (natp (mv-nth 2 (fn2-cns-put-cursor base cid principal history incarnation version epoch position slot gen okind oslot ogen fn2-fields fn2-pool)))))
   :hints (("Goal" :in-theory (enable fn2-cns-put-cursor))))
 (in-theory (disable fn2-cns-put-cursor))
-; Append's committed identity and position. The numbers and receipt are
-; still owed.
-(fn2-fnct-def-result fn2-cns-put-append fn2-fnct-result-append (moff mlen position evidence)
-  ((message-id :ref moff mlen) (domain 0) (position position) (numbers :ref 0 0) (receipt :ref 0 0) (evidence evidence)))
+(fn2-fnct-def-result fn2-cns-put-append-receipt fn2-fnct-append-receipt (lineage domain incarnation event)
+  ((version 1) (lineage lineage) (domain domain) (incarnation incarnation) (event event)))
+(fn2-fnct-def-result fn2-cns-put-append fn2-fnct-result-append (moff mlen position noff nlen roff rlen evidence)
+  ((message-id :ref moff mlen) (domain 0) (position position)
+   (numbers :ref noff nlen) (receipt :ref roff rlen) (evidence evidence)))
+; The CTL range contains the three staged fields once, the result twice
+; (scratch and frame), and the outer frame overhead. Success has no reason.
+(assert-event
+ (<= (+ (* 3 (+ *fn2-format-message-id-max* *fn2-overview-octets-max* *fn2-fnct-append-receipt-octets*))
+        (* 2 (+ 2 4 8 2 2 1)) (+ 1 2 4) *fn2-fnct-header-octets* *fn2-fnct-trailer-octets*)
+     *fn2-ctl-io-bytes*))
 ;; A page item (consumer-codec.lisp *fn2-fnct-item-layout*) at the fill of
 ;; the request's read lease, its Message-ID [MOFF, MOFF+MLEN) and body
 ;; [BOFF, BOFF+BLEN) octets of the same lease; a reference's body is its
@@ -818,7 +825,7 @@
           ((equal o *fn2-cns-outcome-uncertain*) 2) (t 3))))
 ; The verb's result at the fill: (mv code off len fn2-fields fn2-pool); a
 ; conflict refusal carries its independently settled evidence outcome.
-(defun fn2-cns-put-result (base verb class evidence cid epoch version cpos pfront count more ioff ilen inext principal history incarnation
+(defun fn2-cns-put-result (base verb class evidence numbers-len cid epoch version cpos pfront count more ioff ilen inext principal history incarnation
                                 slot gen okind oslot ogen fn2-fields fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-pool) :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
   (let ((v (nfix verb)) (cpos (nfix cpos)) (pfront (nfix pfront)) (inext (nfix inext)))
@@ -828,7 +835,14 @@
                          (member-equal evidence (list *fn2-fnct-evidence-committed*
                                                       *fn2-fnct-evidence-uncertain* *fn2-fnct-evidence-refused*)))))
            (if (and (posp ilen) (<= ilen *fn2-format-message-id-max*))
-               (fn2-cns-put-append base ioff ilen cpos evidence slot gen okind oslot ogen fn2-fields fn2-pool)
+               (let* ((accepted (equal class 0))
+                      (nlen (if accepted (nfix numbers-len) 0))
+                      (noff (+ (nfix ioff) (nfix ilen)))
+                      (rlen (if accepted *fn2-fnct-append-receipt-octets* 0)))
+                 (if (and accepted (not (posp nlen)))
+                     (mv :bounds 0 0 fn2-fields fn2-pool)
+                   (fn2-cns-put-append base ioff ilen cpos noff nlen (+ noff nlen) rlen
+                                       evidence slot gen okind oslot ogen fn2-fields fn2-pool)))
              (mv :bounds 0 0 fn2-fields fn2-pool)))
           ((not (equal class 0)) (mv :ok (fn2-pool-fill-value slot fn2-pool) 0 fn2-fields fn2-pool))
           ((equal v *fn2-cns-verb-ack*)
@@ -852,19 +866,19 @@
                                 slot gen okind oslot ogen fn2-fields fn2-pool)))
           (t (mv :ok (fn2-pool-fill-value slot fn2-pool) 0 fn2-fields fn2-pool)))))
 (fn2-pool-block-shape fn2-cns-put-result-shape
-  (fn2-cns-put-result base verb class evidence cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool)
+  (fn2-cns-put-result base verb class evidence numbers-len cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool)
   (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
   ((fn2-fields 3) (fn2-pool 4))
   (("Goal" :in-theory (e/d (fn2-cns-put-result) (fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp fn2-fields-rows fn2-pool-rows)))))
 (defthm fn2-cns-put-result-natp
-  (and (natp (mv-nth 1 (fn2-cns-put-result base verb class evidence cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool)))
-       (natp (mv-nth 2 (fn2-cns-put-result base verb class evidence cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool))))
-  :rule-classes ((:type-prescription :corollary (natp (mv-nth 1 (fn2-cns-put-result base verb class evidence cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool))))
-                 (:type-prescription :corollary (natp (mv-nth 2 (fn2-cns-put-result base verb class evidence cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool)))))
+  (and (natp (mv-nth 1 (fn2-cns-put-result base verb class evidence numbers-len cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool)))
+       (natp (mv-nth 2 (fn2-cns-put-result base verb class evidence numbers-len cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool))))
+  :rule-classes ((:type-prescription :corollary (natp (mv-nth 1 (fn2-cns-put-result base verb class evidence numbers-len cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool))))
+                 (:type-prescription :corollary (natp (mv-nth 2 (fn2-cns-put-result base verb class evidence numbers-len cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-pool)))))
   :hints (("Goal" :in-theory (enable fn2-cns-put-result))))
 (in-theory (disable fn2-cns-put-result))
 ; The whole reply at the fill: (mv code k total fn2-fields fn2-digests fn2-b3 fn2-pool), the frame [K, K+TOTAL).
-(defun fn2-cns-reply-pool (base row verb outcome reason evidence cid epoch version cpos pfront count more ioff ilen inext principal history incarnation
+(defun fn2-cns-reply-pool (base row verb outcome reason evidence numbers-len cid epoch version cpos pfront count more ioff ilen inext principal history incarnation
                                 slot gen okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-digests fn2-b3 fn2-pool)
                   :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
@@ -876,22 +890,22 @@
        (rlen (nfix (- (fn2-pool-fill-value slot fn2-pool) roff)))
        ((unless (eq wc :ok)) (mv :size 0 0 fn2-fields fn2-digests fn2-b3 fn2-pool))
        ((mv qc qoff qlen fn2-fields fn2-pool)
-        (fn2-cns-put-result base verb class evidence cid epoch version cpos pfront count more ioff ilen inext principal history incarnation
+        (fn2-cns-put-result base verb class evidence numbers-len cid epoch version cpos pfront count more ioff ilen inext principal history incarnation
                             slot gen okind oslot ogen fn2-fields fn2-pool))
        ((unless (eq qc :ok)) (mv qc 0 0 fn2-fields fn2-digests fn2-b3 fn2-pool))
        ((mv code k total fn2-fields fn2-digests fn2-b3 fn2-pool)
         (fn2-fnct-put-k28 base row class roff rlen qoff qlen slot gen okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool)))
     (mv code (nfix k) (nfix total) fn2-fields fn2-digests fn2-b3 fn2-pool)))
 (fn2-pool-block-shape fn2-cns-reply-pool-shape
-  (fn2-cns-reply-pool base row verb outcome reason evidence cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool)
+  (fn2-cns-reply-pool base row verb outcome reason evidence numbers-len cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool)
   (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests) (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3) (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
   ((fn2-fields 3) (fn2-digests 4) (fn2-b3 5) (fn2-pool 6))
   (("Goal" :in-theory (e/d (fn2-cns-reply-pool) (fn2-fieldsp fn2-fields-wfp fn2-digestsp fn2-digests-wfp fn2-b3p fn2-b3-wfp fn2-poolp fn2-pool-wfp fn2-digests-rows fn2-b3-rows fn2-fields-rows fn2-pool-rows)))))
 (defthm fn2-cns-reply-pool-natp
-  (and (natp (mv-nth 1 (fn2-cns-reply-pool base row verb outcome reason evidence cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool)))
-       (natp (mv-nth 2 (fn2-cns-reply-pool base row verb outcome reason evidence cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool))))
-  :rule-classes ((:type-prescription :corollary (natp (mv-nth 1 (fn2-cns-reply-pool base row verb outcome reason evidence cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool))))
-                 (:type-prescription :corollary (natp (mv-nth 2 (fn2-cns-reply-pool base row verb outcome reason evidence cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool)))))
+  (and (natp (mv-nth 1 (fn2-cns-reply-pool base row verb outcome reason evidence numbers-len cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool)))
+       (natp (mv-nth 2 (fn2-cns-reply-pool base row verb outcome reason evidence numbers-len cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool))))
+  :rule-classes ((:type-prescription :corollary (natp (mv-nth 1 (fn2-cns-reply-pool base row verb outcome reason evidence numbers-len cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool))))
+                 (:type-prescription :corollary (natp (mv-nth 2 (fn2-cns-reply-pool base row verb outcome reason evidence numbers-len cid epoch version cpos pfront count more ioff ilen inext principal history incarnation slot gen okind oslot ogen fn2-fields fn2-digests fn2-b3 fn2-pool)))))
   :hints (("Goal" :in-theory (enable fn2-cns-reply-pool))))
 (in-theory (disable fn2-cns-reply-pool))
 
@@ -1866,15 +1880,16 @@
           ;; A supplied operation is the principal's own record. Look before
           ;; posting availability, upload allocation and every destination grant.
           ((and (not (equal row-op 0)) (equal row-outcome-checked 0))
-           (:do (rc event result midlen)
+           (:do (rc event result midlen numbers-len)
                 (fn2-cns-read-append-outcome id row-generation row-request row-address-principal row-op 3072)
             :accept ()
             :case (((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
                    ((:absent) (:set (outcome-checked 1)) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
                    ((:found)
                     (:if (and (posp event) (unsigned-byte-p 60 event) (posp midlen) (unsigned-byte-p 8 midlen)
+                              (unsigned-byte-p 32 numbers-len)
                               (or (equal result *fn2-txn-outcome-accepted*) (equal result *fn2-txn-outcome-conflict*)))
-                         ((:set (name-len midlen) (cpos event)
+                         ((:set (name-len midlen) (append-numbers-len numbers-len) (cpos event)
                                 (posted-word (if (equal result *fn2-txn-outcome-accepted*)
                                                  *fn2-upload-word-accepted* *fn2-upload-word-conflict*)))
                           (:goto replay-input))
@@ -3046,18 +3061,33 @@ t) ready)
      ;; A waiting CTL has finished receiving the request. Reuse its entire
      ;; range for an accepted APPEND, including when the input filled it.
      ;; Hold the source in CNS's separate range until the frame is sealed.
-     (defun fn2-cns-stage-append-result (ctl ctl-gen tx-slot tx-gen cns cgen ns ngen mlen fn2-core)
+     (defun fn2-cns-stage-append-result (base ctl ctl-gen tx-slot tx-gen cns cgen ns ngen mlen nlen event accepted fn2-core)
        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
                        :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
-       (if (not (and (posp mlen) (<= mlen *fn2-format-message-id-max*)))
-           (mv :fault fn2-core)
-         (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (code fn2-pool)
+       (b* (((unless (and (posp mlen) (<= mlen *fn2-format-message-id-max*)
+                          (if accepted (and (posp nlen) (<= nlen *fn2-overview-octets-max*)
+                                            (posp event) (unsigned-byte-p 60 event))
+                            (equal nlen 0))))
+             (mv :fault fn2-core))
+            ((mv lineage domain incarnation) (fn2-core-origin-values fn2-core)))
+         (stobj-let ((fn2-pool (fn2-core-pool fn2-core)) (fn2-fields (fn2-core-fields fn2-core)))
+           (code fn2-pool fn2-fields)
            (b* (((mv code fn2-pool) (fn2-pool-reset tx-slot tx-gen *fn2-ctl-kind* ctl ctl-gen fn2-pool))
-                ((unless (eq code :ok)) (mv :fault fn2-pool)))
-             (fn2-rd-copy mlen ns ngen 0 *fn2-cns-kind* cns cgen
-                          tx-slot tx-gen 0 *fn2-ctl-kind* ctl ctl-gen fn2-pool))
+                ((unless (eq code :ok)) (mv :fault fn2-pool fn2-fields))
+                ((mv code fn2-pool)
+                 (fn2-rd-copy (+ mlen nlen) ns ngen 0 *fn2-cns-kind* cns cgen
+                              tx-slot tx-gen 0 *fn2-ctl-kind* ctl ctl-gen fn2-pool))
+                ((unless (and (eq code :ok) accepted)) (mv code fn2-pool fn2-fields))
+                ((unless (fn2-origin-tuplep lineage domain incarnation)) (mv :fault fn2-pool fn2-fields))
+                ((mv code off len fn2-fields fn2-pool)
+                 (fn2-cns-put-append-receipt base lineage domain incarnation event
+                                             tx-slot tx-gen *fn2-ctl-kind* ctl ctl-gen fn2-fields fn2-pool)))
+             (mv (if (and (eq code :ok) (equal off (+ mlen nlen))
+                          (equal len *fn2-fnct-append-receipt-octets*)) :ok :fault)
+                 fn2-pool fn2-fields))
            (mv code fn2-core))))
-     (fn2-core-preserves fn2-cns-stage-append-result (ctl ctl-gen tx-slot tx-gen cns cgen ns ngen mlen fn2-core)
+     (fn2-core-preserves fn2-cns-stage-append-result
+       (base ctl ctl-gen tx-slot tx-gen cns cgen ns ngen mlen nlen event accepted fn2-core)
        :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
      (in-theory (disable fn2-cns-stage-append-result))
      (defun fn2-cns-post-reply (ctl ctl-gen request verb outcome reason consumer epoch version cpos pfront count more
@@ -3095,8 +3125,11 @@ t) ready)
                           (not (if (equal evidence *fn2-fnct-evidence-committed*) (posp cpos)
                                  (and (not (equal evidence *fn2-fnct-evidence-none*)) (equal cpos 0))))))
                (mv :fault fn2-core))
+              (numbers-len (if (and appendp (not conflictp)) (fn2-cns-row-append-numbers-len cns fn2-core) 0))
               ((mv ac fn2-core)
-               (if appendp (fn2-cns-stage-append-result ctl ctl-gen tx-slot tx-gen cns cgen ns ngen mlen fn2-core)
+               (if appendp
+                   (fn2-cns-stage-append-result (* 128 row) ctl ctl-gen tx-slot tx-gen cns cgen ns ngen
+                                               mlen numbers-len cpos (not conflictp) fn2-core)
                  (mv :ok fn2-core)))
               ((unless (eq ac :ok)) (mv :fault fn2-core))
               (cursor-principal (fn2-ctl-row-principal ctl fn2-core))
@@ -3105,7 +3138,7 @@ t) ready)
                (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-digests (fn2-core-digests fn2-core))
                            (fn2-b3 (fn2-core-b3 fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
                  (code k total fn2-fields fn2-digests fn2-b3 fn2-pool)
-                 (fn2-cns-reply-pool (* 128 row) row verb outcome reason evidence consumer epoch version cpos pfront count more
+                 (fn2-cns-reply-pool (* 128 row) row verb outcome reason evidence numbers-len consumer epoch version cpos pfront count more
                                      (if appendp 0 ioff) (if appendp mlen ilen)
                                      inext cursor-principal history incarnation tx-slot tx-gen *fn2-ctl-kind* ctl ctl-gen
                                      fn2-fields fn2-digests fn2-b3 fn2-pool)

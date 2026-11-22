@@ -1,7 +1,7 @@
 ; Reopen the encoded schema-9 entries for a caller-supplied operation and
 ; an assigned event with the same number. Their generated key order must
 ; distinguish them even when principal and numerical operation coincide.
-; The stored verb and MID survive encode/decode without changing that key.
+; The stored verb, MID and group numbers survive encode/decode without changing that key.
 (in-package "ACL2")
 (include-book "../books/ordered")
 (include-book "../books/pool-block")
@@ -35,6 +35,7 @@
        (digest "0123456789abcdef0123456789abcdef")
        (conflict-digest "fedcba9876543210fedcba9876543210")
        (message-id "<a@b>")
+       (numbers " local.test:2 local.other:1")
        (fn2-fields (fn2-fields-init (* 5 stride) fn2-fields))
        (fn2-pool (fn2-pool-init '((2 . 512)) 1 100 fn2-pool))
        ((mv a ds dg fn2-pool) (fn2-pool-reserve 0 1 0 1 fn2-pool))
@@ -44,6 +45,8 @@
        ((mv cm fn2-pool) (fn2-pool-append-text 0 message-id ds dg 1 0 1 fn2-pool))
        (conflict-off (fn2-pool-fill-value ds fn2-pool))
        ((mv cd fn2-pool) (fn2-pool-append-text 0 conflict-digest ds dg 1 0 1 fn2-pool))
+       (numbers-off (fn2-pool-fill-value ds fn2-pool))
+       ((mv cn fn2-pool) (fn2-pool-append-text 0 numbers ds dg 1 0 1 fn2-pool))
        (fn2-fields (fn2-fields-set-value *fn2-outcome-entry-field-principal* 4294967297 fn2-fields))
        (fn2-fields (fn2-fields-set-value *fn2-outcome-entry-field-operation* 41 fn2-fields))
        (fn2-fields (fn2-fields-set-value *fn2-outcome-entry-field-id-source* *fn2-outcome-id-source-assigned* fn2-fields))
@@ -52,6 +55,7 @@
        (fn2-fields (fn2-fields-set-value *fn2-outcome-entry-field-event* 41 fn2-fields))
        (fn2-fields (fn2-fields-set-value *fn2-outcome-entry-field-verb* *fn2-outcome-verb-append* fn2-fields))
        (fn2-fields (fn2-layout-store *fn2-outcome-entry-field-mid* 0 ds dg 32 5 0 fn2-fields))
+       (fn2-fields (fn2-layout-store *fn2-outcome-entry-field-numbers* 0 ds dg numbers-off (length numbers) 0 fn2-fields))
        ((mv e0 n0 fn2-pool) (fn2-outcome-entry-encode 0 ws wg 0 1 0 1 fn2-fields fn2-pool))
        (fn2-fields (fn2-fields-set-value *fn2-outcome-entry-field-id-source* *fn2-outcome-id-source-supplied* fn2-fields))
        (fn2-fields (fn2-fields-set-value *fn2-outcome-entry-field-event* 42 fn2-fields))
@@ -59,6 +63,7 @@
        (fn2-fields (fn2-fields-set-value *fn2-outcome-entry-field-verb* *fn2-outcome-verb-grant-set* fn2-fields))
        (fn2-fields (fn2-fields-set-value *fn2-outcome-entry-field-event* 43 fn2-fields))
        (fn2-fields (fn2-layout-store *fn2-outcome-entry-field-mid* 0 ds dg 0 0 0 fn2-fields))
+       (fn2-fields (fn2-layout-store *fn2-outcome-entry-field-numbers* 0 ds dg 0 0 0 fn2-fields))
        ((mv e2 n2 fn2-pool) (fn2-outcome-entry-encode 0 ws wg n1 1 0 1 fn2-fields fn2-pool))
        (fn2-fields (fn2-fields-set-value *fn2-outcome-entry-field-operation* 44 fn2-fields))
        (fn2-fields (fn2-layout-store *fn2-outcome-entry-field-request* 1 ds dg conflict-off 32 0 fn2-fields))
@@ -73,7 +78,7 @@
        ((mv d3 p3 fn2-fields) (fn2-outcome-entry-decode conflict ws wg n2 n3 1 0 1 fn2-fields fn2-pool))
        ((mv c01 order01) (fn2-outcome-compare assigned accepted 1 0 1 1 0 1 fn2-fields fn2-pool))
        ((mv c11 order11) (fn2-outcome-compare grant-set accepted 1 0 1 1 0 1 fn2-fields fn2-pool)))
-    (mv (and (not (remove-eq :ok (list a b c cm cd e0 e1 e2 e3 d0 d1 d2 d3 c01 c11)))
+    (mv (and (not (remove-eq :ok (list a b c cm cd cn e0 e1 e2 e3 d0 d1 d2 d3 c01 c11)))
              (< 0 n0) (< n0 n1) (< n1 n2) (< n2 n3)
              (equal p0 n0) (equal p1 n1) (equal p2 n2) (equal p3 n3)
              (equal (fn2-fields-value (+ assigned *fn2-outcome-entry-field-event*) fn2-fields) 41)
@@ -96,7 +101,13 @@
                                           ws wg fn2-fields fn2-pool)
              (fn2-outcome-fixture-field-p (+ conflict *fn2-outcome-entry-field-mid*) message-id
                                           ws wg fn2-fields fn2-pool)
+             (fn2-outcome-fixture-field-p (+ assigned *fn2-outcome-entry-field-numbers*) numbers
+                                          ws wg fn2-fields fn2-pool)
+             (fn2-outcome-fixture-field-p (+ accepted *fn2-outcome-entry-field-numbers*) numbers
+                                          ws wg fn2-fields fn2-pool)
              (equal (fn2-fields-ref-len (+ grant-set *fn2-outcome-entry-field-mid*) fn2-fields) 0)
+             (equal (fn2-fields-ref-len (+ grant-set *fn2-outcome-entry-field-numbers*) fn2-fields) 0)
+             (equal (fn2-fields-ref-len (+ conflict *fn2-outcome-entry-field-numbers*) fn2-fields) 0)
              (eq order01 :lt) (eq order11 :eq))
         fn2-fields fn2-pool)))
 

@@ -171,8 +171,9 @@ accepted in both cases (K6).
 **Served (L, fkind 7):** the frame is cmd, 7, N (0-8), the operation identity in N octets big-endian,
 then the article's CR LF lines (not dot-stuffed) to the frame's end. fn2-cns `:append` takes an fn2-upload
 row over those octets (fn2-upload-feed-run, raw), the upload and fn2-txn run exactly as for a POST, and
-the transaction posts its word and commit position back to the request (fn2-cns-post-outcome); the
-six-octet reply is (outcome, the D word as reason, position, 0, 0, 0). For a supplied nonzero operation ID, an article without a Message-ID gets
+the transaction posts its word and commit position back to the request (fn2-cns-post-outcome). The
+kind 28 success result carries the assigned Message-ID, position, group number pairs and local receipt.
+For a supplied nonzero operation ID, an article without a Message-ID gets
 `<op-PRINCIPAL-OP@node>`. PRINCIPAL is the durable control connection identity captured before storage.
 The transaction records the source digest, outcome code, event, verb and original Message-ID under that
 principal and operation. Server-assigned operations occupy their own key namespace. The per-group
@@ -189,7 +190,13 @@ The candidate requires composed certification and the native `--durable-retry` p
 A conflict uses the ordinary APPEND result inside a refused kind 28 frame. Its reason is `conflict`.
 The Message-ID identifies the disputed article. A committed evidence result carries its event, while
 uncertain or refused evidence carries position zero. A lost reply leaves the evidence outcome unknown.
-Retry expiration and populated group numbers and receipt remain open.
+The outcome row retains the exact group-number octets from the published Xref field: one ASCII
+` GROUP:NUMBER` pair per assigned group in transaction order. A replay after the body has been
+reclaimed can still use the outcome row. The 33-octet receipt identifies the local acceptance in the
+durable origin: version octet 1, then lineage, commit domain, incarnation and committed event as four
+unsigned 64-bit big-endian integers. It references the settled local record and carries no checkpoint
+inclusion proof. Live and replay replies use the same receipt encoder. Conflict results keep both fields
+empty. Retry expiration remains open.
 An append is POST: D's upload and D5's transaction, the same path, the same refusal words, the same group
 numbers. So an NNTP reader sees the appended article by GROUP and ARTICLE with the exact octets: no second
 write path exists to diverge.

@@ -105,7 +105,7 @@
           (ecommit (:enum fn2-txn-ecommit (:none :committed :uncertain :refused)))
           (batch :u60) (bevent :u60)
           (word :u8) (outcome-checked :bool) (offered :bool) (prepared :bool) (filed :bool) (counted :u60) (lines :u32)
-          (gcur :u32) (gskip :bool) (ngroups :u8)
+          (gcur :u32) (gskip :bool) (ngroups :u8) (numbers-off :u32) (numbers-len :u32)
           ;; the append check in progress for the group at GCUR (its group
           ;; XGROUP; XSTEP 0 the name lookup, K > 0 fn2-authority-allows'
           ;; step K - 1 with the head and grant it carries)
@@ -126,7 +126,7 @@
  :taken (:phase :admit :rows :transaction-row :ranges ()
          :copy (upload upload-gen conn conn-gen request rule principal-slot)
          :clear (tmode ecommit batch bevent word outcome-checked offered prepared filed counted lines gcur gskip ngroups
-                xstep xgroup xhead xgrant stopped))
+                numbers-off numbers-len xstep xgroup xhead xgrant stopped))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (upload *fn2-none*) (conn *fn2-none*) (account-ref *fn2-none*) (next-free fn2-machine-initial-next-free))
  :arms ((:free) (:admit) (:reserve) (:lookup) (:prepare) (:ready) (:batched)

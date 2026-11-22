@@ -64,6 +64,7 @@
 ;; departure recorded in the layer doc, 14.4).
 (defconst *fn2-txn-admit-bytes* 4096)
 (defconst *fn2-txn-xref-bytes* 2048)
+(defconst *fn2-txn-result-copy-bytes* (+ 512 (* 2 *fn2-overview-octets-max*)))
 (defconst *fn2-txn-ready-bytes* (+ 4096 8192 8192 *fn2-txn-xref-bytes* *fn2-txn-admit-bytes*))
 (assert-event (equal *fn2-txn-ready-bytes* 26624))  ; the kind's :budget (txn-kind.lisp)
 
@@ -238,7 +239,7 @@
 (defcost fn2-claim-begin-core :child fn2-claim-begin :answers (:ok :bounds :state) :tables (fn2-core-claims)
   :doc "Start a claim on a Message-ID's exact octets.")
 (defcost fn2-claim-state-core :child fn2-claim-state :effects :per-use :doc "Read a transaction's claim state.")
-(defcost fn2-txn-post-article-result :answers (:ok :dropped :fault) :faults (:fault) :bytes 512
+(defcost fn2-txn-post-article-result :answers (:ok :dropped :fault) :faults (:fault) :bytes *fn2-txn-result-copy-bytes*
   :tables (fn2-core-claims fn2-core-pool fn2-core-machines fn2-conn-table fn2-cns-table)
   :doc "Post the held Message-ID and the article or evidence outcome before the claim can drain.")
 (defcost fn2-claim-walk-core :child fn2-claim-walk :answers (:claimed :wait :more :bounds :state :fault) :faults (:bounds :state :fault) :bytes 4096
@@ -383,7 +384,7 @@
         ((:if (or (equal row-word *fn2-upload-word-accepted*)
                   (equal row-word *fn2-upload-word-conflict*))
           ((:do (pcode) (fn2-txn-post-article-result rslot row-upload row-upload-gen row-conn row-conn-gen row-request
-                          row-word
+                          row-word row-numbers-off row-numbers-len
                           (if (or (equal row-word *fn2-upload-word-accepted*)
                                   (equal row-ecommit *fn2-txn-ecommit-committed*)) row-bevent 0)
                           (if (or (equal row-word *fn2-upload-word-accepted*)
@@ -394,7 +395,7 @@
             :accept (:ok :dropped) :why "a moved owner drops its completion")))
          (:do (rcode) (fn2-successor-release rslot)
           :accept (:ok :state) :why "a committed or bound transaction's successor is already closed")
-         (:next :releasing) (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))
+         (:next :releasing) (:charge :bytes *fn2-txn-result-copy-bytes* :steps *fn2-work-transition* :runnable t))
         ((:do (rcode) (fn2-successor-release rslot)
           :accept (:ok :state) :why "a committed or bound transaction's successor is already closed")
          (:next :releasing) (:charge :steps *fn2-work-transition* :runnable t)))))
@@ -571,10 +572,12 @@
                     ((:let c0 (:read upload c0-slot)) (:let scanned (:read upload scan-off))
                      (:if (<= (+ scanned *fn2-upload-digest-octets*) (fn2-upload-chunk-cap c0)) ()
                           ((:goto ready-capacity)))
-                     (:do (xcode) (fn2-txn-xref sslot row-ngroups c0 (:read upload c0-gen)
+                     (:do (xcode noff nlen) (fn2-txn-xref sslot row-ngroups c0 (:read upload c0-gen)
                                                (:read upload c1-slot) (:read upload c1-gen)
                                                (+ scanned *fn2-upload-digest-octets*) :owner upload))
-                     (:if (eq xcode :ok) ((:goto submit)) ((:goto ready-capacity))))))
+                     (:if (and (eq xcode :ok) (unsigned-byte-p 32 noff) (unsigned-byte-p 32 nlen))
+                          ((:set (numbers-off noff) (numbers-len nlen)) (:goto submit))
+                          ((:goto ready-capacity))))))
                  ((:full) (:charge :bytes *fn2-txn-ready-bytes* :steps *fn2-work-transition* :runnable t))
                  ;; A stale version or changed grant dependency requires a
                  ;; fresh outcome lookup and decision before anything is submitted.
@@ -649,11 +652,11 @@
    (:if (equal row-stopped 0)
         ((:if (equal row-ecommit *fn2-txn-ecommit-uncertain*)
               ((:do (pcode) (fn2-txn-post-article-result row-slot row-upload row-upload-gen
-                               row-conn row-conn-gen row-request *fn2-upload-word-conflict* 0 *fn2-cns-posted-uncertain*)
+                               row-conn row-conn-gen row-request *fn2-upload-word-conflict* 0 0 0 *fn2-cns-posted-uncertain*)
                 :accept (:ok :dropped) :why "the ambiguous evidence remains pending even if the owner disconnected"))
               ((:do (pcode) (fn2-upload-post-owner row-conn row-conn-gen row-request *fn2-upload-word-uncertain* 0)
                 :accept (:ok :dropped) :why "the ambiguous article remains pending even if the owner disconnected")))
-         (:set (stopped 1)) (:charge :bytes 512 :steps *fn2-work-transition*))
+         (:set (stopped 1)) (:charge :bytes *fn2-txn-result-copy-bytes* :steps *fn2-work-transition*))
         ((:charge :steps *fn2-work-empty*))))
   ;; release the claim; its FIFO's head takes it and is woken (the run's one wake)
   (:releasing :on-refusal ((:stop :machine-phase))
@@ -721,7 +724,7 @@
 ;; Copy before either the claim or the upload can drain. The destination
 ;; belongs to the CNS request and remains reserved until its reply is posted.
 ;; A fault after commit stops serving without sending a refusal or retrying.
-(defun fn2-txn-post-article-result (claim upload ugen owner ogen request word position posted fn2-core)
+(defun fn2-txn-post-article-result (claim upload ugen owner ogen request word numbers-off numbers-len position posted fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
                   :guard-hints (("Goal" :in-theory (enable fn2-core-wfp fn2-claim-rowp)))))
   (cond
@@ -755,9 +758,28 @@
                         ns ng 0 *fn2-cns-kind* owner ogen fn2-pool)
            (mv code fn2-core)))
          ((unless (eq code :ok)) (mv :fault fn2-core))
+         (accepted (equal word *fn2-upload-word-accepted*))
+         ((when (and accepted
+                     (not (and (eq (fn2-upload-snapshot-read-code upload fn2-core) :ok)
+                               (equal (fn2-machine-generation upload fn2-core) ugen)
+                               (natp numbers-off)
+                               (posp numbers-len) (unsigned-byte-p 32 numbers-len)
+                               (<= numbers-len *fn2-overview-octets-max*)))))
+          (mv :fault fn2-core))
+         ((mv copy fn2-core)
+          (if accepted
+              (let ((slot (fn2-upload-row-c0-slot upload fn2-core))
+                    (gen (fn2-upload-row-c0-gen upload fn2-core)))
+                (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (copy fn2-pool)
+                  (fn2-rd-copy numbers-len slot gen numbers-off *fn2-upload-kind* upload ugen
+                               ns ng len *fn2-cns-kind* owner ogen fn2-pool)
+                  (mv copy fn2-core)))
+            (mv :ok fn2-core)))
+         ((unless (eq copy :ok)) (mv :fault fn2-core))
+         (fn2-core (fn2-machine-write-append-numbers-len owner (if accepted numbers-len 0) fn2-core))
          (fn2-core (fn2-machine-write-name-len owner len fn2-core)))
      (fn2-cns-post-outcome owner ogen request word position posted fn2-core)))))
-(fn2-core-preserves fn2-txn-post-article-result (claim upload ugen owner ogen request word position posted fn2-core)
+(fn2-core-preserves fn2-txn-post-article-result (claim upload ugen owner ogen request word numbers-off numbers-len position posted fn2-core)
   :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp fn2-claim-rowp))))
 (in-theory (disable fn2-txn-post-article-result))
 
@@ -850,7 +872,7 @@
        ((unless (eq dc :ok)) (mv :state fn2-core))
        (op (fn2-upload-row-op upload fn2-core))
        (principal (fn2-upload-row-request-principal upload fn2-core))
-       ((mv code event outcome midlen fn2-core)
+       ((mv code event outcome midlen numbers-len fn2-core)
         (fn2-cns-read-append-outcome owner ogen request principal op 4096 fn2-core))
        ((unless (eq code :found)) (mv code fn2-core))
        ((unless (and (unsigned-byte-p 60 event) (posp event)
@@ -874,6 +896,7 @@
                  *fn2-upload-word-accepted*
                *fn2-upload-word-conflict*))
        (fn2-core (fn2-machine-write-name-len owner midlen fn2-core))
+       (fn2-core (fn2-machine-write-append-numbers-len owner numbers-len fn2-core))
        ((mv posted fn2-core) (fn2-cns-post-outcome owner ogen request word event *fn2-cns-posted-accepted* fn2-core)))
     (mv (if (eq posted :ok) :found :dropped) fn2-core)))
 (fn2-core-preserves fn2-txn-retry-append (tx upload ugen owner ogen request fn2-core)
@@ -986,20 +1009,19 @@
           ;; their source manifest (article-manifest.lisp).
           (location-kind (if (fn2-am-manifestp bytes) *fn2-txn-location-source-manifest* *fn2-txn-location-raw-source*))
           :owner (okind oslot ogen) fn2-core))
-       ((unless (eq c :ok)) (mv c fn2-core)))
-    ;; the operation is the append's identity (e-surface.md 3.3) when it
-    ;; names one, else the member's own event
-    (if (equal op 0)
+       ((unless (eq c :ok)) (mv c fn2-core))
+       ;; The operation is the supplied APPEND identity or the member's own
+       ;; event. The group numbers are bound after Stage assigns them.
+       ((mv c fn2-core)
         (fn2-outcome-put tx *fn2-txn-slot-outcome*
-          (principal principal) (operation :event 0) (id-source *fn2-outcome-id-source-assigned*) (request dslot dgen doff)
-          (outcome *fn2-txn-outcome-accepted*) (event :event 0)
-          (verb *fn2-outcome-verb-append*) (mid mslot mgen moff mlen)
-          :owner (okind oslot ogen) fn2-core)
-      (fn2-outcome-put tx *fn2-txn-slot-outcome*
-        (principal principal) (operation op) (id-source *fn2-outcome-id-source-supplied*) (request dslot dgen doff)
-        (outcome *fn2-txn-outcome-accepted*) (event :event 0)
-        (verb *fn2-outcome-verb-append*) (mid mslot mgen moff mlen)
-        :owner (okind oslot ogen) fn2-core))))
+          (principal principal) (operation (if (equal op 0) :event :value) op)
+          (id-source (if (equal op 0) *fn2-outcome-id-source-assigned* *fn2-outcome-id-source-supplied*))
+          (request dslot dgen doff) (outcome *fn2-txn-outcome-accepted*) (event :event 0)
+          (verb *fn2-outcome-verb-append*) (mid mslot mgen moff mlen) (numbers mslot mgen 0 0)
+          :owner (okind oslot ogen) fn2-core))
+       ((unless (eq c :ok)) (mv c fn2-core)))
+    (fn2-successor-arg-octets-late tx *fn2-txn-slot-outcome* *fn2-outcome-entry-field-numbers*
+                                  *fn2-overview-octets-max* fn2-core)))
 (fn2-core-preserves fn2-txn-put-article (tx mslot mgen moff mlen dslot dgen doff sslot sgen soff hoff hlen bytes lines lunit lepoch lalloc principal op okind oslot ogen fn2-core)
   :position 1 :rows nil)
 (in-theory (disable fn2-txn-put-identity fn2-txn-put-article))
@@ -1169,17 +1191,17 @@
 ;; refuses it as unaffordable).
 (defun fn2-txn-xref (tx k c0 g0 c1 g1 ov-off okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp k) (natp ov-off))))
-  (b* (((unless (<= k *fn2-txn-groups-max*)) (mv :bounds fn2-core))
+  (b* (((unless (<= k *fn2-txn-groups-max*)) (mv :bounds 0 0 fn2-core))
        ((mv before path-length)
         (stobj-let ((fn2-pool (fn2-core-pool fn2-core)) (fn2-control (fn2-core-control fn2-core)))
           (before path-length)
           (mv (fn2-gram-fill c0 fn2-pool) (fn2-control-path-identity-length fn2-control))
           (mv before path-length)))
-       ((unless (<= ov-off before)) (mv :bounds fn2-core))
+       ((unless (<= ov-off before)) (mv :bounds 0 0 fn2-core))
        ((mv size-code expected)
         (fn2-txn-xref-size k 0 tx 0 (+ (- before ov-off) 1 (length "Xref: ") path-length)
                            c1 g1 okind oslot ogen fn2-core))
-       ((unless (eq size-code :ok)) (mv :bounds fn2-core))
+       ((unless (eq size-code :ok)) (mv :bounds 0 0 fn2-core))
        ((mv code fn2-core)
         (stobj-let ((fn2-pool (fn2-core-pool fn2-core)) (fn2-control (fn2-core-control fn2-core)))
           (code fn2-pool)
@@ -1188,14 +1210,23 @@
            (fn2-gram-put-template 0 "Xref: " 0 0 0 0 c0 g0 0 0 c0 g0 okind oslot ogen fn2-pool)
            (fn2-upload-put-path 0 c0 g0 okind oslot ogen fn2-control fn2-pool))
           (mv code fn2-core)))
-       ((unless (eq code :ok)) (mv code fn2-core))
+       ((unless (eq code :ok)) (mv code 0 0 fn2-core))
+       (numbers-off (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (f) (fn2-gram-fill c0 fn2-pool) f))
        ((mv code fn2-core) (fn2-txn-xref-pairs k 0 tx 0 c0 g0 c1 g1 okind oslot ogen fn2-core))
-       ((unless (eq code :ok)) (mv code fn2-core))
+       ((unless (eq code :ok)) (mv code 0 0 fn2-core))
        (ov-end (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (f) (fn2-gram-fill c0 fn2-pool) f))
        ((unless (and (<= ov-off ov-end) (equal (- ov-end ov-off) expected)
-                     (<= expected *fn2-overview-octets-max*))) (mv :bounds fn2-core)))
-    (fn2-txn-fill-ov-lines k 0 tx c0 g0 ov-off (- ov-end ov-off) okind oslot ogen fn2-core)))
-(fn2-core-preserves fn2-txn-xref (tx k c0 g0 c1 g1 ov-off okind oslot ogen fn2-core) :position 1 :rows nil
+                     (<= expected *fn2-overview-octets-max*)
+                     (<= ov-off numbers-off) (< numbers-off ov-end))) (mv :bounds 0 0 fn2-core))
+       (numbers-len (- ov-end numbers-off))
+       ((mv line-code fn2-core)
+        (fn2-txn-fill-ov-lines k 0 tx c0 g0 ov-off (- ov-end ov-off) okind oslot ogen fn2-core))
+       ((unless (eq line-code :ok)) (mv line-code 0 0 fn2-core))
+       ((mv outcome-code fn2-core)
+        (fn2-successor-fill-octets tx *fn2-txn-slot-outcome* *fn2-outcome-entry-field-numbers*
+                                  c0 g0 numbers-off numbers-len okind oslot ogen fn2-core)))
+    (mv outcome-code numbers-off numbers-len fn2-core)))
+(fn2-core-preserves fn2-txn-xref (tx k c0 g0 c1 g1 ov-off okind oslot ogen fn2-core) :position 3 :rows nil
   :hints (("Goal" :in-theory (disable nfix))))
 (in-theory (disable fn2-txn-xref))
 
@@ -1238,7 +1269,7 @@
     (fn2-outcome-put tx *fn2-txn-slot-outcome*
       (principal principal) (operation op) (id-source *fn2-outcome-id-source-supplied*) (request ds dg doff)
       (outcome *fn2-txn-outcome-conflict*) (event :event 0)
-      (verb *fn2-outcome-verb-append*) (mid ms mg mo ml)
+      (verb *fn2-outcome-verb-append*) (mid ms mg mo ml) (numbers ms mg 0 0)
       :owner (okind oslot ogen) fn2-core)))
 (fn2-core-preserves fn2-txn-put-evidence-for (tx ms mg mo ml ds dg doff h principal op okind oslot ogen fn2-core)
   :position 1 :rows nil)
