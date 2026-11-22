@@ -147,11 +147,6 @@ def main():
             assert accepted["message_id"] == mid and accepted["position"] > 0, accepted
             accepted_articles.append(accepted)
         assert len({(a["domain"], a["position"]) for a in accepted_articles}) == len(submissions)
-        # A new registration commits consumer state without adding an addr
-        # entry. STATUS for inbox1 still ends at the latest APPEND receipt.
-        later = run_fn(directory, "register-later", "stream", "register", "--as", principal,
-                       "--consumer", "inbox2", "--start", "history", "--control-sock", control)
-        assert later["outcome"] == "accepted" and later["position"] == 0, later
         status_before = checked_status(
             run_fn(directory, "status-before", "stream", "status", "--as", principal,
                    "--consumer", "inbox1", "--control-sock", control),
@@ -192,6 +187,16 @@ def main():
             lines = article.removesuffix(b"\r\n").split(b"\r\n")
             articles.append((mid.encode("ascii"), lines[:lines.index(b"")], lines))
         (directory / "nntp-after.wire").write_bytes(restart.read_back(port, articles))
+        # A fresh registration moves the durable tail without adding an addr
+        # entry. Keep this write after the restart readbacks so it cannot
+        # mask a missing APPEND fence at the first process-death cut.
+        later = run_fn(directory, "register-later", "stream", "register", "--as", principal,
+                       "--consumer", "inbox2", "--start", "history", "--control-sock", control)
+        assert later["outcome"] == "accepted" and later["position"] == 0, later
+        checked_status(
+            run_fn(directory, "status-after-later", "stream", "status", "--as", principal,
+                   "--consumer", "inbox1", "--control-sock", control),
+            accepted_articles, registered["position"], status_before)
         node.kill()
         receipts.append(dict(phase="fetched", node_pid=node.node_pid, exit=node.proc.returncode,
                              cut="SIGKILL after exact FETCH, wrong-identity refusal and NNTP readback"))
