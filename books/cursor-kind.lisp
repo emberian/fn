@@ -46,6 +46,13 @@
           (view-principal :u60) (view-stream :u60) (view-anchor :u60) (view-right :u8)
           (view-step :u8) (view-head :u60) (view-grant :u60) (view-version :u60) (view-publish :bool)
           (view-end (:enum fn2-xfnc-end (:none :empty :complete :access :dependency :uncertain :invalid :absent)))
+          ;; An exact, generation-bound FNCT request and any CNS registration
+          ;; it is waiting on. The stream in a READ is checked against the
+          ;; published registration before the journal reader opens.
+          (peer-stage (:enum fn2-xfnc-request-stage (:decode :name-key :name :rights :record-key :record :waiting :confirm)))
+          (peer-name-off :u32) (peer-name-len :u8) (peer-stream :u60) (peer-consumer :u60)
+          (peer-epoch :u32) (peer-version :u60) (peer-view :u60) (peer-position :u60) (peer-head :u60)
+          (peer-items :u32) (peer-octets :u32) (peer-cns :link) (peer-cns-gen :u60) (peer-readback :bool)
           ;; block reads in flight (the terminal of each completion consumes one)
           (pending :u32)
           ;; the pool class a row parked for its lease waits on (:park :pool's field)
@@ -61,6 +68,7 @@
  :taken (:phase :select :rows :cursor-row :ranges ()
          :copy (conn conn-gen conn-kind mask rx-slot rx-gen line-s line-e tx-slot tx-gen group current pin posting)
          :clear (view-principal view-stream view-anchor view-right view-step view-head view-grant view-version view-publish view-end tag k0 a0 b0 k1 a1 b1 a2 b2 lat step lo hi next found count low high sel ncurrent spin update reply roff
+                 peer-stage peer-name-off peer-name-len peer-stream peer-consumer peer-epoch peer-version peer-view peer-position peer-head peer-items peer-octets peer-cns peer-cns-gen peer-readback
                  lpos seen have turn done cancel stopped lgroup klen
                  read-subject read-principal group-check check-group check-step check-head check-grant group-checked
                  art lunit lepoch lalloc alen apos plen loff ast lease oat mso mln said revent routcome rcount rready

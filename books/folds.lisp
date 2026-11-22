@@ -31,30 +31,36 @@
 ;; version 0. Registration from a tombstone advances that epoch.
 (defrunschema fn2-consumer-cursor :id 6
  :key ((principal (:id principal)) (consumer (:id consumer)))
- :value ((position (:id position)) (version (:id version)) (view (:id version)) (epoch :u32))
+ :value ((position (:id position)) (version (:id version)) (view (:id version)) (epoch :u32)
+         (peer-stream (:id stream)))
  :merge :latest
  :fold (:events
         ((:ack (principal consumer expected-epoch to)
-          :when (and (< 0 version) (and (= epoch expected-epoch) (< position to)))
+          :when (and (= peer-stream 0) (and (< 0 version) (and (= epoch expected-epoch) (< position to))))
           :unless-when :unchanged :set ((position to)))
          (:register (principal consumer expected-epoch next-epoch query start new-view)
-          :when (and (= version 0) (and (= epoch expected-epoch)
-                                       (and (= next-epoch (+ 1 epoch)) (< 0 query))))
+          :when (and (= peer-stream 0) (and (= version 0) (and (= epoch expected-epoch)
+                                       (and (= next-epoch (+ 1 epoch)) (< 0 query)))))
           :unless-when :unchanged
           :set ((epoch next-epoch) (version query) (position start) (view new-view)))
+         (:register-peer (principal consumer expected-epoch next-epoch new-stream new-view)
+          :when (and (= version 0) (and (= peer-stream 0) (and (= epoch expected-epoch)
+                                      (and (= next-epoch (+ 1 epoch)) (< 0 new-stream)))))
+          :unless-when :unchanged
+          :set ((epoch next-epoch) (version 1) (position 0) (view new-view) (peer-stream new-stream)))
          (:rebase (principal consumer expected-epoch expected-position next-epoch query start new-view)
-          :when (and (or (< 0 version) (= 0 epoch))
+          :when (and (= peer-stream 0) (and (or (< 0 version) (= 0 epoch))
                      (and (= epoch expected-epoch)
                           (and (= position expected-position)
-                               (and (= next-epoch (+ 1 epoch)) (< 0 query)))))
+                               (and (= next-epoch (+ 1 epoch)) (< 0 query))))))
           :unless-when :unchanged
           :set ((epoch next-epoch) (version query) (position start) (view new-view)))
          (:unregister (principal consumer expected-epoch)
-          :when (and (< 0 version) (= epoch expected-epoch))
+          :when (and (= peer-stream 0) (and (< 0 version) (= epoch expected-epoch)))
           :unless-when :unchanged
           :set ((version 0) (position 0) (view 0))))
         :init :empty :coverage :history-start
-        :observe (position version view epoch)))
+ :observe (position version view epoch peer-stream)))
 
 ; Principal accounts, the durable half: what each principal has been charged
 ; per dimension (D0's accounting holds the resident half: reservations in

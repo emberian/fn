@@ -120,38 +120,38 @@
 
 ;; Two principals share consumer 7. Epoch 1 ACKs never affect epoch 2.
 (fn2-ft-adequate fn2-consumer-cursor :ack 6 ((principal (:id principal)) (consumer (:id consumer)))
- (((2 7) 10 2 7 1) ((3 7) 4 2 8 2))
+ (((2 7) 10 2 7 1 0) ((3 7) 4 2 8 2 0))
  ((:ack 2 7 1 15) (:ack 3 7 2 7) (:ack 2 7 1 5) (:ack 3 7 1 15)) ((2 7) (3 7))
  (:ack 2 7 1 15))
 (fn2-ft-adequate fn2-consumer-cursor :rebase 6 ((principal (:id principal)) (consumer (:id consumer)))
- (((2 7) 10 2 7 1))
+ (((2 7) 10 2 7 1 0))
  ((:rebase 2 7 1 10 2 2 10 9) (:rebase 3 7 0 0 1 1 5 10)
   (:rebase 2 7 1 9 2 2 9 11) (:rebase 2 7 1 10 3 2 10 12))
  ((2 7) (3 7)) (:rebase 2 7 1 10 2 2 10 9))
 (fn2-ft-adequate fn2-consumer-cursor :register 6 ((principal (:id principal)) (consumer (:id consumer)))
- (((2 7) 0 0 0 2))
+ (((2 7) 0 0 0 2 0))
  ((:register 2 7 2 3 1 7 9) (:register 3 7 0 1 1 5 10) (:register 2 7 0 1 1 0 11))
  ((2 7) (3 7)) (:register 2 7 2 3 1 7 9))
 (fn2-ft-adequate fn2-consumer-cursor :unregister 6 ((principal (:id principal)) (consumer (:id consumer)))
- (((2 7) 10 2 7 2))
+ (((2 7) 10 2 7 2 0))
  ((:unregister 2 7 2) (:unregister 2 7 1) (:unregister 3 7 1))
  ((2 7) (3 7)) (:unregister 2 7 2))
 ;; A sealed tombstone still fences old ACK, REBASE and REGISTER events.
 (assert-event
  (let* ((key '((principal (:id principal)) (consumer (:id consumer))))
-        (rows '(((2 7) 0 0 0 2)))
+        (rows '(((2 7) 0 0 0 2 0)))
         (events '((:ack 2 7 2 1) (:rebase 2 7 2 0 3 1 0 11) (:register 2 7 0 1 1 0 12)
                   (:register 2 7 2 3 1 7 13) (:unregister 2 7 2))))
   (and (equal (fn2-fold-image 6 *fn2-consumer-cursor-entry* key rows events nil '((2 7)))
-              '((7 1 13 3)))
+              '((7 1 13 3 0)))
        (equal (fn2-fold-image 6 *fn2-consumer-cursor-entry* key rows events t '((2 7)))
-              '((7 1 13 3))))))
+              '((7 1 13 3 0))))))
 ;; A position-only projection cannot distinguish two epochs before an ACK.
 (fn2-ft-cut fn2-consumer-cursor 6 ((principal (:id principal)) (consumer (:id consumer)))
  ((:rebase 2 7 0 0 1 1 2 8) (:ack 2 7 1 3) (:rebase 2 7 1 2 2 1 2 9)
   (:rebase 3 7 0 0 1 1 4 10) (:rebase 2 7 1 3 2 1 3 12) (:ack 2 7 1 8))
  ((2 7) (3 7)) 2 nil
- (((2 7) 5 1 5 1)) (((2 7) 5 1 8 2)) (:ack 2 7 1 8) (2 7) car)
+ (((2 7) 5 1 5 1 0)) (((2 7) 5 1 8 2 0)) (:ack 2 7 1 8) (2 7) car)
 
 ;; Principal charges: principal 1 charged 10 in dimension 0.
 (fn2-ft-adequate fn2-principal-charges :charge 7 ((principal (:id principal)) (dimension :u8)) (((1 0) 10))
