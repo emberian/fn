@@ -7,6 +7,7 @@ and owner-local password provisioning. Uses an isolated image and fresh logins.
 import argparse
 from contextlib import contextmanager
 import importlib.util
+import mmap
 import os
 from pathlib import Path
 import secrets
@@ -43,14 +44,14 @@ def overview(peer, message_id, number):
 
 
 @contextmanager
-def logged_in(port, cert, principal, password):
+def login_attempt(port, cert, principal, password, expected=b"281"):
     peer = Peer(port)
     try:
         peer.sock.settimeout(30)
         peer.upgrade(cert, False)
         assert peer.command(b"AUTHINFO USER " + principal.encode("ascii")).startswith(b"381 ")
         answer = peer.command(b"AUTHINFO PASS " + password.encode("ascii"))
-        assert answer.startswith(b"281 "), ("AUTHINFO PASS", answer[:3])
+        assert answer.startswith(expected + b" "), ("AUTHINFO PASS", answer[:3])
         yield peer
     finally:
         peer.close()
@@ -86,6 +87,32 @@ def denied(peer):
             assert reply == b"430 no article with that message-id", (verb, message_id, reply)
 
 
+def refused_authinfo(port, cert):
+    peer = Peer(port)
+    try:
+        # These placeholders are not the protected fixture's credentials.
+        for command in (b"AUTHINFO USER fixture-reader", b"AUTHINFO PASS unused"):
+            assert peer.command(command).startswith(b"483 ")
+        peer.upgrade(cert, False)
+        assert peer.command(b"AUTHINFO PASS unused").startswith(b"482 ")
+        for _ in range(3):
+            assert peer.command(b"AUTHINFO USER fixture-reader").startswith(b"381 ")
+            assert peer.command(b"AUTHINFO PASS unused").startswith(b"481 ")
+        assert peer.line().startswith(b"400 ")
+    finally:
+        peer.close()
+
+
+def credential_bytes_absent(directory, image, credentials):
+    for target in (image, *directory.glob("*.log"), *directory.glob("*.stdout"),
+                   *directory.glob("*.stderr")):
+        if target.stat().st_size == 0:
+            continue
+        with target.open("rb") as handle, mmap.mmap(handle.fileno(), 0, access=mmap.ACCESS_READ) as data:
+            for password in credentials.values():
+                assert data.find(password.encode("ascii")) == -1, ("plaintext credential bytes", target.name)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--directory", type=Path, required=True)
@@ -102,10 +129,23 @@ def main():
     fixture.initialize(directory, image, startup_args=tuple(
         option for group in groups for option in ("--group", group)))
     control = Path(f"/tmp/fn2-nntp-read-{os.getpid()}-{time.time_ns()}.sock")
-    def start(label):
+    def start(label, **overrides):
+        env = fixture.environment()
+        env.pop("FN2_ENVELOPE_TRACE", None)
+        env.update(overrides)
         return fixture.restart.Node(directory, image, "serve", label, control_sock=control,
-                                    env=fixture.environment(), startup_args=(
+                                    env=env, startup_args=(
                                         "--tls-certificate", str(cert), "--tls-key", str(key)))
+
+    node = start("trace-refused", FN2_ENVELOPE_TRACE="16")
+    try:
+        reason = node.marker(b"REFUSED ")
+        assert b"envelope byte capture requires an authority-free profile" in reason, reason
+        result = node.proc.wait(timeout=30)
+        assert result != 0 and not control.exists(), result
+        assert b"LISTENING " not in (directory / "trace-refused.log").read_bytes()
+    finally:
+        node.close()
 
     def admin(label, *args):
         reply = fixture.run_fn(directory, label, *args, "--control-sock", control)
@@ -137,6 +177,8 @@ def main():
                  "--control-sock", str(control)],
                 cwd=fixture.ROOT, env=fixture.environment(), capture_output=True,
                 input=f"{password}\n{password}\n".encode("ascii"), timeout=90)
+            for output in (password_reply.stdout, password_reply.stderr):
+                assert password.encode("ascii") not in output, "credential in provisioning output"
             assert password_reply.returncode == 0, ("set-password", password_reply.returncode)
             credentials[principal] = password
         admin("secondary-only", "grant", "set", "fixture-reader", "read", VISIBLE.decode("ascii"))
@@ -148,9 +190,17 @@ def main():
     try:
         port = int(node.marker(b"LISTENING ").split()[1])
         node.marker(b"LISTENING-LOCAL ")
-        with logged_in(port, cert, "fixture-denied", credentials["fixture-denied"]) as peer:
+        refused_authinfo(port, cert)
+        # Change one byte of the recovered reader's password. The principal,
+        # TLS state, stored group grants and password length are identical.
+        issued = credentials["fixture-reader"]
+        wrong = ("0" if issued[0] != "0" else "1") + issued[1:]
+        with login_attempt(port, cert, "fixture-reader", wrong, expected=b"481") as peer:
+            reply = peer.command(b"HEAD " + CROSSPOST)
+            assert reply[:3] in (b"430", b"480"), reply[:3]
+        with login_attempt(port, cert, "fixture-denied", credentials["fixture-denied"]) as peer:
             denied(peer)
-        with logged_in(port, cert, "fixture-reader", credentials["fixture-reader"]) as peer:
+        with login_attempt(port, cert, "fixture-reader", credentials["fixture-reader"]) as peer:
             readable(peer)
             admin("revoke-secondary", "grant", "set", "fixture-reader", "read",
                   VISIBLE.decode("ascii"), "--revoke")
@@ -162,7 +212,8 @@ def main():
         node.close()
         for path in (control, Path(f"{control}.groups")):
             path.unlink(missing_ok=True)
-    print("PASS recovered NNTP login, ninth-group crosspost and same-session grant revocation")
+    credential_bytes_absent(directory, image, credentials)
+    print("PASS protected NNTP refusals, recovered login and ninth-group grant revocation")
 
 
 if __name__ == "__main__":

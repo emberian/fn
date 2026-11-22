@@ -272,7 +272,9 @@
               :reads (fed feed-mode feed-discard))
          (child-txn :kind fn2-txn :slot txn :gen txn-gen :back (upload upload-gen)))
  :stops (:upload-uncertain)
- :holds ((:head :upload-row :chunk-window (:storage-window :while (lease :held))) (:identity :upload-row :chunk-window (:storage-window :while (lease :held)))
+ ;; TAKE enters :head only after reserving the page and setting LEASE to
+ ;; :held. Subsequent phases track ownership through the lease field.
+ :holds ((:head :upload-row :chunk-window :storage-window) (:identity :upload-row :chunk-window (:storage-window :while (lease :held)))
          (:receiving :upload-row :chunk-window (:storage-window :while (lease :held))) (:validating :upload-row :chunk-window (:storage-window :while (lease :held)))
          (:discard :upload-row :chunk-window (:storage-window :while (lease :held)))
          (:store :upload-row :chunk-window (:storage-window :while (lease :held)))
