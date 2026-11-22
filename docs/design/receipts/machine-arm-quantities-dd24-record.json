@@ -1,0 +1,50 @@
+{
+  "root": "tests/machine-arm-accounting-unit",
+  "count": 28,
+  "toolchain_identity": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+  "production_source": "f509ebcf756d6e845a45ba5774485d18728967f6",
+  "integration_base": "dd24f5454",
+  "scope": "Exact machine-arms generator and accounting fixture closure. Cursor prefix author replay uses warm prior source and the source-derived quantity generator.",
+  "prover_event_step_limit": 2000000,
+  "prover_event_seconds": 20,
+  "memory_bytes": 2147483648,
+  "memory_swap_bytes": 0,
+  "jobs": 1,
+  "records": [
+    {
+      "book": "tests/machine-arm-accounting-unit",
+      "key": "874ecd77e8450534fcbb408fead2a1066019510b05915b907cd5b40264cf01b5",
+      "source_sha256": "f46c7639c0d552259ec82295be5dec87884f2c8ebf340260b171407d509048ea",
+      "entry": "/home/fn/.cache/fn-certs/874ecd77e8450534fcbb408fead2a1066019510b05915b907cd5b40264cf01b5/9af9c04b0f14f798",
+      "cert_sha256": "139d20acf000c2d58c8f8362115633edfb9d28023fdeca28470727319910360f",
+      "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+      "fasl_sha256": "c2bfad480694f6a6cba7e64c0cd642e330f1fbf076a7142995ba35b163a3d8c0",
+      "manifest": "/home/fn/build/arm-quantities-record-dd24/build/acl2/certify-20261122T195847Z-2464592/manifest.json",
+      "receipt": "/home/fn/build/arm-quantities-record-dd24/build/qualification-machine-arm-accounting-unit/receipt.json"
+    },
+    {
+      "book": "books/machine-arms",
+      "key": "8e084aea815cfbe429a7c74fbbec7658c8a4b61654b2a7b930a73ff8ff76af99",
+      "source_sha256": "a55dead68abe83b6c6495ad4a49d2a84d0d1412ef083e60d156407f40a315b06",
+      "entry": "/home/fn/.cache/fn-certs/8e084aea815cfbe429a7c74fbbec7658c8a4b61654b2a7b930a73ff8ff76af99/9af9c04b0f14f798",
+      "cert_sha256": "8ee1cf2ca29203179a61952accd8687caee078e09c1ebe3d384a607c54c79a5b",
+      "port_sha256": "f4cb7e8160cfa6f41cddb04be508f922aa8e87c4ff126bfaad3379aa92e647e0",
+      "fasl_sha256": "b11afe741923755c2109f579fcb62487867faf339f4932bb25e46e296c3007aa",
+      "manifest": "/home/fn/build/arm-quantities-record-dd24/build/acl2/certify-20261122T195833Z-2464274/manifest.json",
+      "receipt": "/home/fn/build/arm-quantities-record-dd24/build/qualification-machine-arms/receipt.json"
+    }
+  ],
+  "cursor_prefix": {
+    "source": "66238a477",
+    "declaration_sha256_on_source_and_application_base": "554cf944e84bfd44d597f57e53d41635d6f903694ef4c70d62cd97fbe842bde3",
+    "author_log": "/tmp/fn-cursor-refuse-guard/projection-result.log",
+    "baseline_log": "/home/fn/build/cns-native-66238a4/build/proof-repl/leaf_2451726_c3bd781fab60/last-output-4.txt",
+    "matching_emitted_defun_sha256_after_whitespace_normalization": {
+      "FN2-CURSOR-SUB-HAND-CHILDREN": "88a4c74a655de753cb309a5cb7373e57f087d3623262deb040bd34798e70da11",
+      "FN2-CURSOR-SUB-REFUSE-CHILDREN": "7174126493083cee110472f75894e35a1c5edaa39d6f817d764ec3b4a8fcdd89"
+    },
+    "proved_through": "FN2-CURSOR-SUB-REFUSE-CHILDREN-ISSUED-EFFECT",
+    "seconds": 6.34,
+    "prover_steps": 83649
+  }
+}
