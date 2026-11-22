@@ -444,6 +444,7 @@ ACL2_BOOKS = \
   tests/commit-txn-unit \
   tests/commit-view-compatibility-unit \
   tests/conn-answer-unit \
+  tests/xfnc-render-page-unit \
   tests/xfnc-rx-unit \
   tests/peer-import-unit \
   tests/conn-unit \
