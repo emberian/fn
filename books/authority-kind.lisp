@@ -19,7 +19,7 @@
 (in-theory (disable fn2-auth-capacity))
 
 (defmachine fn2-auth
- :phases (:free :decode :lookup :allocate :bhead :outcome :head :get :ready :batched :draining :retired)
+ :phases (:free :decode :lookup :allocate :bhead :outcome :head :get :ready :batched :draining :retired :pull-check)
  :fields ((ctl :link) (ctl-gen :u60) (request :u32) (fpos :u32) (flen :u32) (rx-slot :link) (rx-gen :u60)
           (admin :bool) (worked :bool) (principal :u60)
           (ws-slot :link) (ws-gen :u60) (ks-slot :link) (ks-gen :u60) (sx :u32)
@@ -29,7 +29,7 @@
           ;; row's read row, the heads and the grant read or written
           (grantee :u60) (gright :u8) (gscope :u8) (gtarget :u60) (enabled :bool) (ehead :u60) (gop :u60)
           (xrow :u32) (ahead :u60) (grant :u60) (grantor :u60) (genabled :bool) (previous :u60) (gfound :bool)
-          (gstep :u8) (cut :u60)
+          (gstep :u8) (cut :u60) (pull-right :u8) (pull-anchor :u60)
           ;; :ready's write: 0 to declare, 1 declared and resolving, 2 resolved
           (wstep :u8)
           (stopped :bool) (next-free :link))
@@ -38,7 +38,8 @@
          (:outcome :tx-range :transaction-row) (:head :tx-range :transaction-row) (:get :tx-range :transaction-row)
          (:ready :tx-range :transaction-row)
          (:batched :tx-range :transaction-row :batch-membership)
-         (:draining :tx-range :transaction-row))
+         (:draining :tx-range :transaction-row)
+         (:pull-check :tx-range :transaction-row))
  ;; :ready's one run puts, stages, emits, admits and binds (28,672 bytes, as fn2-txn's :ready)
  :budget (:bytes 32768 :steps 32 :descriptors 4)
  :capacity (fn2-auth-capacity profile)
@@ -50,12 +51,12 @@
  :taken (:phase :decode :rows :transaction-row
          :ranges ((:tx-range :slot ws-slot :gen ws-gen :class 0) (:tx-range :slot ks-slot :gen ks-gen :class 0))
          :copy (ctl ctl-gen request fpos flen rx-slot rx-gen admin worked principal)
-         :clear (sx opcode noff nlen aslot pid outcome reason grantee gright gscope gtarget enabled ehead gop
+         :clear (pull-right pull-anchor sx opcode noff nlen aslot pid outcome reason grantee gright gscope gtarget enabled ehead gop
                  xrow ahead grant grantor genabled previous gfound gstep cut wstep stopped))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (ctl *fn2-none*) (rx-slot *fn2-none*) (ws-slot *fn2-none*) (ks-slot *fn2-none*) (account-ref *fn2-none*)
            (next-free fn2-machine-initial-next-free))
- :arms ((:free) (:decode) (:lookup) (:allocate) (:bhead) (:outcome) (:head) (:get) (:ready) (:batched) (:draining) (:retired))
+ :arms ((:free) (:decode) (:lookup) (:allocate) (:bhead) (:outcome) (:head) (:get) (:ready) (:batched) (:draining) (:retired) (:pull-check))
  :observes ())
 
 (defmachine-registry fn2-auth)

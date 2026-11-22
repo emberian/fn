@@ -4,4 +4,5 @@
 (in-package "ACL2")
 (include-book "assembly-callbacks-e-cns")
 (include-book "authority")
+(include-book "peer-pull-owner")
 (fn2-auth-events)

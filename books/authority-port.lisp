@@ -17,6 +17,9 @@
   :fields ((stream-name (:octets 250)) (name (:octets 64)) (grantee (:id principal)) (right (:enum fn2-authority-right (:consume :read :append :peer :peer-feed :peer-accept)))
            (scope (:enum fn2-authority-scope (:own-consumers :stream :principal))) (target (:id stream)) (enabled :bool)
            (expected-head (:id grant)) (op (:octets 64))
+           (history (:id history)) (incarnation (:id incarnation)) (view (:id grant))
+           (address :u32be) (port :u16be) (timeout-ms :u32be) (user (:octets 64))
+           (consumer (:id consumer)) (attempt (:id attempt)) (generation (:id generation))
            (principal (:id principal)) (authority-head (:id grant)) (grant (:id grant)) (receipt :receipt)
            (salt (:octets 16)) (secret (:octets 512))
            (found :bool) (grantor (:id principal)) (previous (:id grant)))
@@ -39,6 +42,11 @@
                            :effect :durable :retry :idempotent :grant (:administer name)
                            :meter (:requests :durable-octets) :reasons (frame unknown-principal)
                            :spec "AUTHORITY-20261105.md 3; RELEASE-PLAN E2")
+   (peer-pull :request (principal target consumer history incarnation view stream-name address port timeout-ms user secret)
+              :result (attempt generation)
+              :effect :park :retry :repeat :grant (:administer principal) :meter (:requests)
+              :reasons (frame unknown-principal unknown-stream scope)
+              :spec "e-surface.md 13.4: start one receiver-owned pull; the receipt names its live attempt")
    ;; Owner only; the grantor is the connection's, never the payload's; OP is mandatory.
    (grant-set :request (grantee right scope target enabled expected-head op) :result (grant authority-head receipt)
               :effect :durable :retry :op :grant (:administer grantee) :meter (:requests :durable-octets)
@@ -51,4 +59,4 @@
               :spec "AUTHORITY-20261105.md 3")))
 
 (defcarrier fn2-authority-local :port fn2-authority :frame :fnct
-  :binds ((principal-create 29 0) (principal-bind 29 1) (grant-set 29 2) (grant-get 29 3) (stream-resolve 29 4) (principal-set-password 29 5)))
+  :binds ((principal-create 29 0) (principal-bind 29 1) (grant-set 29 2) (grant-get 29 3) (stream-resolve 29 4) (principal-set-password 29 5) (peer-pull 29 6)))

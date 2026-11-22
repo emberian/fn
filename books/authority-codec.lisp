@@ -19,6 +19,9 @@
 ;; answers frame for an empty one).
 (defconst *fn2-authority-requests*
   `((4 stream-resolve ((stream-name (:octets16 250))))
+    (6 peer-pull ((principal (:id principal)) (target (:id stream)) (consumer (:id consumer)) (history (:id history))
+                  (incarnation (:id incarnation)) (view (:id grant)) (stream-name (:octets16 250))
+                  (address :u32be) (port :u16be) (timeout-ms :u32be) (user (:octets16 64)) (secret (:octets16 496))))
     (5 principal-set-password ((name (:octets16 64)) (salt (:octets16 16)) (secret (:octets16 512))))
     (0 principal-create ((name (:octets16 64))))
     (1 principal-bind ((name (:octets16 64))))
@@ -33,6 +36,7 @@
 ;; two-field form and never a grant).
 (defconst *fn2-authority-results*
   '((stream-resolve ((target (:id stream))))
+    (peer-pull ((attempt (:id attempt)) (generation (:id generation))))
     (principal-create ((principal (:id principal))))
     (principal-set-password ((principal (:id principal))))
     (principal-bind ((principal (:id principal)) (authority-head (:id grant))))

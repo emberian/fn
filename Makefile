@@ -205,6 +205,7 @@ ACL2_BOOKS = \
   books/conn-read-principal \
   books/peer-pull-kind \
   books/peer-pull-line \
+  books/peer-pull-owner \
   books/peer-pull-stage \
   books/conn-kind \
   books/consumer-codec \
