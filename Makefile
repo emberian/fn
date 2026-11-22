@@ -38,7 +38,6 @@ ACL2_BOOKS = \
   tests/c-snapshot-unit \
   tests/journal-retention-served-unit \
   tests/event-read-format-unit \
-
   tests/txn-retained-source-served-unit \
   tests/upload-block-private-unit \
   tests/upload-dual-hash-unit \
