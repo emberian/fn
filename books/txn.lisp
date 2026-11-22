@@ -288,9 +288,14 @@
 (defcost fn2-txn-prebind :answers (:ok) :tables (fn2-core-fields)
   :doc "Pre-fill prospective event numbers into staged insert slots before emitting journal records.")
 (defconst *fn2-authority-right-append* 2)
+(defconst *fn2-txn-role-check* 1)
+(defconst *fn2-txn-peer-accept-check* 4)
+(defconst *fn2-txn-append-check* 7)
+(defcost fn2-txn-peer-role-grant :answers (:ok :access)
+  :doc "Read the protected login's peer grant for this live connection, request and upload.")
 (defcost fn2-authority-allows :answers (:ok :access :more :state) :faults (:state) :bytes 4096
   :tables (fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
-  :doc "One bounded step of the append check (books/authority.lisp, AUTHORITY-20261105 section 4): (fn2-authority-allows tx durable-principal right target step head grant budget) -> (mv code step head grant), one exact lookup source per call (the head, the current grant, the grant row).")
+  :doc "One bounded successor authority lookup (books/authority.lisp), under the principal's head for (right scope target).")
 (defcost fn2-authority-depend :answers (:ok :state) :faults (:state)
   :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields)
   :doc "Declare the transaction's read dependency on the principal's authority head it decided under (once; nothing when no grant governed).")
@@ -298,7 +303,7 @@
   :noncanonical :ok :owner :part :payload :schema :stale :state :truncated :unknown-tag :wide)
   :bytes 4096
   :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-id-decides fn2-core-fc fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
-  :doc "The group at the scan's name: the one the append check in progress holds (XSTEP > 0), else one source of its name lookup.")
+  :doc "The group at the scan's name: the one the authority check in progress holds (XSTEP > 0), else one source of its name lookup.")
 (defcost fn2-txn-wake-upload :tables (fn2-core-machines)
   :doc "Wake the upload this transaction held, if it still names it, so it drains.")
 (defcost fn2-txn-groups-limit
@@ -327,37 +332,65 @@
                       (:cond ((>= row-ngroups (fn2-txn-groups-limit))
                               (:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
                               (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
-                             ;; the authority seam (AUTHORITY-20261105 section
-                             ;; 4): the principal's append grant for this
-                             ;; destination, in bounded steps, then the read
-                             ;; dependency on the head it was decided under
                              (t (:let pid (:read upload request-principal))
                                 (:do (pc current) (fn2-upload-owner-principal row-conn row-conn-gen row-principal-slot)
                                  :accept (:ok :state) :why "recheck the live binding before a grant decision")
                                 (:if (not (and (eq pc :ok) (equal current pid)))
-                                     ((:set (word *fn2-upload-word-refused*)) (:next :refused)
-                                      (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
-                                     ((:do (acode astep ahead agrant)
-                                           (fn2-authority-allows gslot pid *fn2-authority-right-append* group
-                                                                 (if (equal row-xstep 0) 0 (- row-xstep 1)) row-xhead row-xgrant 4096)
+                                     ((:goto group-access))
+                                     ((:let post (equal row-rule *fn2-txn-rule-post*))
+                                      (:let check (cond (post *fn2-txn-append-check*)
+                                                        ((< row-xstep *fn2-txn-peer-accept-check*) *fn2-txn-role-check*)
+                                                        ((< row-xstep *fn2-txn-append-check*) *fn2-txn-peer-accept-check*)
+                                                        (t *fn2-txn-append-check*)))
+                                      (:let role (equal check *fn2-txn-role-check*))
+                                      (:let append-check (equal check *fn2-txn-append-check*))
+                                      (:let step (if (equal row-xstep 0) 0 (- row-xstep check)))
+                                      (:do (acode astep ahead agrant)
+                                           (fn2-authority-allows gslot pid
+                                             (cond (role *fn2-authority-right-peer*)
+                                                   (append-check *fn2-authority-right-append*)
+                                                   (t *fn2-authority-right-peer-accept*))
+                                             (if role *fn2-authority-scope-principal* *fn2-authority-scope-stream*)
+                                             (if role 0 group) step row-xhead row-xgrant 4096)
                                        :accept (:ok)
                                        :case (((:more)
-                                               (:cond ((< astep 255)
-                                                       (:set (xstep (+ 1 astep)) (xgroup group) (xhead ahead) (xgrant agrant))
-                                                       (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
-                                                      (t (:stop :machine-phase))))
-                                              ((:access) (:set (word *fn2-upload-word-refused*) (xstep 0)) (:next :refused)
-                                               (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))))
-                                      (:do (dcode) (fn2-authority-depend gslot pid agrant ahead) :accept (:ok))
-                                      (:do (pcode) (fn2-txn-add-group gslot row-ngroups group pid c0 g0 c1 g1
-                                                                       (+ no start) len nl
-                                                                       (+ (:read upload scan-off) *fn2-upload-digest-octets*)
-                                                                       :owner upload))
-                                      (:if (eq pcode :ok)
-                                           ((:set (ngroups (+ 1 row-ngroups)) (gcur next) (xstep 0))
-                                            (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
-                                           ((:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
-                                            (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t)))))))))))))
+                                               (:if (and (natp astep) (< astep 3))
+                                                    ((:set (xstep (+ check astep)) (xgroup group) (xhead ahead) (xgrant agrant))
+                                                     (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                                                    ((:stop :machine-phase))))
+                                              ((:access) (:goto group-access))))
+                                      (:cond
+                                       (role
+                                        (:do (rcode pinned) (fn2-txn-peer-role-grant row-conn row-conn-gen row-request
+                                                                                     row-upload row-upload-gen pid row-principal-slot)
+                                         :accept (:ok) :case (((:access) (:goto group-access))))
+                                        (:if (and (posp agrant) (equal agrant pinned))
+                                             ;; Pin the first authority head. Stage must still see it
+                                             ;; after the stream grants have been checked.
+                                             ((:do (dcode) (fn2-authority-depend gslot pid agrant ahead) :accept (:ok))
+                                              (:set (xstep *fn2-txn-peer-accept-check*) (xgroup group) (xhead 0) (xgrant 0))
+                                              (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                                             ((:goto group-access))))
+                                       ((not append-check)
+                                        (:if (posp agrant)
+                                             ((:do (dcode) (fn2-authority-depend gslot pid agrant ahead) :accept (:ok))
+                                              (:set (xstep *fn2-txn-append-check*) (xgroup group) (xhead 0) (xgrant 0))
+                                              (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                                             ((:goto group-access))))
+                                       (t
+                                        (:do (dcode) (fn2-authority-depend gslot pid agrant ahead) :accept (:ok))
+                                        (:do (pcode) (fn2-txn-add-group gslot row-ngroups group pid c0 g0 c1 g1
+                                                                         (+ no start) len nl
+                                                                         (+ (:read upload scan-off) *fn2-upload-digest-octets*)
+                                                                         :owner upload))
+                                        (:if (eq pcode :ok)
+                                             ((:set (ngroups (+ 1 row-ngroups)) (gcur next) (xstep 0))
+                                              (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                                             ((:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
+                                              (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t)))))))))))))))
+  (group-access
+   (:set (word *fn2-upload-word-refused*) (xstep 0)) (:next :refused)
+   (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
   ;; :ready stages and admits in one scheduler turn. Only article
   ;; submissions need an overview or Xref. Evidence uses the same emit/bind.
   (ready-capacity :on-refusal ((:stop :machine-phase))
@@ -744,7 +777,7 @@
       (if (equal (fn2-fields-value raw fn2-fields) group) :repeated
         (fn2-txn-prior-group tx (1- k) group b0 fn2-succ-txns fn2-succ-slots fn2-fields)))))
 (in-theory (disable fn2-txn-prior-group))
-;; The group at the Newsgroups scan's current name: while the append check
+;; The group at the Newsgroups scan's current name: while the authority check
 ;; for it is in progress (XSTEP > 0) the group it holds, else one source of
 ;; the name's lookup (fn2-group-lookup).
 (defun fn2-txn-group-of (tx k xstep xgroup slot gen off len okind oslot ogen budget fn2-core)

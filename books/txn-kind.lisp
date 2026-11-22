@@ -108,9 +108,9 @@
           (batch :u60) (bevent :u60)
           (word :u8) (outcome-checked :bool) (offered :bool) (prepared :bool) (filed :bool) (counted :u60) (lines :u32)
           (gcur :u32) (gskip :bool) (ngroups :u8) (numbers-off :u32) (numbers-len :u32)
-          ;; the append check in progress for the group at GCUR (its group
-          ;; XGROUP; XSTEP 0 the name lookup, K > 0 fn2-authority-allows'
-          ;; step K - 1 with the head and grant it carries)
+          ;; The group at GCUR is XGROUP during its authority checks. XSTEP
+          ;; 0 looks up the name, 1..3 checks peer role, 4..6 checks peer
+          ;; acceptance and 7..9 checks append, with XHEAD and XGRANT.
           (xstep :u8) (xgroup :u60) (xhead :u60) (xgrant :u60)
           (stopped :bool) (next-free :link))
  :links ((upload :kind fn2-upload :slot upload :gen upload-gen :back (txn txn-gen)
