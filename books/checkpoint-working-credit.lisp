@@ -36,7 +36,12 @@
            (fn2-pool-class-countsi class fn2-pool))
        (fn2-checkpoint-working-profile-fitp (+ class 1) groups service fn2-pool))))
 (defun fn2-checkpoint-working-credit-configure (profile commitrows commit-io-rows paths uploads fn2-pool)
- (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
+ (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)
+   :guard-hints (("Goal" :in-theory
+    (disable fn2-checkpoint-admission-roomp fn2-checkpoint-service-demand-vector
+             fn2-checkpoint-service-vector-loop fn2-checkpoint-working-profile-fitp
+             fn2-pool-credit-demandsp fn2-pool-credit-configure fn2-pool-class-for
+             fn2-pool-wfp fn2-poolp floor nfix)))))
  (b* (((unless (and (fn2-profilep profile) (posp (fn2-profile-generation-start profile))))
        (mv :profile fn2-pool))
       ((unless (and (posp commitrows) (unsigned-byte-p 32 commitrows)
