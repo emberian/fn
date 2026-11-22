@@ -302,6 +302,18 @@
 (defun fn2-as-get-found (g h grantor previous)
  (declare (xargs :verify-guards nil))
  (fn2-as-reply 'grant-get :accepted nil (list 1 h) (list g grantor 1 previous)))
+;; Exercise the same durable four-lookup decision consumed by scoped XFNC
+;; reads. The authorizing row is read only after the served clients run to
+;; quiet; HEAD and GRANT start empty and are populated by each exact lookup.
+(defun fn2-as-published-right (fuel principal right scope target step head grant fn2-core)
+ (declare (xargs :stobjs fn2-core :measure (nfix fuel) :verify-guards nil))
+ (if (zp fuel) (mv (list :fuel head grant) fn2-core)
+  (mv-let (code next h g fn2-core)
+   (fn2-read-principal-grant 0 principal right scope target step head grant 4096 fn2-core)
+   (if (eq code :more)
+       (fn2-as-published-right (- fuel 1) principal right scope target next h g fn2-core)
+     (mv (list code h g) fn2-core)))))
+
 ;; (ok detail): the seven Mini grants, served
 (defun fn2-authority-grant-roundtrip-run ()
  (declare (xargs :verify-guards nil))
@@ -367,8 +379,14 @@
                       (fn2-as-get-found (nth 1 g1) (nth 1 g1) w 0)
                       (fn2-as-get-found (nth 2 g1) (nth 1 g2) w 0)
                       (fn2-as-get-found (nth 1 g2) (nth 1 g2) w (nth 2 g1))
-                      (fn2-as-reply 'grant-get :accepted nil (list 0 (nth 1 g1)) nil))))
-    (mv (list (and (equal s5 :quiet) (equal (fn2-core-stop-reason fn2-core) 0) (equal w5 want)
+                      (fn2-as-reply 'grant-get :accepted nil (list 0 (nth 1 g1)) nil)))
+        ((mv own fn2-core) (fn2-as-published-right 80 m *fn2-as-c* *fn2-as-own* 0 0 0 0 fn2-core))
+        ((mv view fn2-core) (fn2-as-published-right 80 m *fn2-as-r* *fn2-as-st* e1 0 0 0 fn2-core))
+        ((mv missing fn2-core) (fn2-as-published-right 80 o *fn2-as-r* *fn2-as-st* e1 0 0 0 fn2-core)))
+    (mv (list (and (equal own (list :ok (car g4) (car gm)))
+                   (equal view (list :ok (car g4) (nth 1 gm)))
+                   (equal missing (list :access (nth 1 g1) 0))
+                   (equal s5 :quiet) (equal (fn2-core-stop-reason fn2-core) 0) (equal w5 want)
                    (no-duplicatesp (append g1 g2 g3 g4)))
               w5 want)
         fn2-core))
