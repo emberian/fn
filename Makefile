@@ -170,6 +170,7 @@ ACL2_BOOKS = \
   books/compress-kind \
   books/compress-operation \
   books/compress-record \
+  books/compress-record-shape \
   books/compress-close \
   books/compress-transport-lifecycle \
   books/compress-transport-ops \
