@@ -148,20 +148,22 @@ def leb_encode(v: int) -> bytes:
 
 
 def leb_decode(buf: bytes, offset: int = 0) -> tuple[int, int]:
-    acc = 0
-    shift = 0
-    i = offset
-    while True:
-        if i >= len(buf):
+    """Decode the canonical unsigned 60-bit field used by fn2-layout-byte."""
+    value = 0
+    for shift in range(0, 60, 7):
+        if offset >= len(buf):
             raise WireError("truncated varint")
-        b = buf[i]
-        i += 1
-        acc |= (b & 0x7F) << shift
-        if b < 128:
-            return acc, i
-        shift += 7
-        if shift > 63:
-            raise WireError("varint overflow")
+        byte = buf[offset]
+        offset += 1
+        low = byte & 0x7F
+        value |= low << shift
+        if byte < 128:
+            if shift and low == 0:
+                raise WireError("noncanonical varint")
+            if value.bit_length() > 60:
+                raise WireError("varint overflow")
+            return value, offset
+    raise WireError("varint overflow")
 
 
 def _take(buf: bytes, offset: int, count: int, what: str) -> tuple[bytes, int]:
