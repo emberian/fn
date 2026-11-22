@@ -1,6 +1,7 @@
 ; Policy for one selected pair from a frozen XFNC view. END records every
 ; selected event. NEXT and its chain stop at the last pair in the page.
 (in-package "ACL2")
+(include-book "arms")
 (include-book "xfnc-view-chain")
 (fn2-book-layer :e)
 
