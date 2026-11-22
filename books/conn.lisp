@@ -29,7 +29,7 @@
 (defcost fn2-conn-cursor-go :tables (fn2-cursor-table) :doc "Give the query cursor its move (TX is empty).")
 (defcost fn2-conn-cursor-cancel :tables (fn2-cursor-table) :doc "Cancel a waiting query cursor: the connection drains.")
 (defcost fn2-conn-posting-p :doc "Whether posting is served (the input configuration; section 14.5).")
-(defcost fn2-conn-peering-p :doc "Whether peers are admitted: the peer bit on a connection with an address family (the input configuration; E4's grant replaces it).")
+(defcost fn2-conn-peering-p :doc "Whether the active input profile permits protected peer admissions.")
 (defcost fn2-conn-run-block-open :bytes 512
   :answers (:ok :bounds) :faults (:bounds) :tables (fn2-core-pool)
   :doc "Render a block's opening reply (340) into TX.")

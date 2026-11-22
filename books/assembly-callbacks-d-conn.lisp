@@ -119,13 +119,15 @@
   (login-transfer
    (:do (code account) (fn2-conn-authinfo-transfer row-principal-slot row-login-candidate)
          :case (((:ok)
+                 (:let role row-peer-grant)
+                 (:let next-mask (logior (logand row-mask (lognot (logior *fn2-nntp-state-anonymous* *fn2-nntp-state-peer*)))
+                                         *fn2-nntp-state-authenticated* (if (posp role) *fn2-nntp-state-peer* 0)))
                  (:set (principal-slot account) (account-ref account) (login-principal row-login-candidate)
-                       (peer-role-grant row-peer-grant) (peer-grant 0) (peer-login 0)
-                       (mask (logior (logand row-mask (lognot (logior *fn2-nntp-state-anonymous* *fn2-nntp-state-peer*)))
-                                     *fn2-nntp-state-authenticated* (if (posp row-peer-grant) *fn2-nntp-state-peer* 0)))
+                       (peer-role-grant role) (peer-grant 0) (peer-login 0)
+                       (mask next-mask)
                        (auth-pending *fn2-conn-auth-none*) (login-candidate 0) (login-loaded 0) (login-off 0) (login-len 0)
                        (login-mode *fn2-conn-login-none*) (login-failures 0) (tx-off 0) (after *fn2-conn-after-command*))
-                 (:do (rcode) (fn2-conn-authinfo-reply *fn2-nntp-reply-authinfo-accepted* 0 row-mask
+                 (:do (rcode) (fn2-conn-authinfo-reply *fn2-nntp-reply-authinfo-accepted* 0 next-mask
                                                       row-tx-slot row-tx-gen id row-generation)
                        :case ((:otherwise (:stop :machine-phase))))
                  (:next :reply)
