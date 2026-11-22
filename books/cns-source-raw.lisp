@@ -231,12 +231,73 @@
    fn2-cns-sources)))
   (mv :ok n nil fn2-cns-sources fn2-pool)))
 
+; Pinned reads may record a stop and add or drop a pin. Their public
+; row frames compose the fixed-size updates on these paths.
+(local
+ (fn2-control-preserves fn2-control-record-stop (reason fn2-control)
+  :specs (("-ROWS" fn2-control-rows nil :frame fn2-control))
+  :disable nil
+  :hints (("Goal" :in-theory (e/d (fn2-control-record-stop fn2-control-rows
+                                   update-fn2-control-stop update-fn2-control-stop-reason)
+                                  (fn2-control-stop))))))
+
+(local
+ (fn2-control-preserves fn2-issue-children
+  (kind cap-index cap-nonce offset fua slot gen off len may-release target-slot
+   target-gen okind oslot ogen principal fn2-pool fn2-ops fn2-control)
+  :specs (("-CONTROL-ROWS" fn2-control-rows 5 :frame fn2-control))
+  :disable nil
+  :hints ((fn2-columns-call-guard-hint 'fn2-issue-children
+           '(fn2-control-record-stop fn2-op-reserve fn2-op-unreserve fn2-core-lease
+             fn2-op-set-range fn2-op-set-capability fn2-op-set-storage
+             fn2-op-set-cancel-target fn2-op-enqueue)
+           '(fn2-issue-children) world))))
+
+(local
+ (fn2-extents-preserves fn2-b-read-pin-drop (opslot opgen fn2-extents fn2-alloc-edges)
+  :specs (("-EXTENTS-ROWS" fn2-extents-rows 1 :frame fn2-extents)
+          ("-EDGES-ROWS" fn2-alloc-edges-rows 2 :frame fn2-alloc-edges))
+  :disable nil
+  :hints ((fn2-columns-call-guard-hint 'fn2-b-read-pin-drop
+           '(fn2-b-read-pin-edge fn2-alloc-edge-slotp fn2-alloc-edge-drop)
+           '(fn2-b-read-pin-drop) world))))
+
+(local
+ (fn2-control-preserves fn2-block-read-children
+  (pu epoch alloc off len lslot lgen okind oslot ogen principal
+   fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control)
+  :specs (("-CONTROL-ROWS" fn2-control-rows 5 :frame fn2-control)
+          ("-EXTENTS-ROWS" fn2-extents-rows 6 :frame fn2-extents)
+          ("-EDGES-ROWS" fn2-alloc-edges-rows 7 :frame fn2-alloc-edges))
+  :disable nil
+  :hints ((fn2-columns-call-guard-hint 'fn2-block-read-children
+           '(fn2-control-record-stop fn2-issue-children fn2-alloc-handle-code
+             fn2-alloc-edge-add fn2-b-read-pin-drop fn2-b-read-pin-edge
+             fn2-op-slotp fn2-ops-free-head fn2-ops-gen)
+           '(fn2-block-read-children fn2-pinned-block-io-children
+             fn2-issue-read-children) world))))
+
+(local
+ (defthm fn2-cns-source-ownerp-row-bound
+  (implies (fn2-cns-source-ownerp s cns cnsgen ctl ctlgen request fn2-cns-sources)
+   (and (natp s) (< s (fn2-cns-sources-rows fn2-cns-sources))))
+  :hints (("Goal" :in-theory (enable fn2-cns-source-ownerp)))
+  :rule-classes :forward-chaining))
+
+(local
+ (defthm fn2-op-slotp-row-bound
+  (implies (fn2-op-slotp op fn2-ops)
+   (and (natp op) (< op (fn2-ops-rows fn2-ops))))
+  :hints (("Goal" :in-theory (enable fn2-op-slotp)))
+  :rule-classes :forward-chaining))
+
 (fn2-cns-source-frames fn2-cns-source-issue-children
  (s cns cnsgen ctl ctlgen request kind principal fn2-cns-sources fn2-cns-source-operations fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control fn2-checkpoints)
  (fn2-cns-sources fn2-cns-source-operations fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control fn2-checkpoints)
  ((fn2-cns-sources 3) (fn2-cns-source-operations 4) (fn2-pool 5) (fn2-ops 6) (fn2-control 7) (fn2-extents 8) (fn2-alloc-edges 9))
  ((fn2-columns-call-guard-hint 'fn2-cns-source-issue-children
    '(fn2-block-read-children fn2-pool-truncate fn2-rd-copy
+     fn2-cns-source-ownerp fn2-op-slotp min
      fn2-cns-source-heldp fn2-cns-source-retain-ownerp
      fn2-cns-source-data-position-p fn2-pool-workspace-code
      fn2-pool-ownerp fn2-alloc-edge-matchesp fn2-alloc-handle-code)
@@ -251,6 +312,8 @@
      fn2-cns-source-data-position-p fn2-pool-workspace-code
      fn2-pool-ownerp fn2-alloc-edge-matchesp fn2-alloc-handle-code)
    '(fn2-cns-source-harvest) world)))
+(local (fn2-hash-row-frames fn2-block-read-commitment-children fn2-b3 fn2-digests))
+
 (fn2-cns-source-frames fn2-cns-source-raw-step-children
  (s cns cnsgen ctl ctlgen request kind connections budget fn2-cns-sources fn2-b3 fn2-digests fn2-pool)
  (fn2-cns-sources fn2-b3 fn2-digests fn2-pool)
