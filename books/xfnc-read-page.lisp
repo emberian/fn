@@ -214,7 +214,7 @@
        (token (fn2-xfnc-reader-project-token conn cgen fn2-core))
        ((mv source & & event hs he es ee) (fn2-xfnc-projected-window token conn cgen fn2-core))
        ((unless (eq source :ok)) (fn2-xfnc-page-fail cursor source fn2-core))
-       (pair (fn2-xfnc-batch-pair-size hs he es ee))
+       (pair (fn2-xfnc-item-span-size hs he es ee))
        (bytes (fn2-cursor-row-peer-page-bytes cursor fn2-core))
        (tx (fn2-conn-row-tx-slot conn fn2-core))
        (cap (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (cap)

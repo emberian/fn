@@ -195,6 +195,7 @@ ACL2_BOOKS = \
   books/commit-turn-frame \
   books/conn \
   books/conn-answer \
+  books/conn-answer-rows \
   books/tls-schema \
   books/conn-schema \
   books/conn-xfnc-query \

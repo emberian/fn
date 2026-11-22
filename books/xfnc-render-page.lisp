@@ -3,6 +3,7 @@
 (include-book "xfnc-batch-codec")
 (include-book "xfnc-read-page")
 (include-book "xfnc-reply")
+(include-book "conn-answer-rows")
 (fn2-book-layer :e)
 (local (in-theory (disable fn2-fieldsp fn2-fields-wfp fn2-fields-rows fn2-fields-value
                            fn2-fields-ref-off fn2-fields-ref-len fn2-fields-ref-slot fn2-fields-ref-gen
@@ -17,6 +18,10 @@
   ((class 0) (reason :ref 0 0) (result-length size)))
 (fn2-fnct-def-result fn2-xfnc-put-envelope fn2-fnct-header (size)
   ((magic *fn2-fnct-magic*) (version *fn2-fnct-version*) (kind *fn2-fnct-port-reply-kind*) (length size)))
+
+(local (in-theory (disable fn2-cns-put-query-cursor fn2-digest-store fn2-pool-copy-range
+                           fn2-pool-fill-value fn2-pool-workspace-code fn2-xfnc-batch-items-fit-p
+                           fn2-pool-slot-capacity fn2-digest-rowp)))
 
 (defun fn2-xfnc-wire-begin (row items pid history incarnation stream consumer epoch version view revision
                             next end stop count mask slot gen conn cgen fn2-fields fn2-digests fn2-pool)
