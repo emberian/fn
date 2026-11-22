@@ -2,14 +2,14 @@
 # Run only after current books/node-profile and books/native-b3-evidence
 # are record-qualified/installed, within the owner's named capped scope.
 # Pass the full SHA from the completed qualification; never infer it from HEAD.
-# Modes are sequential: host, fnct, durable-retry, nntp, large, cursor, fanout, membership. Each requires its own bounded scope.
+# Modes are sequential: host, fnct, durable-retry, nntp, large, cursor, fanout, membership, protected-reader. Each requires its own bounded scope.
 set -eu
-candidate=${1:?usage: native-current-gate.sh CANDIDATE QUALIFIED_FULL_SHA host-or-fnct-or-durable-retry-or-nntp-or-large-or-cursor-or-fanout-or-membership}
+candidate=${1:?usage: native-current-gate.sh CANDIDATE QUALIFIED_FULL_SHA host-or-fnct-or-durable-retry-or-nntp-or-large-or-cursor-or-fanout-or-membership-or-protected-reader}
 expected=${2:?missing explicitly qualified full source SHA}
 mode=${3:?missing mode}
 [ "${#expected}" -eq 40 ] || { echo 'expected full 40-character SHA' >&2; exit 2; }
 case "$expected" in *[!0123456789abcdef]*) echo 'invalid source SHA' >&2; exit 2 ;; esac
-case "$mode" in host|fnct|durable-retry|nntp|large|cursor|fanout|membership) ;; *) echo 'invalid mode' >&2; exit 2 ;; esac
+case "$mode" in host|fnct|durable-retry|nntp|large|cursor|fanout|membership|protected-reader) ;; *) echo 'invalid mode' >&2; exit 2 ;; esac
 [ "$(git -C "$candidate" rev-parse HEAD)" = "$expected" ] || {
   echo 'candidate changed: reconcile current qualified source before execution' >&2; exit 2;
 }
@@ -44,6 +44,9 @@ exec env -i HOME="$HOME" USER="${USER:-fn}" PATH="$PATH" LANG=C \
    ;;
  durable-retry)
    python3 tests/native-append-fetch-restart.py --directory "$run_directory" --durable-retry
+   ;;
+ protected-reader)
+   python3 tests/native-nntp-read-authority.py --directory "$run_directory"
    ;;
  membership)
    python3 tests/native-consumer-membership.py --directory "$run_directory"

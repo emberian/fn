@@ -5,6 +5,7 @@ Requires the qualified composed image with the shared group-read decision
 and owner-local password provisioning. Uses an isolated image and fresh logins.
 """
 import argparse
+from contextlib import contextmanager
 import importlib.util
 import os
 from pathlib import Path
@@ -41,15 +42,16 @@ def overview(peer, message_id, number):
     assert len(fields) >= 8 and (fields[0], fields[4]) == (number, message_id), result
 
 
-def with_login(port, cert, principal, password, observe):
+@contextmanager
+def logged_in(port, cert, principal, password):
     peer = Peer(port)
     try:
         peer.sock.settimeout(30)
         peer.upgrade(cert, False)
         assert peer.command(b"AUTHINFO USER " + principal.encode("ascii")).startswith(b"381 ")
         answer = peer.command(b"AUTHINFO PASS " + password.encode("ascii"))
-        assert answer.startswith(b"281 "), ("AUTHINFO PASS", answer)
-        observe(peer)
+        assert answer.startswith(b"281 "), ("AUTHINFO PASS", answer[:3])
+        yield peer
     finally:
         peer.close()
 
@@ -96,20 +98,23 @@ def main():
                     "-keyout", str(key), "-out", str(cert)],
                    check=True, capture_output=True, timeout=15)
     image = directory / "node.img"
-    extra_groups = [f"local.pad{n}" for n in range(2, 9)] + [VISIBLE.decode("ascii")]
+    groups = [PRIMARY.decode("ascii"), *(f"local.pad{n}" for n in range(2, 9)), VISIBLE.decode("ascii")]
     fixture.initialize(directory, image, startup_args=tuple(
-        option for group in extra_groups for option in ("--group", group)))
+        option for group in groups for option in ("--group", group)))
     control = Path(f"/tmp/fn2-nntp-read-{os.getpid()}-{time.time_ns()}.sock")
-    node = fixture.restart.Node(directory, image, "serve", "nntp", control_sock=control,
-                                env=fixture.environment(), startup_args=(
-                                    "--tls-certificate", str(cert), "--tls-key", str(key)))
+    def start(label):
+        return fixture.restart.Node(directory, image, "serve", label, control_sock=control,
+                                    env=fixture.environment(), startup_args=(
+                                        "--tls-certificate", str(cert), "--tls-key", str(key)))
 
     def admin(label, *args):
         reply = fixture.run_fn(directory, label, *args, "--control-sock", control)
         assert reply["outcome"] == "accepted", reply
 
+    credentials = {}
+    node = start("provision")
     try:
-        port = int(node.marker(b"LISTENING ").split()[1])
+        node.marker(b"LISTENING ")
         node.marker(b"LISTENING-LOCAL ")
         admin("poster", "principal", "create", "fixture-poster")
         for group in (PRIMARY, VISIBLE):
@@ -124,7 +129,7 @@ def main():
             reply = fixture.append_file(directory, f"append-{index}", control, "fixture-poster",
                                         100 + index, path)
             assert reply["outcome"] == "accepted" and reply["evidence"] == "committed", reply
-        for principal, observe in (("fixture-reader", readable), ("fixture-denied", denied)):
+        for principal in ("fixture-reader", "fixture-denied"):
             admin(principal, "principal", "create", principal)
             password = secrets.token_hex(16)
             password_reply = subprocess.run(
@@ -133,14 +138,31 @@ def main():
                 cwd=fixture.ROOT, env=fixture.environment(), capture_output=True,
                 input=f"{password}\n{password}\n".encode("ascii"), timeout=90)
             assert password_reply.returncode == 0, ("set-password", password_reply.returncode)
-            if observe is readable:
-                admin("secondary-only", "grant", "set", principal, "read", VISIBLE.decode("ascii"))
-            with_login(port, cert, principal, password, observe)
+            credentials[principal] = password
+        admin("secondary-only", "grant", "set", "fixture-reader", "read", VISIBLE.decode("ascii"))
+        node.kill()
+    finally:
+        node.close()
+
+    node = start("recovered")
+    try:
+        port = int(node.marker(b"LISTENING ").split()[1])
+        node.marker(b"LISTENING-LOCAL ")
+        with logged_in(port, cert, "fixture-denied", credentials["fixture-denied"]) as peer:
+            denied(peer)
+        with logged_in(port, cert, "fixture-reader", credentials["fixture-reader"]) as peer:
+            readable(peer)
+            admin("revoke-secondary", "grant", "set", "fixture-reader", "read",
+                  VISIBLE.decode("ascii"), "--revoke")
+            for command in (b"STAT", b"ARTICLE 1", b"OVER 1-2", b"LISTGROUP"):
+                reply = peer.command(command)
+                assert reply.startswith(b"412 "), (command, reply)
+            denied(peer)
     finally:
         node.close()
         for path in (control, Path(f"{control}.groups")):
             path.unlink(missing_ok=True)
-    print("PASS NNTP group reads: secondary-only crosspost, group 9, and fully denied login")
+    print("PASS recovered NNTP login, ninth-group crosspost and same-session grant revocation")
 
 
 if __name__ == "__main__":
