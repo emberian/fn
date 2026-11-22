@@ -273,6 +273,7 @@ ACL2_BOOKS = \
   books/peer-view-read \
   books/xfnc-view \
   books/xfnc-reader \
+  books/xfnc-request \
   books/event-read-verify \
   books/event-read-verify-domain \
   books/c-snapshot-state \

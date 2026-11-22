@@ -1,4 +1,6 @@
-; The scoped peer profile of the R carrier's existing FNCT requests.
+; The scoped peer profile of the R carrier's existing FNCT requests:
+; :history on one named stream, canonical positive u60 consumer IDs, and
+; reads in the physical event-position domain with positive limits.
 ; The carrier retains the authenticated connection's exact, opened frame.
 (in-package "ACL2")
 (include-book "cns")
