@@ -21,7 +21,7 @@
 ; at *fn2-idc-ident*: its query begins at +4, then the shared run reader.
 (defconst *fn2-idc-stride* *fn2-b-txn-field-rows*)
 (defconst *fn2-idc-b-stripe* 128)
-(defconst *fn2-succ-slots* 24)
+(defconst *fn2-succ-slots* 29)
 
 (defconst *fn2-idc-ident* (* *fn2-succ-slots* *fn2-succ-block*))
 (defconst *fn2-idc-eb* (+ *fn2-idc-ident* 4))
@@ -37,8 +37,8 @@
 
 ;; The overlay rows a profile gets when it names none (:identity-overlays):
 ;; a batch takes one private overlay per schema it writes, and a POST
-;; writes up to 10 today (the five identity records, article, outcome,
-;; counts, overview, addr) of the 16 a transaction could name; B keeps two
+;; writes up to 11 (the five identity records, article, outcome,
+;; counts, overview, addr and additional stream memberships) of the 16 a transaction could name; B keeps two
 ;; batches in flight (its two commit rows) and the sealer works on the
 ;; frozen ones behind them. So 16 schemas x 3 batches. Each overlay in use
 ;; holds one arena of :identity-arena-bytes from the pool; the pool must

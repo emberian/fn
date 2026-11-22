@@ -348,7 +348,7 @@
 ;; check.
 (defun fn2-run-glue-verified-positive ()
  (declare (xargs :verify-guards nil))
- (and (subsetp-eq '(fn2-identity-evidence fn2-article fn2-overview fn2-addr) (strip-cars (fn2-run-glue-assembled)))
+ (and (subsetp-eq '(fn2-identity-evidence fn2-article fn2-overview fn2-addr fn2-article-stream) (strip-cars (fn2-run-glue-assembled)))
       (equal (fn2-run-glue-check (fn2-run-glue-assembled)) :ok)))
 (defun fn2-rt-old-lookup-step (c budget)
  (declare (xargs :verify-guards nil))

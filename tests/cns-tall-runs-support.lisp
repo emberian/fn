@@ -60,6 +60,7 @@
       (fn2-fields (if (zp level) (fn2-fields-set-value (+ e 2) *fn2-cns-tall-article* fn2-fields) fn2-fields))
       (fn2-fields (if (zp level) (fn2-fields-set-value (+ e 3) 3 fn2-fields) fn2-fields))
       (fn2-fields (if (zp level) (fn2-fields-set-value (+ e 4) 1 fn2-fields) fn2-fields))
+      (fn2-fields (if (zp level) (fn2-fields-set-value (+ e *fn2-addr-entry-field-additional-count*) 0 fn2-fields) fn2-fields))
       ((mv code fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
        (fn2-run-add 0 *fn2-addr-sid* e fn2-run-writers fn2-run-restarts fn2-fields fn2-pool))
       ((unless (eq code :ok)) (fn2-cns-tall-mv code))

@@ -789,10 +789,14 @@ checked head; an equal ACK rechecks it before replying. Restoring a grant create
 does not revive old cursor bytes. Repeat REGISTER returns the existing recorded view. REGISTER and
 REBASE refuse a view that cannot be represented by the current v1 issuer before staging a transaction.
 
-The txn currently emits one address row per event and retains only the first group's stream. Its
-overview rows record each group's article number but cannot enumerate all groups by article. General
-per-item access through any authorized group requires a bounded article-to-stream membership lookup,
-or a retained set published in the transaction that creates the address row.
+TXN emits one address row per principal and event. It records the first accepted group's stream
+and the number of additional streams. For each further accepted group it emits one unique
+article-stream row keyed by the same article event and a positive ordinal. The stream ID comes
+from the group lookup used for append authority and numbering. The address, memberships and
+overview rows enter the same transaction and replay from that transaction's log records.
+Only the address row contributes an occurrence or a stream wake. A reader may try the primary
+stream and then advance one membership ordinal at a time under the same authority head.
+The current page and FETCH readers still select the primary stream.
 
 The active registration is keyed by durable principal and consumer. Its value holds the epoch,
 position, query version and authority revision. POSITION returns that revision even after authority

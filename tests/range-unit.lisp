@@ -48,7 +48,7 @@
 
 ;; The addressing schema reads the same way: principal 7's entries after
 ;; position 25 (a stream seek by key), across a run and the overlay.
-(defun fn2-rgt-ad (p pos) (declare (xargs :verify-guards nil)) (list p pos (+ 1000 pos) 3 1))
+(defun fn2-rgt-ad (p pos) (declare (xargs :verify-guards nil)) (list p pos (+ 1000 pos) 3 1 0))
 (defconst *fn2-rgt-addr* (list (list (fn2-rgt-ad 7 10) (fn2-rgt-ad 7 20) (fn2-rgt-ad 7 30) (fn2-rgt-ad 8 5))
                                (list (fn2-rgt-ad 7 40) (fn2-rgt-ad 9 1))))
 (assert-event (equal (fn2-range-image 4 *fn2-addr-entry* *fn2-rgt-addr* '(7 26) '(7 1000000) nil 0 8 nil)
