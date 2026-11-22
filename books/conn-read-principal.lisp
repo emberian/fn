@@ -1,6 +1,17 @@
 (in-package "ACL2")
 (include-book "conn-authenticated-principal")
-(include-book "authority-kind")
+(include-book "assembly-index")
+
+(defcost fn2-conn-authenticated-principal :child fn2-conn-authenticated-principal-children
+ :answers (:ok :access :state)
+ :doc "Require a live NNTP incarnation and the current account bound by protected authentication.")
+(defun fn2-conn-authenticated-principal-children (conn gen fn2-machines fn2-conn fn2-accounts)
+ (declare (xargs :stobjs (fn2-machines fn2-conn fn2-accounts)
+                 :guard (and (fn2-machines-wfp fn2-machines) (fn2-conn-wfp fn2-conn)
+                             (fn2-accounts-wfp fn2-accounts))))
+ (mv-let (code slot) (fn2-conn-live-slot conn gen *fn2-conn-kind* fn2-machines fn2-conn)
+   (if (eq code :ok) (fn2-conn-protected-account-at slot fn2-conn fn2-accounts)
+     (mv :state 0))))
 
 (defcost fn2-conn-read-principal :child fn2-conn-read-principal-children
  :answers (:ok :public :access :state)
@@ -10,7 +21,7 @@
  (declare (xargs :stobjs (fn2-machines fn2-conn fn2-accounts)
                  :guard (and (fn2-machines-wfp fn2-machines) (fn2-conn-wfp fn2-conn)
                              (fn2-accounts-wfp fn2-accounts))))
- (b* (((mv code slot) (fn2-conn-live-slot conn gen fn2-machines fn2-conn))
+ (b* (((mv code slot) (fn2-conn-live-slot conn gen *fn2-conn-kind* fn2-machines fn2-conn))
       ((unless (and (eq code :ok) (unsigned-byte-p 32 cursor) (posp cursor-gen)
                     (equal (fn2-conn-query slot fn2-conn) cursor)
                     (equal (fn2-conn-query-gen slot fn2-conn) cursor-gen)))

@@ -9,7 +9,7 @@
 (include-book "upload")
 (include-book "tls")
 (include-book "compress")
-(include-book "conn-authenticated-principal")
+(include-book "conn-read-principal")
 (fn2-tls-op-events)
 (fn2-compress-op-events)
 (fn2-upload-op-events)

@@ -175,6 +175,10 @@ def main():
             assert reply["outcome"] == "accepted" and reply["evidence"] == "committed", reply
         for principal in ("fixture-reader", "fixture-denied"):
             admin(principal, "principal", "create", principal)
+        admin("secondary-only", "grant", "set", "fixture-reader", "read", VISIBLE.decode("ascii"))
+        # Kill immediately after the positive reader's credential is accepted.
+        # A later durable transaction could flush a prematurely acknowledged write.
+        for principal in ("fixture-denied", "fixture-reader"):
             password = secrets.token_hex(16)
             password_reply = subprocess.run(
                 [str(fixture.ROOT / "fn"), "principal", "set-password", principal,
@@ -185,7 +189,6 @@ def main():
                 assert password.encode("ascii") not in output, "credential in provisioning output"
             assert password_reply.returncode == 0, ("set-password", password_reply.returncode)
             credentials[principal] = password
-        admin("secondary-only", "grant", "set", "fixture-reader", "read", VISIBLE.decode("ascii"))
         node.kill()
     finally:
         node.close()
