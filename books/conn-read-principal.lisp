@@ -27,9 +27,12 @@
       (mask (fn2-conn-mask slot fn2-conn))
       (principal (fn2-conn-login-principal slot fn2-conn))
       (account (fn2-conn-principal-slot slot fn2-conn))
-      (live-principal (if (and (natp account) (< account (fn2-accounts-rows fn2-accounts)))
-                          (fn2-account-principal-id account fn2-accounts)
-                        0)))
+      (live-principal
+       (if (and (fn2-accountsp fn2-accounts) (fn2-accounts-shapep fn2-accounts)
+                (natp account) (< account (fn2-accounts-rows fn2-accounts))
+                (not (equal (fn2-accounts-state account fn2-accounts) *fn2-account-state-free*)))
+           (fn2-account-principal-id account fn2-accounts)
+         0)))
    (cond
     ((not (equal 0 (logand mask *fn2-nntp-state-authenticated*)))
      (if (and (not (equal 0 (logand mask *fn2-nntp-state-tls*)))
