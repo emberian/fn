@@ -953,7 +953,7 @@
                                 :accept (:ok))
                                (:set (done 1) (roff 0) (update *fn2-cursor-update-none*)) (:goto hand))
                               ((or (equal row-pin 0) (<= (nfix article) row-pin))
-                               (:set (spin article) (lgroup row-group)
+                               (:set (spin article) (found 0) (lgroup row-group)
                                      (lo 1) (hi *fn2-none*) (step 8))
                                (:if (or (fn2-cursor-overview-p row-tag) (fn2-cursor-hdr-p row-tag))
                                     ((:goto over-head))

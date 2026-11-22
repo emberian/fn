@@ -197,12 +197,14 @@ def main():
             sock.sendall(wire(stuffed(articles[0][2]) + [b"."]))
             denied = stream.readline()
             assert denied.startswith(b"441 "), denied
-            grant_rc = subprocess.call(
-                [str(ROOT / "fn"), "grant", "set", "anonymous", "append", "local.test",
-                 "--control-sock", str(ctl_sock)],
-                cwd=ROOT, timeout=90,
-            )
-            assert grant_rc == 0, grant_rc
+            # Only the later POST and recovered reads need these grants.
+            for right in ("append", "read"):
+                grant_rc = subprocess.call(
+                    [str(ROOT / "fn"), "grant", "set", "anonymous", right, "local.test",
+                     "--control-sock", str(ctl_sock)],
+                    cwd=ROOT, timeout=90,
+                )
+                assert grant_rc == 0, (right, grant_rc)
             for mid, _, whole in articles:
                 sock.sendall(b"POST\r\n")
                 assert stream.readline() == b"340 send article to be posted\r\n"
