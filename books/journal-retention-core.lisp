@@ -4,6 +4,7 @@
 (include-book "journal-retention")
 (include-book "c-snapshot")
 (include-book "storage-block-io")
+(include-book "pool-ranges")
 (include-book "peer-history-member")
 (fn2-book-layer :c)
 
@@ -138,10 +139,15 @@
                        (fn2-alloc-edge-slotp edge fn2-alloc-edges)
                        (fn2-alloc-edge-matchesp edge token extent epoch allocation :promised-read fn2-alloc-edges)))
          (mv :source fn2-event-read fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control))
+        (slot (fn2-event-read-slot 0 fn2-event-read))
+        (gen (fn2-event-read-gen 0 fn2-event-read))
+        ; The adapter appends at the workspace's current fill. Both
+        ; journal frames must arrive at offset zero for the verifier.
+        ((mv code fn2-pool) (fn2-pool-truncate slot gen 0 kind owner generation fn2-pool))
+        ((unless (eq code :ok)) (mv code fn2-event-read fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control))
         ((mv code op opgen fn2-pool fn2-ops fn2-control fn2-extents fn2-alloc-edges)
          (fn2-block-read-children (+ (* extent *fn2-storage-extent-units*) (if seal 2 1))
-          epoch allocation 0 *fn2-commit-unit-bytes*
-          (fn2-event-read-slot 0 fn2-event-read) (fn2-event-read-gen 0 fn2-event-read)
+          epoch allocation 0 *fn2-commit-unit-bytes* slot gen
           kind owner generation 0 fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control))
         ((unless (eq code :ok)) (mv code fn2-event-read fn2-extents fn2-alloc-edges fn2-pool fn2-ops fn2-control))
         (fn2-event-read (fn2-event-read-put 0 (pending 1) (op-slot op) (op-gen opgen)
