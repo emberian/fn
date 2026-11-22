@@ -177,6 +177,11 @@
 
 (defcost fn2-cns-successor :answers (:ok :bounds)
  :doc "The request row's successor write transaction: fn2-txn's and fn2-auth's capacities plus the row's slot (fn2-txn-consumer-share).")
+(defcost fn2-cns-peer-live-p
+ :doc "Check the live protected query and the principal bound to this peer registration row.")
+(defcost fn2-cns-put-peer-register :answers (:ok :state) :bytes 512
+ :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields)
+ :doc "Declare a peer stream registration under the already checked authority head.")
 (defcost fn2-cns-put-mutation :answers (:ok :state) :bytes 512
  :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-id-decides fn2-core-id-engine
           fn2-core-overlays fn2-core-overlay-index fn2-core-fields fn2-core-pool)
@@ -1357,7 +1362,11 @@
 ;; fn2-cns: one consumer request; a parked wait is this row parked on its edge.
 (defmachine-arms fn2-cns :declare
  :subarms
- (  (decode-request :on-refusal ((:stop :machine-phase))
+ ((peer-settle
+   (:if (fn2-cns-peer-live-p id row-generation)
+        ((:wake-row row-ctl) (:next :peer-settled) (:charge :steps *fn2-work-transition*))
+        ((:next :draining) (:charge :steps *fn2-work-transition* :runnable t))))
+  (decode-request :on-refusal ((:stop :machine-phase))
    (:do (dcode dreason nverb ncid ncstart nto nlim nepoch nwait nop nfstart nnoff nnlen)
         (fn2-cns-decode-port row-fpos row-flen row-fkind row-address-principal
                              row-ctl row-ctl-gen row-tx-slot row-tx-gen row-xrow)
@@ -2077,6 +2086,42 @@
                          (:goto answer))))
     :refused ((:set (reason *fn2-cns-reason-unavailable*)) (:goto refuse))
     :uncertain ((:set (outcome *fn2-cns-outcome-uncertain*)) (:goto answer))))))
+  ;; The protected query resolved its stream and authorized all four
+  ;; grants under one head. This row owns the ordinary successor workspace
+  ;; and batch ticket. It never responds with an uncommitted cursor.
+  (:peer-commit :on-refusal ((:stop :machine-phase))
+   (:cond
+    ((not (fn2-cns-peer-live-p id row-generation))
+     (:if (not (equal row-wstep 0)) ((:do (rcode) (fn2-successor-release row-sx))) ())
+     (:next :draining) (:charge :steps *fn2-work-transition* :runnable t))
+    ((equal row-wstep 0)
+     (:do (xcode sx) (fn2-cns-successor id)
+      :case (((:bounds) (:set (outcome *fn2-cns-outcome-refused*)) (:goto peer-settle))))
+     (:do (pc) (fn2-cns-put-peer-register id sx)
+      :case (((:state) (:do (rcode) (fn2-successor-release sx))
+              (:set (outcome *fn2-cns-outcome-refused*)) (:goto peer-settle))))
+     (:set (sx sx) (wstep 1))
+     (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+    ((equal row-wstep 1)
+     (:do (rvcode) (fn2-successor-resolve row-sx 4096)
+      :accept ()
+      :case (((:ok) (:set (wstep 2)) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+             ((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+             (:otherwise (:do (rcode) (fn2-successor-release row-sx))
+              (:set (outcome *fn2-cns-outcome-refused*)) (:goto peer-settle)))))
+    (t (:commit row-sx :workspace (row-ws-slot row-ws-gen) :ticket ticket :wait :peer-committed
+         :dependencies ((:set (outcome *fn2-cns-outcome-refused*)) (:goto peer-settle))
+         :unchanged ((:set (outcome *fn2-cns-outcome-accepted*)) (:goto peer-settle))
+         :refused ((:set (outcome *fn2-cns-outcome-refused*)) (:goto peer-settle))))))
+  (:peer-committed :on-refusal ((:stop :machine-phase))
+   (:commit row-sx :workspace (row-ws-slot row-ws-gen) :ticket ticket :wait :peer-committed
+    :accepted ((:set (outcome *fn2-cns-outcome-accepted*)) (:goto peer-settle))
+    :refused ((:set (outcome *fn2-cns-outcome-refused*)) (:goto peer-settle))
+    :uncertain ((:set (outcome *fn2-cns-outcome-uncertain*)) (:goto peer-settle))))
+  (:peer-settled
+   (:if (fn2-cns-peer-live-p id row-generation)
+        ((:charge :steps *fn2-work-empty*))
+        ((:next :draining) (:charge :steps *fn2-work-transition* :runnable t))))
   ;; :append (e-surface.md 3.3): an append is a POST through the one write
   ;; path. Take an upload row for this request, feed it the frame's article
   ;; octets as a connection feeds a POST's block, and wait for the outcome
@@ -2529,6 +2574,36 @@
                (mv :ok (+ c a s))
              (mv :bounds 0)))))
      (in-theory (disable fn2-cns-successor))
+     (defun fn2-cns-peer-live-p (id gen fn2-core)
+       (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+       (and (eq (fn2-cns-snapshot-read-code id fn2-core) :ok)
+            (equal (fn2-machine-generation id fn2-core) gen)
+            (mv-let (code principal conn cgen)
+              (fn2-xfnc-live-login (fn2-cns-row-request id fn2-core) (fn2-cns-row-peer-cursor-gen id fn2-core) fn2-core)
+              (and (eq code :ok) (equal principal (fn2-cns-row-address-principal id fn2-core))
+                   (equal conn (fn2-cns-row-ctl id fn2-core)) (equal cgen (fn2-cns-row-ctl-gen id fn2-core))
+                   (equal (fn2-conn-row-peer-role-grant conn fn2-core) (fn2-cns-row-xgrant id fn2-core))))))
+     (in-theory (disable fn2-cns-peer-live-p))
+     (defun fn2-cns-put-peer-register (id sx fn2-core)
+       (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+       (b* ((principal (fn2-cns-row-address-principal id fn2-core))
+            (consumer (fn2-cns-row-consumer id fn2-core))
+            (stream (fn2-cns-row-peer-stream id fn2-core))
+            (epoch (fn2-cns-row-epoch id fn2-core))
+            (head (fn2-cns-row-page-head id fn2-core))
+            (grant (fn2-cns-row-xgrant id fn2-core))
+            ((unless (and (posp principal) (unsigned-byte-p 60 principal) (posp consumer) (unsigned-byte-p 60 consumer)
+                          (posp stream) (unsigned-byte-p 60 stream) (unsigned-byte-p 32 epoch)
+                          (unsigned-byte-p 32 (+ 1 epoch)) (posp head) (unsigned-byte-p 60 head) (posp grant)))
+             (mv :state fn2-core))
+            ((mv dc fn2-core) (fn2-authority-depend sx principal grant head fn2-core))
+            ((unless (eq dc :ok)) (mv :state fn2-core))
+            ((mv code fn2-core)
+             (fn2-consumer-cursor-register-peer sx 0 (principal principal) (consumer consumer)
+                (expected-epoch epoch) (next-epoch (+ 1 epoch)) (new-stream stream) (new-view head) fn2-core)))
+         (mv (if (eq code :ok) :ok :state) fn2-core)))
+     (fn2-core-preserves fn2-cns-put-peer-register (id sx fn2-core) :position 1 :rows nil)
+     (in-theory (disable fn2-cns-put-peer-register))
      (defun fn2-cns-seek-loop (k r fn2-core)
        (declare (xargs :stobjs fn2-core :measure (nfix k) :guard (fn2-core-wfp fn2-core)))
        (if (<= (nfix k) 0)
@@ -2600,11 +2675,12 @@
             ((mv vc1 ver) (fn2-read-value x *fn2-consumer-cursor-entry-field-version* fn2-core))
             ((mv vc2 view) (fn2-read-value x *fn2-consumer-cursor-entry-field-view* fn2-core))
             ((mv vc3 epoch) (fn2-read-value x *fn2-consumer-cursor-entry-field-epoch* fn2-core))
+            ((mv vc4 peer-stream) (fn2-read-value x *fn2-consumer-cursor-entry-field-peer-stream* fn2-core))
             ((mv rc fn2-core) (fn2-read-release x fn2-core))
             ((unless (eq rc :ok)) (mv :unavailable 0 0 0 0 0 fn2-core))
             ((unless (or (eq lcode :absent)
                          (and (eq lcode :ok) (eq vc0 :ok) (eq vc1 :ok) (eq vc2 :ok) (eq vc3 :ok)
-                              (posp epoch))))
+                              (eq vc4 :ok) (equal peer-stream 0) (posp epoch))))
              (mv :unavailable 0 0 0 0 0 fn2-core))
             ((mv fcode pfront fn2-core) (fn2-cns-stream-frontier pid x fn2-core))
             ((unless (eq fcode :ok)) (mv :unavailable 0 0 0 0 0 fn2-core)))

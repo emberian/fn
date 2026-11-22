@@ -128,8 +128,11 @@
 (defmachine-registry fn2-ctl)
 
 (defmachine fn2-cns
- :phases (:free :decode :check :lookup :read :page :article :item :fetch :source :park :commit :committed :append :draining :retired :replay :fetch-authorize :item-authorize :page-authorize :view-frontier :view-frontier-item :view-frontier-check)
+ :phases (:free :decode :check :lookup :read :page :article :item :fetch :source :park :commit :committed :append :draining :retired :replay :fetch-authorize :item-authorize :page-authorize :view-frontier :view-frontier-item :view-frontier-check :peer-commit :peer-committed :peer-settled)
  :fields ((ctl :link) (ctl-gen :u60) (request :u32) (fpos :u32) (flen :u32) (fkind :u8)
+          ;; In peer registration phases, CTL and REQUEST name the
+          ;; protected NNTP connection and its linked request cursor.
+          (peer-cursor-gen :u60) (peer-stream :u60)
           (verb (:enum fn2-cns-verb (:none :register :read :wait :ack :position :status :append :fetch
                                      :rebase :unregister)))
           (consumer :u60) (epoch :u32) (op :u60) (to :u60) (cstart :u60) (page-limit :u16) (wait-ms :u32)
@@ -203,6 +206,9 @@
          (:fetch :tx-range :wait-row (:storage-window :while (lease :held)))
          (:source :tx-range :wait-row (:storage-window :while (lease :held))) (:park :tx-range :wait-row (:storage-window :while (lease :held)))
          (:commit :tx-range :wait-row (:storage-window :while (lease :held)))
+         (:peer-commit :tx-range :wait-row)
+         (:peer-committed :tx-range :wait-row :batch-membership)
+         (:peer-settled :tx-range :wait-row)
          (:replay :tx-range :wait-row (:storage-window :while (lease :held)))
          (:committed :tx-range :wait-row :batch-membership (:storage-window :while (lease :held))) (:append :tx-range :wait-row (:storage-window :while (lease :held))) (:draining :tx-range :wait-row (:storage-window :while (lease :held))))
  ;; :commit's submitting run stages, emits, admits and binds (24,576 bytes, as fn2-txn's :ready)
@@ -210,7 +216,7 @@
  :capacity (fn2-cns-capacity profile)
  :taken (:phase :decode :rows :wait-row :ranges ((:tx-range :slot ws-slot :gen ws-gen :class 0) (:tx-range :slot ns-slot :gen ns-gen :class (:bytes *fn2-ctl-io-bytes*)))
          :copy (ctl ctl-gen request fpos flen fkind tx-slot tx-gen)
-         :clear (verb consumer epoch op to cstart page-limit wait-ms deadline address-principal address-tip page-head page-view-bound stored-view visible-ipos cpos version pub-frontier count more outcome
+         :clear (peer-cursor-gen peer-stream verb consumer epoch op to cstart page-limit wait-ms deadline address-principal address-tip page-head page-view-bound stored-view visible-ipos cpos version pub-frontier count more outcome
                  reason posted posted-word txn-gen upload-gen fstart fed feed-mode feed-discard stream outcome-checked name-off name-len append-numbers-len
                  ipos ioff ilen npos art istream itype alen lunit lepoch lalloc lgen lease revent routcome rcount rready cursor xrow xstep xhead xgrant
                  member-first member-count member-ordinal member-stream member-head member-phase
@@ -218,7 +224,7 @@
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (ctl *fn2-none*) (edge *fn2-none*) (txn *fn2-none*) (tx-slot *fn2-none*) (upload *fn2-none*)
            (lslot *fn2-none*) (ws-slot *fn2-none*) (ns-slot *fn2-none*) (next-free fn2-machine-initial-next-free))
- :arms ((:free) (:decode) (:check) (:lookup) (:read) (:page) (:article) (:item) (:fetch) (:source) (:park) (:commit) (:committed) (:append) (:draining) (:retired) (:replay) (:fetch-authorize) (:item-authorize) (:page-authorize) (:view-frontier) (:view-frontier-item) (:view-frontier-check))
+ :arms ((:free) (:decode) (:check) (:lookup) (:read) (:page) (:article) (:item) (:fetch) (:source) (:park) (:commit) (:committed) (:append) (:draining) (:retired) (:replay) (:fetch-authorize) (:item-authorize) (:page-authorize) (:view-frontier) (:view-frontier-item) (:view-frontier-check) (:peer-commit) (:peer-committed) (:peer-settled))
  :observes ((:read-result)))
 
 (defmachine-registry fn2-cns)
