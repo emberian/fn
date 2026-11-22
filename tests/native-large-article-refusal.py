@@ -32,6 +32,14 @@ def large_article(mid, marker):
     return result.ljust(size - 2, b"x") + b"\r\n"
 
 
+def grant_append_fetch(directory, principal, control):
+    # FETCH requires consume admission as well as a read grant on the stream.
+    for right, scope in (("append", ("local.test",)), ("read", ("local.test",)), ("consume", ())):
+        grant = base.run_fn(directory, f"grant-{right}", "grant", "set", principal, right,
+                            *scope, "--control-sock", control)
+        assert grant["outcome"] == "accepted", grant
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--directory", type=Path, required=True)
@@ -50,10 +58,7 @@ def main():
         node.marker(b"LISTENING-LOCAL ")
         created = base.run_fn(directory, "principal", "principal", "create", principal, "--control-sock", control)
         assert created["outcome"] == "accepted", created
-        for right in ("append", "read"):
-            grant = base.run_fn(directory, f"grant-{right}", "grant", "set", principal, right,
-                                "local.test", "--control-sock", control)
-            assert grant["outcome"] == "accepted", grant
+        grant_append_fetch(directory, principal, control)
         for index, marker in enumerate((b"first", b"other")):
             article = large_article(f"<large-refused-{index}@example.invalid>", marker)
             path = directory / f"refused-{index}.article"

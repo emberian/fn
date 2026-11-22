@@ -88,10 +88,7 @@ def main():
         node.marker(b'LISTENING-LOCAL ')
         created = base.run_fn(directory, 'principal', 'principal', 'create', principal, '--control-sock', control)
         assert created['outcome'] == 'accepted', created
-        for right in ('append', 'read'):
-            grant = base.run_fn(directory, f'grant-{right}', 'grant', 'set', principal, right,
-                                'local.test', '--control-sock', control)
-            assert grant['outcome'] == 'accepted', grant
+        large.grant_append_fetch(directory, principal, control)
         for index, (mid, article, path) in enumerate(submissions):
             reply = base.run_fn(directory, f'accepted-{index}', 'stream', 'append', '--as', principal,
                                '--file', path, '--op', str(91 + index), '--control-sock', control)
@@ -118,7 +115,7 @@ def main():
         refused = base.run_fn(directory, 'cross-identity', 'stream', 'fetch', submissions[0][0], '--as', principal,
                              '--domain', accepted[1]['domain'], '--position', accepted[1]['position'],
                              '--control-sock', control, expected=1)
-        assert refused['outcome'] == 'refused' and 'article_hex' not in refused, refused
+        assert refused == {'outcome': 'refused', 'reason': 'unavailable'}, refused
         node.kill()
         receipts.append(dict(phase='recovered', node_pid=node.node_pid, exit=node.proc.returncode))
     finally:
