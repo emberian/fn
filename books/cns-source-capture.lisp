@@ -156,7 +156,8 @@
  ((fn2-columns-call-guard-hint 'fn2-cns-source-capture-read-children
    '(fn2-pool-workspace-code fn2-rd-entry-row fn2-read-value-children
      fn2-read-octets-children fn2-run-zero fn2-pool-reset fn2-pool-data-length
-     fn2-cns-capture-descriptor-p ceiling nfix (:rewrite ceiling-to-floor))
+     fn2-cns-capture-descriptor-p fn2-pool-mrefp unsigned-byte-p posp
+     ceiling nfix (:rewrite ceiling-to-floor))
    '(fn2-cns-source-capture-read-children) world)))
 
 ; Complete external capture admission in one call: copied metadata is never
