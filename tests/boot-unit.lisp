@@ -45,6 +45,41 @@
 (assert-event (eq (fn2-image-create-request 1 *fn2-node-profile*) :geometry))
 (assert-event (eq (fn2-image-create-request 33554432 *fn2-node-profile*) :ok))
 
+; The served image profile deliberately leaves room after its committed
+; arena. Probe both geometry boundaries through the actual host-facing API.
+(assert-event
+ (let* ((n (fn2-b-capacity :extent-slots 16 *fn2-node-profile*))
+        (g (len (fn2-profile-get :groups *fn2-node-profile*)))
+        (old (+ (* 12288 n) (* 4096 (+ g 3))))
+        (minimum (+ (* 65536 n) (* 4096 (+ g 8)))))
+  (and (eq (fn2-image-create-request old *fn2-node-profile*) :geometry)
+       (eq (fn2-image-create-request (- minimum 4096) *fn2-node-profile*) :geometry)
+       (eq (fn2-image-create-request minimum *fn2-node-profile*) :ok))))
+
+(defun fn2-bu-genesis-addressesp (at groups store)
+ (declare (xargs :verify-guards nil :measure (nfix (1+ groups))))
+ (and (assoc-equal at store)
+      (or (zp groups)
+          (fn2-bu-genesis-addressesp (+ at 4096) (1- groups) store))))
+
+(defun fn2-bu-addresses-outside-arenap (arena store)
+ (declare (xargs :verify-guards nil))
+ (if (atom store) t
+  (and (<= arena (caar store))
+       (fn2-bu-addresses-outside-arenap arena (cdr store)))))
+
+(defun fn2-bu-image-layoutp (size profile store)
+ (declare (xargs :verify-guards nil))
+ (let* ((extents (fn2-b-capacity :extent-slots 16 profile))
+        (groups (len (fn2-profile-get :groups profile)))
+        (arena (* 65536 extents)))
+  (and (fn2-bu-genesis-addressesp arena groups store)
+       (fn2-bu-addresses-outside-arenap arena store)
+       ; Check both epoch offsets and the gap reserved for checkpoint blocks.
+       (assoc-equal (- size 8192) store)
+       (assoc-equal (- size 4096) store)
+       (<= (+ arena (* 4096 (+ groups 6))) (- size 8192)))))
+
 ; Attachments are executable observations, not logical DEFCONST values.
 (assert-event
  (let* ((created (fn2-bu-start t nil))
@@ -52,7 +87,8 @@
         (reopened (fn2-bu-start nil (nth 4 opened)))
         (empty (fn2-bu-start nil nil))
         (bad-anchor (fn2-bu-start nil (cons (cons (- 33554432 8192) :corrupt) (nth 4 created)))))
-  (or (and (equal (take 4 created) '((:ok :held :booting 0) :quiet :ready 1))
+  (or (and (fn2-bu-image-layoutp 33554432 *fn2-node-profile* (nth 4 created))
+           (equal (take 4 created) '((:ok :held :booting 0) :quiet :ready 1))
            (equal (take 4 opened) '((:ok :held :booting 0) :quiet :ready 2))
            (equal (take 4 reopened) '((:ok :held :booting 0) :quiet :ready 3))
            (posp (nth 6 created)) (posp (nth 6 opened)) (posp (nth 6 reopened))
