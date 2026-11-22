@@ -148,7 +148,7 @@
   (declare (xargs :guard t))
   (if (fn2-profile-get :posting-interim profile)
       (nfix (- (nfix (fn2-profile-t profile)) (fn2-txn-authority-share profile)
-               (fn2-txn-consumer-share profile) (fn2-profile-pull-rows profile)))
+               (fn2-txn-consumer-share profile) (fn2-peer-pull-capacity profile)))
     0))
 (defthm fn2-txn-authority-share-natp (natp (fn2-txn-authority-share profile)) :rule-classes :type-prescription)
 (defthm fn2-txn-consumer-share-natp (natp (fn2-txn-consumer-share profile)) :rule-classes :type-prescription)

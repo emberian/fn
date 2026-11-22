@@ -295,7 +295,7 @@
 (defun fn2-b-read-rows (profile)
  (declare (xargs :guard t))
  (+ (* 2 (fn2-b-cursor-rows profile)) (fn2-b-conn-auth-rows profile)
-    (fn2-profile-pull-rows profile) (fn2-b-cns-rows profile) (fn2-b-auth-rows profile)))
+    (fn2-peer-pull-capacity profile) (fn2-b-cns-rows profile) (fn2-b-auth-rows profile)))
 (defthm fn2-b-cursor-rows-natp (natp (fn2-b-cursor-rows profile)) :rule-classes :type-prescription)
 (defthm fn2-b-cns-rows-natp (natp (fn2-b-cns-rows profile)) :rule-classes :type-prescription)
 (defthm fn2-b-auth-rows-natp (natp (fn2-b-auth-rows profile)) :rule-classes :type-prescription)

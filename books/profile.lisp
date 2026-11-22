@@ -41,11 +41,6 @@
 ;; ("<fn2." N "." N "@" ">", N at most 20 digits).
 (defconst *fn2-profile-path-identity-max* 202)
 (fn2-def-profile-reader fn2-profile-path-identity :path-identity)
-(defun fn2-profile-pull-rows (profile)
-  (declare (xargs :guard t))
-  (let ((n (fn2-profile-get :peer-pull-slots profile)))
-    (if (unsigned-byte-p 32 n) n 0)))
-(defthm fn2-profile-pull-rows-natp (natp (fn2-profile-pull-rows profile)) :rule-classes :type-prescription)
 (defun fn2-profile-path-chars-p (cs first)
   (declare (xargs :guard t))
   (if (atom cs) (null cs)
@@ -163,12 +158,6 @@
    (fn2-profile-positive-fields-p
     '(:c :p :u :t :x :w :o :qa :h :k :aturn
       :ncancel :jread :jwrite :accept-credits :trace-capacity) profile)
-   (or (not (assoc-equal :peer-pull-slots profile))
-       (and (unsigned-byte-p 32 (fn2-profile-get :peer-pull-slots profile))
-            (or (zp (fn2-profile-pull-rows profile))
-                (<= (+ (fn2-profile-pull-rows profile)
-                       (nfix (fn2-profile-get :authority profile)) (nfix (fn2-profile-get :cns profile)))
-                    (nfix (fn2-profile-t profile))))))
    (fn2-profile-positive-u32p (fn2-profile-fence-slots profile))
    ; Principal references use u16; the other table references use u32.
    (<= (fn2-profile-p profile) 65536)
