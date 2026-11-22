@@ -35,3 +35,25 @@
 (defcost fn2-conn-xfnc-result :answers t :bytes 2048
  :tables (fn2-core-pool fn2-core-fields fn2-core-digests fn2-core-b3)
  :doc "Stage the held peer result into its exact live connection's TX after the decision turn.")
+
+;; TX stays private across collection and final frame assembly. Only a
+;; complete renderer success can enter the connection's ordinary SEND arm.
+(fn2-csnapshot-op fn2-conn-xfnc-page-step (cursor generation stage) 1
+ (cond
+  ((equal stage *fn2-conn-xfnc-answer-collect*)
+   (b* (((mv found revision) (fn2-core-ready-history-revision fn2-core))
+        ((unless (and (eq found :ok) (posp revision))) (mv :unavailable fn2-core))
+        ((mv status fn2-core) (fn2-xfnc-read-page-turn cursor generation revision 4096 fn2-core)))
+     (cond ((eq status :ready) (mv :collected fn2-core))
+           ((member-eq status '(:busy :exhausted)) (fn2-xfnc-page-fail cursor :dependency fn2-core))
+           (t (mv status fn2-core)))))
+  ((equal stage *fn2-conn-xfnc-answer-seal*) (fn2-xfnc-render-page-turn cursor generation fn2-core))
+  (t (mv :state fn2-core))))
+(in-theory (disable fn2-conn-xfnc-page-step))
+(defcost fn2-conn-xfnc-page-step :answers t :bytes 4096 :descriptors 1
+ :tables (fn2-core-reads fn2-core-ranges fn2-core-seeks fn2-core-succ-txns fn2-core-run-cursors
+          fn2-core-run-paths fn2-core-fields fn2-core-fc fn2-core-pool fn2-core-b3 fn2-core-digests
+          fn2-cursor-table fn2-core-csnapshot fn2-core-journal-lease fn2-core-event-read fn2-core-journal-members
+          fn2-core-commit-root fn2-core-extents fn2-core-alloc-edges fn2-core-ops fn2-core-control
+          fn2-core-mk fn2-core-fc-context)
+ :doc "Collect or seal one bounded turn of a protected history page.")

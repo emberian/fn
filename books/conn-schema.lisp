@@ -56,7 +56,7 @@
           (start :u32) (pos :u32) (overflow :bool) (compacting :bool) (cursor :u32)
           (xfnc-left :u32) (xfnc-phase :u8) (xfnc-discard :bool) (xfnc-timer :bool) (xfnc-verb :u8)
           (xfnc-op :u32) (xfnc-op-gen :u60)
-          (xfnc-answer (:enum fn2-conn-xfnc-answer (:none :register :refused :uncertain))) (xfnc-reason :u8)
+          (xfnc-answer (:enum fn2-conn-xfnc-answer (:none :register :refused :uncertain :collect :seal))) (xfnc-reason :u8)
           (tx-off :u32) (after (:enum fn2-conn-after (:command :article-input :upgrading :closing :query :compress-upgrading)))
           (pending :u32) (borrows :u32) (mask :u8) (ordinal :u32) (access-ref :u32)
           (auth-pending (:enum fn2-conn-auth (:none :user :sasl :redeem)))

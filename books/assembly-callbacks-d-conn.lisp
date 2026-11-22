@@ -113,6 +113,25 @@
    (:set (query *fn2-none*) (query-gen 0) (xfnc-verb 0) (xfnc-answer *fn2-conn-xfnc-answer-none*) (xfnc-reason 0) (tx-off 0) (after *fn2-conn-after-command*))
    (:next :reply)
    (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+  (xfnc-page
+   (:do (status) (fn2-conn-xfnc-page-step row-query row-query-gen row-xfnc-answer)
+    :case (((:more) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+           ((:wait :drain) (:charge :bytes 4096 :steps *fn2-work-transition*))
+           ((:collected) (:set (xfnc-answer *fn2-conn-xfnc-answer-seal*))
+            (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+           ((:ready) (:goto xfnc-publish))
+           ((:uncertain) (:set (xfnc-answer *fn2-conn-xfnc-answer-uncertain*))
+            (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+           ((:scope :access :absent :meter :rebase-required :beyond-frontier :dependency :unavailable)
+            (:set (xfnc-answer *fn2-conn-xfnc-answer-refused*)
+                  (xfnc-reason (case status
+                                 (:scope *fn2-cns-reason-scope*) (:access *fn2-cns-reason-access*)
+                                 (:absent *fn2-cns-reason-query*) (:meter *fn2-cns-reason-meter*)
+                                 (:rebase-required *fn2-cns-reason-rebase-required*)
+                                 (:beyond-frontier *fn2-cns-reason-beyond-frontier*)
+                                 (otherwise *fn2-cns-reason-unavailable*))))
+            (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
+           (:otherwise (:next :closing) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t)))))
   (xfnc-query
    (:if (equal row-query *fn2-none*)
         ((:do (taken x xgen)
@@ -127,6 +146,9 @@
                  ((:none) (:next :xfnc-request) (:charge :steps *fn2-work-transition* :runnable t))
                  (:otherwise (:park :taken fn2-cursor :steps *fn2-work-transition*)))))
         ((:cond
+          ((or (equal row-xfnc-answer *fn2-conn-xfnc-answer-collect*)
+               (equal row-xfnc-answer *fn2-conn-xfnc-answer-seal*))
+           (:goto xfnc-page))
           ((not (equal row-xfnc-answer *fn2-conn-xfnc-answer-none*))
            (:do (render) (fn2-conn-xfnc-result row-query row-query-gen row-xfnc-answer row-xfnc-reason)
             :case (((:ok) (:goto xfnc-publish))
@@ -137,10 +159,9 @@
                    ((:wait) (:charge :bytes 4096 :steps *fn2-work-transition*))
                    ((:state) (:next :closing) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))
                    (:otherwise
-                    ;; A READ with a valid cursor still needs the typed
-                    ;; section 13.4 batch codec before it can yield a page.
                     (:set (xfnc-answer (case result
                                          (:register *fn2-conn-xfnc-answer-register*)
+                                         (:read *fn2-conn-xfnc-answer-collect*)
                                          (:uncertain *fn2-conn-xfnc-answer-uncertain*)
                                          (otherwise *fn2-conn-xfnc-answer-refused*)))
                           (xfnc-reason reason))
