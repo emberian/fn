@@ -86,6 +86,25 @@ class ReplyDecoding(unittest.TestCase):
         with self.assertRaises(fn_admin.WireError):
             fn_admin.decode_cns_reply("read", cns_reply(result + b"\x00"))
 
+    def test_read_and_wait_preserve_record_octets_and_reference_tag(self) -> None:
+        # Both bodies render to the same replacement character in the text preview.
+        articles = [b"a\xff\r\n", b"a\xfe\r\n"]
+        digest = bytes(range(32))
+        bodies = [(0, article) for article in articles]
+        bodies.append((2, (6144).to_bytes(8, "big") + b"\x01" + digest))
+        items = b"".join(
+            bytes([kind]) + bytes(4) + n.to_bytes(8, "big") + b"\x00"
+            + fn_admin.octets16(b"") + fn_admin.octets16(b"<item@test>") + fn_admin.octets32(body)
+            for n, (kind, body) in enumerate(bodies, start=1)
+        )
+        payload = b"\x00" + fn_admin.octets16(CURSOR) + len(bodies).to_bytes(4, "big") + fn_admin.octets32(items)
+        for verb in ("read", "wait"):
+            with self.subTest(verb=verb):
+                first, second, ref = fn_admin.decode_cns_reply(verb, cns_reply(payload))["items"]
+                self.assertEqual(first["text"], second["text"])
+                self.assertEqual([bytes.fromhex(item["article_hex"]) for item in (first, second)], articles)
+                self.assertEqual((ref["octets"], ref["content_tag"], ref["content"]), (6144, 1, digest.hex()))
+
     def test_truncated_item_fields_raise_wire_error_not_index_error(self) -> None:
         self.assertEqual(fn_admin.parse_cns_items(b""), [])
         for size in (1, 13, 14, 15, 16):

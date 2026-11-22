@@ -422,8 +422,10 @@ def parse_cns_items(buf: bytes) -> list[dict]:
             if len(body) != 41:
                 raise WireError(f"reference item body length {len(body)} != 41")
             entry["octets"] = int.from_bytes(body[:8], "big")
+            entry["content_tag"] = body[8]
             entry["content"] = body[9:].hex()
         elif entry["type"] == "record":
+            entry["article_hex"] = body.hex()
             entry["text"] = body.decode("utf-8", errors="replace")
             entry["octets"] = len(body)
         else:
