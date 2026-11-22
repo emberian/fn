@@ -1,6 +1,6 @@
 ; READ's octet credit counts items. Its envelope must still fit both limits.
 (in-package "ACL2")
-(include-book "../books/xfnc-batch-codec")
+(include-book "../books/xfnc-batch-header")
 
 (defun fn2-pull-budget-frame (header n)
  (declare (xargs :verify-guards nil))

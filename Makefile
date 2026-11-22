@@ -202,6 +202,7 @@ ACL2_BOOKS = \
   books/conn-xfnc-input \
   books/fncu-pool \
   books/xfnc-request \
+  books/xfnc-batch-header \
   books/xfnc-batch-codec \
   books/xfnc-reply \
   books/conn-authinfo-read \

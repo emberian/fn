@@ -4,11 +4,10 @@
 (in-package "ACL2")
 (include-book "peer-pull-stage")
 (include-book "peer-pull-reply-pool")
-(include-book "xfnc-batch-codec")
+(include-book "xfnc-batch-header")
 (include-book "peer-pull-request-encode")
 
 (defconst *fn2-peer-pull-max-page-items* 1)
-(include-book "fncu-pool")
 (include-book "xfnc-ops")
 
 ; Prefix/length, hashing, and trailer verification are separate actor turns.
