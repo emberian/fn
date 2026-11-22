@@ -26,6 +26,18 @@
      (mv :bounds 0))))
 
 
+(defun fn2-conn-authinfo-release (conn gen fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (b* (((unless (and (eq (fn2-conn-snapshot-read-code conn fn2-core) :ok)
+                    (equal (fn2-machine-generation conn fn2-core) gen))) (mv :state fn2-core))
+      ((mv rc x) (fn2-conn-authinfo-read-row conn fn2-core))
+      ((unless (eq rc :ok)) (mv :state fn2-core)))
+   (fn2-read-release x fn2-core)))
+(fn2-core-preserves fn2-conn-authinfo-release (conn gen fn2-core) :position 1 :rows nil)
+(defcost fn2-conn-authinfo-release :answers t
+ :tables (fn2-core-reads fn2-core-ranges fn2-core-seeks fn2-core-succ-txns)
+ :doc "Release the connection generation's unfinished principal or grant lookup.")
+
 (defun fn2-conn-peer-role-step (conn gen step head grant fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (b* (((unless (and (eq (fn2-conn-snapshot-read-code conn fn2-core) :ok)
@@ -40,7 +52,9 @@
                     (unsigned-byte-p 60 pid) (integerp mask) (logtest mask *fn2-nntp-state-tls*)
                     (or at-login (and (logtest mask *fn2-nntp-state-authenticated*)
                                       (posp (fn2-conn-row-peer-role-grant conn fn2-core))))))
-       (mv :access 0 0 0 fn2-core))
+       (mv-let (released fn2-core)
+         (if (posp step) (fn2-conn-authinfo-release conn gen fn2-core) (mv :ok fn2-core))
+         (mv (if (eq released :ok) :access :state) 0 0 0 fn2-core)))
       ((mv rc x) (fn2-conn-authinfo-read-row conn fn2-core))
       ((unless (eq rc :ok)) (mv :state 0 0 0 fn2-core)))
    (fn2-authority-principal-allows x pid *fn2-authority-right-peer* *fn2-authority-scope-principal*

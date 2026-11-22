@@ -459,6 +459,12 @@
   ;; the connection once nothing is pending or lent.
   (:draining
    (:cond ((not (equal row-pending 0)) (:charge :steps *fn2-work-empty*))
+          ((or (posp row-peer-step) (not (equal row-login-mode *fn2-conn-login-none*)))
+           (:do (released) (fn2-conn-authinfo-release id row-generation)
+            :accept (:ok) :case ((:otherwise (:stop :machine-phase))))
+           (:set (peer-step 0) (peer-head 0) (peer-grant 0) (peer-login 0)
+                 (login-mode *fn2-conn-login-none*) (login-candidate 0))
+           (:charge :steps *fn2-work-transition* :runnable t))
           ((fn2-xfnc-reader-owned-p id row-generation)
            (:do (read-close) (fn2-xfnc-reader-close id row-generation)
             :case (((:more :done) (:charge :steps *fn2-work-transition* :runnable t))
