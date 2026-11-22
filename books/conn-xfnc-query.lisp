@@ -74,6 +74,6 @@
    (mv :state fn2-core)))
 (in-theory (disable fn2-conn-xfnc-first-send-check))
 (defcost fn2-conn-xfnc-first-send-check :answers t :bytes 2048
- :tables (fn2-core-reads fn2-core-ranges fn2-core-seeks fn2-core-run-cursors
+ :tables (fn2-core-reads fn2-core-ranges fn2-core-seeks fn2-core-succ-txns fn2-core-run-cursors
           fn2-core-run-paths fn2-core-fields fn2-core-pool fn2-cursor-table)
  :doc "Confirm a sealed peer frame within one 2048-byte authority lookup immediately before its first SEND loan.")
