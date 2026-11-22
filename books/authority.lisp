@@ -1158,7 +1158,11 @@
                    (:type-prescription :corollary (natp (mv-nth 2 (fn2-authority-allows tx pid right target step head grant budget fn2-core))))
                    (:type-prescription :corollary (natp (mv-nth 3 (fn2-authority-allows tx pid right target step head grant budget fn2-core)))))
     :hints (("Goal" :in-theory (disable fn2-authority-allows-types) :use fn2-authority-allows-types)))
-   (in-theory (disable fn2-authority-allows))
+   (in-theory (disable fn2-authority-allows))))
+
+;; CNS cursor mutations and D transactions both declare this dependency.
+(defmacro fn2-authority-depend-events ()
+ '(progn
    ;; The member's read dependency on the authority it decided under: when
    ;; GRANT governed the decision (nonzero) and none is declared yet, TX's
    ;; :depend slot on fn2-authority-head (PID -> HEAD). The first

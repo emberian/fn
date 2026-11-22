@@ -3,8 +3,9 @@
 ; After the published grants' exact reads (authority.lisp's
 ; fn2-auth-read-events): a consumer request's :check calls fn2-cns-authority-allows.
 (in-package "ACL2")
-(include-book "assembly-callbacks-d-txn")
+(include-book "assembly-callbacks-d")
 (include-book "cns")
 (include-book "authority")
 (fn2-auth-read-events)
+(fn2-authority-depend-events)
 (fn2-cns-events)
