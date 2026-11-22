@@ -1,8 +1,8 @@
-; The retained journal verifier passes its records window and held snapshot
-; to this stage. One step decodes a record or advances its member hash.
+; The retained journal verifier passes its records window and retained
+; journal lease to this stage. One step decodes a record or advances its member hash.
 (in-package "ACL2")
 (include-book "event-read-state")
-(include-book "c-snapshot-state")
+(include-book "journal-retention-state")
 (include-book "event-frontier")
 (fn2-book-layer :c)
 (local (in-theory (disable fn2-event-readp fn2-event-read-wfp fn2-event-read-rows
@@ -11,21 +11,22 @@
                            fn2-event-read-next-event fn2-event-read-leaf-digest fn2-event-read-checker
                            fn2-event-read-field-base fn2-journal-members-phase fn2-journal-members-next-event
                            fn2-journal-membersp fn2-journal-members-wfp fn2-journal-members-rows
-                           fn2-csnapshotp fn2-csnapshot-wfp fn2-csnapshot-rows
+                           fn2-journal-leasep fn2-journal-lease-wfp fn2-journal-lease-rows
                            fn2-mkp fn2-mk-wfp fn2-mk-size fn2-mk-rows fn2-b3p fn2-b3-wfp
                            fn2-fieldsp fn2-fields-wfp fn2-digestsp fn2-digests-wfp
                            fn2-poolp fn2-pool-wfp)))
 
-(defun fn2-event-read-ownerp (fn2-event-read fn2-csnapshot)
- (declare (xargs :stobjs (fn2-event-read fn2-csnapshot)
-  :guard (and (fn2-event-read-wfp fn2-event-read) (fn2-csnapshot-wfp fn2-csnapshot))))
+(defun fn2-event-read-ownerp (fn2-event-read fn2-journal-lease)
+ (declare (xargs :stobjs (fn2-event-read fn2-journal-lease)
+  :guard (and (fn2-event-read-wfp fn2-event-read) (fn2-journal-lease-wfp fn2-journal-lease))))
  (and (< 0 (fn2-event-read-rows fn2-event-read))
-      (fn2-csnapshot-ownerp (fn2-event-read-token 0 fn2-event-read)
+      (< 0 (fn2-journal-lease-rows fn2-journal-lease))
+      (fn2-journal-lease-ownerp (fn2-event-read-token 0 fn2-event-read)
        (fn2-event-read-owner-kind 0 fn2-event-read) (fn2-event-read-owner-slot 0 fn2-event-read)
-       (fn2-event-read-owner-gen 0 fn2-event-read) fn2-csnapshot)
-      (equal (fn2-csnapshot-phase 0 fn2-csnapshot) *fn2-csnapshot-phase-held*)
-      (equal (fn2-event-read-cut-commit 0 fn2-event-read) (fn2-csnapshot-cut-commit 0 fn2-csnapshot))
-      (equal (fn2-event-read-cut-event 0 fn2-event-read) (fn2-csnapshot-cut-event 0 fn2-csnapshot))))
+       (fn2-event-read-owner-gen 0 fn2-event-read) fn2-journal-lease)
+      (equal (fn2-journal-lease-phase 0 fn2-journal-lease) *fn2-journal-lease-phase-ready*)
+      (equal (fn2-event-read-cut-commit 0 fn2-event-read) (fn2-journal-lease-cut-commit 0 fn2-journal-lease))
+      (equal (fn2-event-read-cut-event 0 fn2-event-read) (fn2-journal-lease-cut-event 0 fn2-journal-lease))))
 
 (local (in-theory (disable fn2-fields-rows fn2-b3-rows fn2-digests-rows
                            fn2-journal-members-event fn2-journal-members-off fn2-journal-members-end
@@ -126,24 +127,24 @@
   (fn2-event-member-hash-step fn2-journal-members-step fn2-mkp fn2-mk-wfp
    fn2-event-readp fn2-event-read-wfp fn2-journal-membersp fn2-journal-members-wfp)))))
 
-(defun fn2-event-read-member-step (fn2-event-read fn2-csnapshot fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-pool fn2-digests)
- (declare (xargs :stobjs (fn2-event-read fn2-csnapshot fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-pool fn2-digests)
-  :verify-guards nil :guard (and (fn2-event-read-wfp fn2-event-read) (fn2-csnapshot-wfp fn2-csnapshot) (fn2-journal-members-wfp fn2-journal-members)
+(defun fn2-event-read-member-step (fn2-event-read fn2-journal-lease fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-pool fn2-digests)
+ (declare (xargs :stobjs (fn2-event-read fn2-journal-lease fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-pool fn2-digests)
+  :verify-guards nil :guard (and (fn2-event-read-wfp fn2-event-read) (fn2-journal-lease-wfp fn2-journal-lease) (fn2-journal-members-wfp fn2-journal-members)
    (fn2-mk-wfp fn2-mk) (fn2-b3-wfp fn2-b3) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-digests-wfp fn2-digests))))
  (if (not (and (mbt (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
-                         (fn2-csnapshotp fn2-csnapshot) (fn2-csnapshot-wfp fn2-csnapshot)))
-               (fn2-event-read-ownerp fn2-event-read fn2-csnapshot)))
+                         (fn2-journal-leasep fn2-journal-lease) (fn2-journal-lease-wfp fn2-journal-lease)))
+               (fn2-event-read-ownerp fn2-event-read fn2-journal-lease)))
      (mv :state fn2-event-read fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-digests)
    (fn2-event-read-member-core fn2-event-read fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-pool fn2-digests)))
 
 (fn2-event-read-preserves fn2-event-read-member-step
- (fn2-event-read fn2-csnapshot fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-pool fn2-digests)
+ (fn2-event-read fn2-journal-lease fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-pool fn2-digests)
  :carriers ((fn2-event-read 1 :prefix "-READER") (fn2-journal-members 2 :prefix "-MEMBERS")
             (fn2-mk 3 :prefix "-TREE") (fn2-b3 4 :prefix "-HASHER")
             (fn2-fields 5 :prefix "-FIELDS") (fn2-digests 6 :prefix "-DIGESTS")))
 
 (defthm fn2-event-read-member-step-retains-reader-dimensions
- (let ((result (fn2-event-read-member-step fn2-event-read fn2-csnapshot fn2-journal-members
+ (let ((result (fn2-event-read-member-step fn2-event-read fn2-journal-lease fn2-journal-members
                                            fn2-mk fn2-b3 fn2-fields fn2-pool fn2-digests)))
   (and (equal (fn2-event-read-rows (mv-nth 1 result)) (fn2-event-read-rows fn2-event-read))
        (equal (fn2-journal-members-rows (mv-nth 2 result)) (fn2-journal-members-rows fn2-journal-members))

@@ -4,6 +4,7 @@
 (include-book "journal-retention")
 (include-book "c-snapshot")
 (include-book "storage-block-io")
+(include-book "peer-history-member")
 (fn2-book-layer :c)
 
 (defmacro fn2-journal-retention-core-events ()
@@ -101,7 +102,10 @@
           (cut-commit cut) (cut-event event) (commit commit) (next-event first)
           (extent extent) (epoch epoch) (allocation allocation) (first first) (members members)
           (slot slot) (gen gen) (checker checker) (field-base base) (leaf-digest leaf)
-          (body-off 0) (body-len 0) (pending 0) (history history) (history-incarnation incarnation))))
+          (body-off 0) (body-len 0) (pending 0) (history history) (history-incarnation incarnation)
+          (journal-history 0) (journal-incarnation 0)
+          (record-fetch-next 0) (record-fetch-acc 0) (record-fetch-off 0)
+          (seal-span-started 0) (seal-span-next 0) (seal-span-length 0))))
      (mv :ok fn2-event-read fn2-mk))
     (mv code fn2-core)))))
 
@@ -177,6 +181,23 @@
     (mv :ok seal previous))
    (mv code seal previous)))
 
+ (fn2-csnapshot-op fn2-retained-journal-member (token dslot dgen doff kind owner generation) 3
+  (if (fn2-core-stopped-p fn2-core) (mv :stopped 0 0 fn2-core)
+   (b* (((mv source & &) (fn2-retained-journal-seals token kind owner generation fn2-core))
+        ((unless (eq source :ok)) (mv source 0 0 fn2-core)))
+    (stobj-let ((fn2-event-read (fn2-core-event-read fn2-core))
+                (fn2-journal-lease (fn2-core-journal-lease fn2-core))
+                (fn2-journal-members (fn2-core-journal-members fn2-core))
+                (fn2-mk (fn2-core-mk fn2-core))
+                (fn2-b3 (fn2-core-b3 fn2-core))
+                (fn2-fields (fn2-core-fields fn2-core))
+                (fn2-pool (fn2-core-pool fn2-core))
+                (fn2-digests (fn2-core-digests fn2-core)))
+     (code event len fn2-event-read fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-pool fn2-digests)
+     (fn2-peer-history-member token dslot dgen doff kind owner generation
+      fn2-event-read fn2-journal-lease fn2-journal-members fn2-mk fn2-b3 fn2-fields fn2-pool fn2-digests)
+     (mv code event len fn2-core)))))
+
  ; Close first excludes new reads, then waits for the exact terminal
  ; completion. A caller cannot return the workspace to the pool before DONE.
  (fn2-csnapshot-op fn2-retained-journal-close (token kind owner generation) 1
@@ -212,4 +233,3 @@
          (fn2-journal-lease-set-phase 0 *fn2-journal-lease-phase-idle* fn2-journal-lease)
        fn2-journal-lease)
      (mv :done fn2-core)))))))
-
