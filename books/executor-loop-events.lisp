@@ -30,6 +30,32 @@
         ((or (fn2-exec-observation-p fn2-core) (fn2-exec-eligible-p fn2-core)) :more)
         (t :idle)))
 
+; The READ workspace belongs to the connection, while the live XFNC
+; query cursor drives projection. A closing connection drives its own drain.
+(defun fn2-exec-xfnc-read-wake (conn gen fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (b* (((unless (and (fn2-xfnc-reader-live-p conn gen fn2-core)
+                     (equal (fn2-conn-row-stopped conn fn2-core) 0)))
+        *fn2-none*)
+       (phase (fn2-conn-row-phase conn fn2-core))
+       ((when (member-equal phase (list *fn2-conn-state-closing* *fn2-conn-state-draining*))) conn)
+       ((unless (equal phase *fn2-conn-state-query*)) *fn2-none*)
+       (cursor (fn2-conn-row-query conn fn2-core))
+       ((unless (and (eq (fn2-cursor-snapshot-read-code cursor fn2-core) :ok)
+                     (equal (fn2-machine-generation cursor fn2-core) (fn2-conn-row-query-gen conn fn2-core))
+                     (equal (fn2-cursor-row-conn-kind cursor fn2-core) *fn2-conn-kind*)
+                     (equal (fn2-cursor-row-conn cursor fn2-core) conn)
+                     (equal (fn2-cursor-row-conn-gen cursor fn2-core) gen)
+                     (equal (fn2-cursor-row-tag cursor fn2-core) *fn2-nntp-command-xfnc*)
+                     (equal (fn2-cursor-row-stopped cursor fn2-core) 0)
+                     (not (member-equal (fn2-cursor-row-phase cursor fn2-core)
+                            (list *fn2-cursor-state-free* *fn2-cursor-state-draining*
+                                  *fn2-cursor-state-retired*)))))
+        *fn2-none*))
+    cursor))
+
+(in-theory (disable fn2-exec-xfnc-read-wake))
+
 (defun fn2-exec-harvest (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (b* (((mv ownerp kind id gen principal) (fn2-core-next-owner fn2-core))
@@ -40,11 +66,16 @@
        ((unless (or (not ownerp) (not (fn2-machine-charge-kindp kind))
                     (fn2-machine-work-fits-p kind bytes *fn2-work-transition* 0)))
         (mv 0 0 0 0 0 fn2-core))
-       ((mv delivered & & & event outcome reason count aux0 aux1 fn2-core)
+       ((mv delivered slot ogen cell event outcome reason count aux0 aux1 fn2-core)
         (fn2-harvest-one fn2-core))
        ((unless delivered) (mv 1 0 0 0 *fn2-work-transition* fn2-core))
        ((mv wake fn2-core)
-        (fn2-machine-observe kind id gen event outcome reason count aux0 aux1 fn2-core))
+        ; Its pending bit belongs to the reader, so an XFNC READ terminal
+        ; does not consume the connection's ordinary pending operations.
+        (if (and ownerp (equal kind *fn2-conn-kind*)
+                 (fn2-xfnc-reader-read-result-p id gen slot ogen cell event fn2-core))
+            (mv (fn2-exec-xfnc-read-wake id gen fn2-core) fn2-core)
+          (fn2-machine-observe kind id gen event outcome reason count aux0 aux1 fn2-core)))
        (fn2-core (fn2-exec-wake wake fn2-core))
        (fn2-core (fn2-exec-record *fn2-trace-kind-mailbox* wake principal 0 bytes *fn2-work-transition* 0 nil *fn2-none* start fn2-core)))
     (mv 1 0 0 bytes *fn2-work-transition* fn2-core)))

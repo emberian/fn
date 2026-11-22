@@ -7,6 +7,7 @@
 (include-book "assembly")
 (include-book "executor-reservation")
 (include-book "executor-loop-events")
+(include-book "xfnc-reader")
 
 (fn2-executor-loop-events)
 (fn2-checkpoint-working-credit-init-events)

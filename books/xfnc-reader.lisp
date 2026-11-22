@@ -2,7 +2,7 @@
 ; cut, journal lease, pending descriptor and member cursor are the continuation.
 (in-package "ACL2")
 (include-book "assembly-callbacks-c-prepare")
-(fn2-book-layer :e)
+(fn2-book-layer :d)
 
 (defun fn2-xfnc-reader-live-p (conn gen fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -92,7 +92,9 @@
 
 (fn2-csnapshot-op fn2-xfnc-reader-step (conn gen budget) 1
  (b* (((when (fn2-core-stopped-p fn2-core)) (mv :stopped fn2-core))
-      ((unless (fn2-xfnc-reader-live-p conn gen fn2-core)) (mv :owner fn2-core))
+      ((unless (and (fn2-xfnc-reader-live-p conn gen fn2-core)
+                    (equal (fn2-conn-row-phase conn fn2-core) *fn2-conn-state-query*)))
+       (mv :owner fn2-core))
       (cut-token (fn2-xfnc-reader-cut-token conn gen fn2-core))
       (token (fn2-xfnc-reader-lease-token conn gen fn2-core))
       ((when (and (zp token) (zp cut-token)))
@@ -163,3 +165,41 @@
       ((unless (member-eq released '(:ok :retired)))
        (mv (if (eq released :held) :drain released) fn2-core)))
   (fn2-retained-journal-close token *fn2-conn-kind* conn gen fn2-core)))
+
+(defun fn2-xfnc-reader-owned-p (conn gen fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (or (posp (fn2-xfnc-reader-lease-token conn gen fn2-core))
+     (posp (fn2-xfnc-reader-cut-token conn gen fn2-core))))
+
+; FN2-HARVEST-ONE has settled the pool loan and run the reader's exact
+; terminal hook. The saved operation identity survives this handoff.
+(defun fn2-xfnc-reader-read-result-p (conn gen op ogen cell event fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (and (equal cell 0)
+      (equal event *fn2-event-read-result*)
+      (stobj-let ((fn2-event-read (fn2-core-event-read fn2-core))
+                  (fn2-journal-lease (fn2-core-journal-lease fn2-core))) (match)
+       (and (< 0 (fn2-event-read-rows fn2-event-read))
+            (equal *fn2-conn-kind* (fn2-event-read-owner-kind 0 fn2-event-read))
+            (equal conn (fn2-event-read-owner-slot 0 fn2-event-read))
+            (equal gen (fn2-event-read-owner-gen 0 fn2-event-read))
+            (fn2-journal-lease-ownerp (fn2-event-read-token 0 fn2-event-read)
+              *fn2-conn-kind* conn gen fn2-journal-lease)
+            (equal op (fn2-event-read-op-slot 0 fn2-event-read))
+            (equal ogen (fn2-event-read-op-gen 0 fn2-event-read))
+            (equal (fn2-event-read-pending 0 fn2-event-read) 0)
+            (member-equal (fn2-event-read-phase 0 fn2-event-read)
+             (list *fn2-event-read-phase-frame-seal*
+                   *fn2-event-read-phase-frame-records*
+                   *fn2-event-read-phase-uncertain*))
+            t)
+       match)))
+
+(defcost fn2-xfnc-reader-owned-p :tables (fn2-core-csnapshot fn2-core-journal-lease)
+ :doc "Check whether this connection generation still owns a retained cut.")
+(defcost fn2-xfnc-reader-close :answers t
+ :tables (fn2-core-csnapshot fn2-core-journal-lease fn2-core-event-read fn2-core-pool fn2-core-control
+          fn2-core-extents fn2-core-alloc-edges fn2-core-fc fn2-core-journal-members)
+ :doc "Drain one step of an owned retained READ and return its private workspace.")
+
+(in-theory (disable fn2-xfnc-reader-owned-p fn2-xfnc-reader-read-result-p fn2-xfnc-reader-close))
