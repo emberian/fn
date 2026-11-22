@@ -48,10 +48,14 @@ def login_attempt(port, cert, principal, password, expected=b"281"):
     peer = Peer(port)
     try:
         peer.sock.settimeout(30)
+        assert b"AUTHINFO USER" not in peer.capabilities()
         peer.upgrade(cert, False)
+        assert b"AUTHINFO USER" in peer.capabilities()
         assert peer.command(b"AUTHINFO USER " + principal.encode("ascii")).startswith(b"381 ")
         answer = peer.command(b"AUTHINFO PASS " + password.encode("ascii"))
         assert answer.startswith(expected + b" "), ("AUTHINFO PASS", answer[:3])
+        can_log_in = b"AUTHINFO USER" in peer.capabilities()
+        assert can_log_in == (expected != b"281")
         yield peer
     finally:
         peer.close()
