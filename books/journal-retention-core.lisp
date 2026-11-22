@@ -33,7 +33,11 @@
     (mv (if (eq release :ok) :ready release) fn2-core))))
 
  (fn2-csnapshot-op fn2-retained-journal-open (token kind owner generation slot gen) 1
-  (if (fn2-core-stopped-p fn2-core) (mv :stopped fn2-core)
+  (cond ((fn2-core-stopped-p fn2-core) (mv :stopped fn2-core))
+        ((stobj-let ((fn2-csnapshot (fn2-core-csnapshot fn2-core))) (owns)
+          (fn2-csnapshot-ownerp token kind owner generation fn2-csnapshot) owns)
+         (mv :snapshot fn2-core))
+        (t
    (stobj-let ((fn2-journal-lease (fn2-core-journal-lease fn2-core))
                (fn2-event-read (fn2-core-event-read fn2-core))
                (fn2-commit-root (fn2-core-commit-root fn2-core))
@@ -99,7 +103,7 @@
           (slot slot) (gen gen) (checker checker) (field-base base) (leaf-digest leaf)
           (body-off 0) (body-len 0) (pending 0) (history history) (history-incarnation incarnation))))
      (mv :ok fn2-event-read fn2-mk))
-    (mv code fn2-core))))
+    (mv code fn2-core)))))
 
  (fn2-csnapshot-op fn2-retained-journal-issue (token kind owner generation) 1
   (if (fn2-core-stopped-p fn2-core) (mv :stopped fn2-core)
@@ -199,6 +203,13 @@
         ((unless (eq code :done)) (mv code fn2-core))
         (owns-cut (stobj-let ((fn2-csnapshot (fn2-core-csnapshot fn2-core))) (owns)
                     (fn2-csnapshot-ownerp token kind owner generation fn2-csnapshot) owns))
-        ((unless owns-cut) (mv :done fn2-core))
-        ((mv released fn2-core) (fn2-csnapshot-release token kind owner generation fn2-core)))
-    (mv (if (eq released :ok) :done released) fn2-core))))))
+        ((mv released fn2-core)
+         (if owns-cut (fn2-csnapshot-release token kind owner generation fn2-core)
+            (mv :ok fn2-core)))
+        ((unless (eq released :ok)) (mv released fn2-core)))
+    (stobj-let ((fn2-journal-lease (fn2-core-journal-lease fn2-core))) (fn2-journal-lease)
+     (if (< 0 (fn2-journal-lease-rows fn2-journal-lease))
+         (fn2-journal-lease-set-phase 0 *fn2-journal-lease-phase-idle* fn2-journal-lease)
+       fn2-journal-lease)
+     (mv :done fn2-core)))))))
+
