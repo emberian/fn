@@ -31,13 +31,18 @@
 (defcost fn2-boot-check-anchor :answers t :bytes 24576
  :tables (fn2-core-pool fn2-core-fields fn2-core-digests fn2-core-b3)
  :doc "Decode the epoch and compare the entire anchor to its canonical generated, BLAKE3-covered record.")
-(defcost fn2-boot-aux-offset :answers t)
+(defcost fn2-boot-aux-offset :answers t
+ :doc "Resolve the saved BOOT geometry to a bootstrap or checkpoint-anchor sector.")
 (defcost fn2-boot-bootstrap-pack :answers t :bytes 24576
- :tables (fn2-core-fields fn2-core-digests fn2-core-b3 fn2-core-pool))
+ :tables (fn2-core-fields fn2-core-digests fn2-core-b3 fn2-core-pool)
+ :doc "Construct the canonical bootstrap sector in the held BOOT page window.")
 (defcost fn2-boot-bootstrap-readback :answers t :bytes 32768
- :tables (fn2-core-boot-config fn2-core-fields fn2-core-digests fn2-core-b3 fn2-core-pool))
-(defcost fn2-boot-bootstrap-binding :answers (:ok :source))
-(defcost fn2-boot-checkpoint-empty :answers t :bytes 4096)
+ :tables (fn2-core-boot-config fn2-core-fields fn2-core-digests fn2-core-b3 fn2-core-pool)
+ :doc "Compare the completed physical bootstrap read to canonical bytes and retain the bound receipt.")
+(defcost fn2-boot-bootstrap-binding :answers (:ok :source)
+ :doc "Require the bootstrap receipt from this BOOT incarnation and image.")
+(defcost fn2-boot-checkpoint-empty :answers t :bytes 4096
+ :doc "Read at most one completed checkpoint sector to distinguish zero from nonempty.")
 (defcost fn2-boot-bind-checkpoint-layout :answers (:ok :state :source)
  :tables (fn2-core-boot-config)
  :doc "Expose the verified empty layout to a future checkpoint writer after the final epoch fence.")
