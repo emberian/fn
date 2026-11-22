@@ -131,25 +131,14 @@
                ((equal reason *fn2-xfnc-end-invalid*) :invalid)
                (t :done)) fn2-core)))
 
-   ; The reader has already proved this current leaf belongs to the active
-   ; connection lease and completed its hash. Return its event coordinate.
-   (defun fn2-xfnc-verified-event (token conn generation fn2-core)
-    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-    (if (not (and (posp token) (equal token (fn2-xfnc-reader-project-token conn generation fn2-core)))) 0
-      (stobj-let ((fn2-journal-members (fn2-core-journal-members fn2-core))) (event)
-        (if (< 0 (fn2-journal-members-rows fn2-journal-members))
-            (nfix (fn2-journal-members-event 0 fn2-journal-members)) 0)
-        event)))
-   (in-theory (disable fn2-xfnc-verified-event))
-
    ; Resolve only the still-current verified leaf; the projected span
    ; coordinates from the preceding turn refer to this exact range.
    (defun fn2-xfnc-projected-window (token conn generation fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
     (if (not (and (posp token) (equal token (fn2-xfnc-reader-project-token conn generation fn2-core))))
-        (mv :source 0 0 0)
+        (mv :source 0 0 0 0 0 0 0)
       (stobj-let ((fn2-journal-members (fn2-core-journal-members fn2-core))
-                  (fn2-event-read (fn2-core-event-read fn2-core))) (code slot gen event)
+                  (fn2-event-read (fn2-core-event-read fn2-core))) (code slot gen event hs he es ee)
        (if (and (< 0 (fn2-journal-members-rows fn2-journal-members))
                 (< 0 (fn2-event-read-rows fn2-event-read))
                 (equal token (fn2-event-read-view-token 0 fn2-event-read))
@@ -161,9 +150,13 @@
                 (equal (fn2-journal-members-gen 0 fn2-journal-members) (fn2-event-read-view-gen 0 fn2-event-read)))
            (mv :ok (fn2-journal-members-slot 0 fn2-journal-members)
                    (fn2-journal-members-gen 0 fn2-journal-members)
-                   (fn2-journal-members-event 0 fn2-journal-members))
-         (mv :source 0 0 0))
-       (mv code slot gen event))))
+                   (fn2-journal-members-event 0 fn2-journal-members)
+                   (fn2-event-read-view-hs 0 fn2-event-read)
+                   (fn2-event-read-view-he 0 fn2-event-read)
+                   (fn2-event-read-view-es 0 fn2-event-read)
+                   (fn2-event-read-view-ee 0 fn2-event-read))
+         (mv :source 0 0 0 0 0 0 0))
+       (mv code slot gen event hs he es ee))))
    (in-theory (disable fn2-xfnc-projected-window))
 
    ; One turn of a protected request. The caller retains :ITEM on pressure;
