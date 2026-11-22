@@ -277,9 +277,7 @@
 (defconst *fn2-authority-right-append* 2)
 (defcost fn2-authority-allows :answers (:ok :access :more :state) :faults (:state) :bytes 4096
   :tables (fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
-  :doc "One bounded step of the append check (books/authority.lisp, AUTHORITY-20261105 section 4): (fn2-authority-allows tx principal-slot right target step head grant budget) -> (mv code step head grant), one exact lookup source per call (the head, the current grant, the grant row).")
-(defcost fn2-txn-principal :answers (:ok :state)
-  :doc "The transaction's effective durable principal: a consumer request's control connection's (its owner or the principal it bound), else the account slot's (D7's id).")
+  :doc "One bounded step of the append check (books/authority.lisp, AUTHORITY-20261105 section 4): (fn2-authority-allows tx durable-principal right target step head grant budget) -> (mv code step head grant), one exact lookup source per call (the head, the current grant, the grant row).")
 (defcost fn2-authority-depend :answers (:ok :state) :faults (:state)
   :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-fields)
   :doc "Declare the transaction's read dependency on the principal's authority head it decided under (once; nothing when no grant governed).")
@@ -320,27 +318,31 @@
                              ;; 4): the principal's append grant for this
                              ;; destination, in bounded steps, then the read
                              ;; dependency on the head it was decided under
-                             (t (:do (ncode pid) (fn2-txn-principal row-conn row-conn-gen row-principal-slot)
-                                 :accept (:ok) :why "the request or its connection moved on: no principal to decide for")
-                                (:do (acode astep ahead agrant)
-                                     (fn2-authority-allows gslot pid *fn2-authority-right-append* group
-                                                           (if (equal row-xstep 0) 0 (- row-xstep 1)) row-xhead row-xgrant 4096)
-                                 :accept (:ok)
-                                 :case (((:more)
-                                         (:cond ((< astep 255)
-                                                 (:set (xstep (+ 1 astep)) (xgroup group) (xhead ahead) (xgrant agrant))
-                                                 (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
-                                                (t (:stop :machine-phase))))
-                                        ((:access) (:set (word *fn2-upload-word-refused*) (xstep 0)) (:next :refused)
-                                         (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))))
-                                (:do (dcode) (fn2-authority-depend gslot pid agrant ahead) :accept (:ok))
-                                (:do (pcode) (fn2-txn-add-group gslot row-ngroups group row-principal-slot c0 g0 c1 g1
-                                                                 (+ no start) len :owner upload))
-                                (:if (eq pcode :ok)
-                                     ((:set (ngroups (+ 1 row-ngroups)) (gcur next) (xstep 0))
+                             (t (:let pid (:read upload request-principal))
+                                (:do (pc current) (fn2-upload-owner-principal row-conn row-conn-gen row-principal-slot)
+                                 :accept (:ok :state) :why "recheck the live binding before a grant decision")
+                                (:if (not (and (eq pc :ok) (equal current pid)))
+                                     ((:set (word *fn2-upload-word-refused*)) (:next :refused)
                                       (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
-                                     ((:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
-                                      (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t)))))))))))
+                                     ((:do (acode astep ahead agrant)
+                                           (fn2-authority-allows gslot pid *fn2-authority-right-append* group
+                                                                 (if (equal row-xstep 0) 0 (- row-xstep 1)) row-xhead row-xgrant 4096)
+                                       :accept (:ok)
+                                       :case (((:more)
+                                               (:cond ((< astep 255)
+                                                       (:set (xstep (+ 1 astep)) (xgroup group) (xhead ahead) (xgrant agrant))
+                                                       (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                                                      (t (:stop :machine-phase))))
+                                              ((:access) (:set (word *fn2-upload-word-refused*) (xstep 0)) (:next :refused)
+                                               (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))))
+                                      (:do (dcode) (fn2-authority-depend gslot pid agrant ahead) :accept (:ok))
+                                      (:do (pcode) (fn2-txn-add-group gslot row-ngroups group row-principal-slot c0 g0 c1 g1
+                                                                       (+ no start) len :owner upload))
+                                      (:if (eq pcode :ok)
+                                           ((:set (ngroups (+ 1 row-ngroups)) (gcur next) (xstep 0))
+                                            (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
+                                           ((:set (word *fn2-upload-word-unaffordable*)) (:next :refused)
+                                            (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t)))))))))))))
   ;; the outcome: the word to the owner (waking it; a consumer request also
   ;; gets an accepted article's commit position), the successor released
   (reply :on-refusal ((:stop :machine-phase))
@@ -447,7 +449,7 @@
                                                       (if (equal (:read upload ilen) 0) (:read upload c0-slot) (:read upload lslot))
                                                       (if (equal (:read upload ilen) 0) (:read upload c0-gen) (:read upload lgen))
                                                       (:read upload mo) (:read upload ml)
-                                                      ds dg doff h row-principal-slot :owner upload))
+                                                      ds dg doff h (:read upload request-principal) :owner upload))
                (:set (prepared 1))
                (:charge :bytes 8192 :steps *fn2-work-transition* :runnable t))
               ((:let c0 (:read upload c0-slot)) (:let g0 (:read upload c0-gen))
@@ -476,7 +478,7 @@
                                                           (:read upload mo) (:read upload ml)
                                                           c0 g0 scanned hashed (:read upload ilen)
                                                           ds dg doff
-                                                          h row-principal-slot row-lines
+                                                          h (:read upload request-principal) row-lines
                                                           le lep lal
                                                           (:read upload lslot) (:read upload lgen) *fn2-upload-page-stored-source*
                                                           *fn2-upload-page-location-hashes* (* 32 (:read upload location-hashed))

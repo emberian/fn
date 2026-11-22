@@ -58,6 +58,7 @@
 (assert-event (<= *fn2-upload-verdict-work-bytes* *fn2-upload-run-bytes*))
 
 ;; The words the store's refusals give (also the transaction's).
+(defconst *fn2-upload-word-refused* (fn2-upload-word-code :refused))
 (defconst *fn2-upload-word-unaffordable* (fn2-upload-word-code :unaffordable))
 (defconst *fn2-upload-word-not-stored* (fn2-upload-word-code :not-stored))
 (defconst *fn2-upload-word-uncertain* (fn2-upload-word-code :uncertain))
@@ -84,6 +85,9 @@
   :doc "Post an outcome word to the connection that awaits it (generation and request checked); wake it.")
 (defcost fn2-cns-post-outcome :answers (:ok :dropped) :tables (fn2-cns-table fn2-core-machines)
   :doc "Post an append's outcome (its word and commit position) to the consumer request that awaits it (generation, request and phase checked); wake it.")
+(defcost fn2-upload-owner-principal :answers (:ok :state)
+  :doc "The generation-checked control connection's bound principal, or the NNTP connection's durable account identity.")
+
 (defcost fn2-upload-post-owner :answers (:ok :dropped) :tables (fn2-conn-table fn2-cns-table fn2-core-machines)
   :doc "Post an outcome to the upload's owner: a consumer request (fn2-cns-post-outcome) or a connection (fn2-conn-post-word).")
 (defcost fn2-upload-advance :bytes *fn2-upload-run-bytes* :steps *fn2-work-transition*

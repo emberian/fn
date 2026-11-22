@@ -172,12 +172,14 @@ accepted in both cases (K6).
 then the article's CR LF lines (not dot-stuffed) to the frame's end. fn2-cns `:append` takes an fn2-upload
 row over those octets (fn2-upload-feed-run, raw), the upload and fn2-txn run exactly as for a POST, and
 the transaction posts its word and commit position back to the request (fn2-cns-post-outcome); the
-six-octet reply is (outcome, the D word as reason, position, 0, 0, 0). An article without a Message-ID gets
-`<op-PRINCIPAL-OP@node>`, PRINCIPAL the principal slot, and fn2-outcome is keyed (principal, op). The
-grant check is the named seam fn2-authority-allows (a stub in txn.lisp, one call per destination group at its lookup; `:ok` until
-the authority lane fills it). Not yet served: the read of fn2-outcome before the grant (a retry is refused
-`duplicate` by its Message-ID, not answered its outcome), `operation-reused`, the Message-ID and numbers
-in the reply, and an article past one receive (the six-octet L frame is one frame per receive).
+six-octet reply is (outcome, the D word as reason, position, 0, 0, 0). For a supplied nonzero operation ID, an article without a Message-ID gets
+`<op-PRINCIPAL-OP@node>`. PRINCIPAL is the durable control connection identity captured before storage.
+The transaction records the source digest, outcome code and event under that principal and operation;
+server-assigned operations occupy a separate key namespace. The per-group grant check verifies the
+live binding against the captured identity and adds a dependency on the authority head at stage.
+The durable outcome read before the grant is still owed. A same-request retry currently reaches the
+Message-ID duplicate verdict. The distinct-request `operation-reused` verdict, cross-request
+serialization, and replay of the original reply are also owed.
 An append is POST: D's upload and D5's transaction, the same path, the same refusal words, the same group
 numbers. So an NNTP reader sees the appended article by GROUP and ARTICLE with the exact octets: no second
 write path exists to diverge.

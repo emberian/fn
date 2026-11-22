@@ -13,6 +13,36 @@
 (fn2-compress-op-events)
 (fn2-upload-op-events)
 (fn2-book-layer :d)
+;; The effective durable principal of consumer request CNS of generation
+;; GEN (section 1): its control connection's, the owner's or the one it
+;; bound (0 when the profile has no owner principal); :state when the
+;; request or its connection has moved on.
+(defun fn2-cns-principal (cns gen fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (if (not (and (eq (fn2-cns-snapshot-read-code cns fn2-core) :ok)
+                (equal (fn2-machine-generation cns fn2-core) gen)))
+      (mv :state 0)
+    (let ((ctl (fn2-cns-row-ctl cns fn2-core)))
+      (if (and (eq (fn2-ctl-snapshot-read-code ctl fn2-core) :ok)
+               (equal (fn2-machine-generation ctl fn2-core) (fn2-cns-row-ctl-gen cns fn2-core)))
+          (mv :ok (nfix (fn2-ctl-row-principal ctl fn2-core)))
+        (mv :state 0)))))
+(defthm fn2-cns-principal-natp (natp (mv-nth 1 (fn2-cns-principal cns gen fn2-core))) :rule-classes :type-prescription)
+(in-theory (disable fn2-cns-principal))
+;; The effective durable principal for an upload (section 1): a
+;; consumer request's (CONN a fn2-cns row of generation CONN-GEN) is its
+;; control connection's, the owner's or the one it bound; a connection's
+;; is its account slot PSLOT's (D7's id; an NNTP reader's the anonymous
+;; principal). :state when the request or its connection has moved on.
+(defun fn2-upload-owner-principal (conn conn-gen pslot fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (if (eq (fn2-cns-snapshot-read-code conn fn2-core) :ok)
+     (mv-let (c pid) (fn2-cns-principal conn conn-gen fn2-core)
+       (if (and (eq c :ok) (posp pid)) (mv :ok pid) (mv :state 0)))
+   (fn2-principal-of-slot pslot fn2-core)))
+(defthm fn2-upload-owner-principal-natp (natp (mv-nth 1 (fn2-upload-owner-principal conn conn-gen pslot fn2-core)))
+ :hints (("Goal" :in-theory (enable fn2-principal-of-slot))) :rule-classes :type-prescription)
+(in-theory (disable fn2-upload-owner-principal))
 (defcost fn2-conn-greet-op :bytes 512
   :answers (:ok :bounds) :faults (:bounds) :tables (fn2-core-pool)
   :doc "Render the greeting, or the capacity 400, into TX.")

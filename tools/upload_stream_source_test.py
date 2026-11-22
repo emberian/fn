@@ -35,6 +35,12 @@ class RollingSource(unittest.TestCase):
   family_decl=lr.match('(defmachine fn2-upload ?*body)',lr.parse(family).forms)[0]
   scope=family[family.index('; Keep the original declaration'):family_decl.start]
   expected=lr.write(expected,[(declaration.start,declaration.start,scope),(declaration.end,declaration.end,')')])
+  # Capturing the durable principal adds one typed upload column. Every take
+  # clears it until the authenticated owner is read in STREAM-INIT.
+  expected=expected.replace(";; append's operation identity (0: none).",
+    ";; append's operation identity (0: none). REQUEST-PRINCIPAL captures the\n ;; durable owner before storage and Message-ID injection.")
+  expected=expected.replace('(op :u60)\n          (c0-slot','(op :u60) (request-principal :u60)\n          (c0-slot')
+  expected=expected.replace(':clear (filled hashed source-lines',':clear (request-principal filled hashed source-lines')
   self.assertEqual(expected,(ROOT/'books/upload-kind.lisp').read_text())
  def test_actual_identity_routes_to_controller(self):
   s=(ROOT/'books/assembly-callbacks-d-upload.lisp').read_text()

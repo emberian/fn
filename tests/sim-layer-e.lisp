@@ -247,7 +247,7 @@
   ;; with no Message-ID) runs the upload and the transaction a POST runs; the
   ;; reply is accepted at the article's commit position, and an NNTP reader
   ;; then reads the same article by GROUP, by number and by the generated
-  ;; Message-ID <op-0-9@fn2.invalid>.
+  ;; Message-ID <op-4294967297-9@fn2.invalid>.
   (local
    (defconst *fn2-sle-append-profile*
      (put-assoc-equal :cns 1 (put-assoc-equal :control-connections 1
@@ -256,7 +256,7 @@
    (defconst *fn2-sle-append-article*
      '("From: mini@example.invalid" "Subject: r1" "Newsgroups: local.test" "" "report r1")))
   (local
-   (defconst *fn2-sle-append-mid* "<op-0-9@fn2.invalid>"))
+   (defconst *fn2-sle-append-mid* "<op-4294967297-9@fn2.invalid>"))
   (local
    (defun fn2-sle-append-wire ()
      (declare (xargs :verify-guards nil))
