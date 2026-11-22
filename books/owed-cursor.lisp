@@ -127,11 +127,11 @@
   (if (or (zp fuel) (>= counted hashed)) (mv (if (zp fuel) :fuel :ok) lines fn2-core)
     (mv-let (code counted lines) (fn2-txn-count-next c0 g0 c1 g1 counted hashed lines 200 0 1 fn2-core)
       (if (eq code :ok) (fn2-cs-count (- fuel 1) c0 g0 c1 g1 counted hashed lines fn2-core) (mv code 0 fn2-core)))))
-(defun fn2-cs-lookup (fuel c0 g0 off len fn2-core)
+(defun fn2-cs-lookup (fuel k c0 g0 off len fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (if (zp fuel) (mv :fuel 0 fn2-core)
-    (mv-let (code group fn2-core) (fn2-group-lookup 0 c0 g0 off len 200 0 1 4096 fn2-core)
-      (if (eq code :more) (fn2-cs-lookup (- fuel 1) c0 g0 off len fn2-core) (mv code group fn2-core)))))
+    (mv-let (code group fn2-core) (fn2-txn-group-of 0 k 0 0 c0 g0 off len 200 0 1 4096 fn2-core)
+      (if (eq code :more) (fn2-cs-lookup (- fuel 1) k c0 g0 off len fn2-core) (mv code group fn2-core)))))
 ;; The Newsgroups names from CUR of [NO, NO+NL): (mv code ngroups fn2-core).
 (defun fn2-cs-groups (fuel no nl cur skip k c0 g0 c1 g1 ov-off fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
@@ -141,9 +141,9 @@
         (:run (fn2-cs-groups (- fuel 1) no nl next skip2 k c0 g0 c1 g1 ov-off fn2-core))
         (:end (mv :ok k fn2-core))
         (:name
-         (b* (((mv code group fn2-core) (fn2-cs-lookup 400 c0 g0 (+ no start) len fn2-core)))
+         (b* (((mv code group fn2-core) (fn2-cs-lookup 400 k c0 g0 (+ no start) len fn2-core)))
            (case code
-             (:absent (fn2-cs-groups (- fuel 1) no nl next nil k c0 g0 c1 g1 ov-off fn2-core))
+             ((:absent :repeated) (fn2-cs-groups (- fuel 1) no nl next nil k c0 g0 c1 g1 ov-off fn2-core))
              (:ok (if (>= k *fn2-txn-groups-max*) (mv :groups k fn2-core)
                     (mv-let (c fn2-core) (fn2-txn-add-group 0 k group 0 c0 g0 c1 g1 (+ no start) len nl ov-off 200 0 1 fn2-core)
                       (if (eq c :ok) (fn2-cs-groups (- fuel 1) no nl next nil (+ 1 k) c0 g0 c1 g1 ov-off fn2-core)

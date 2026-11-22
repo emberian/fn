@@ -792,7 +792,8 @@ issuer before staging a transaction.
 TXN emits one address row per principal and event. It records the first accepted group's stream
 and the number of additional streams. Each further accepted group has one unique article-stream row
 keyed by the article event and a positive ordinal. The stream ID comes from the group lookup used for
-append authority and numbering. The address, memberships and overview rows enter the same transaction
+append authority and numbering. Repeated destinations retain their first ordinal and the original
+Newsgroups field stays in the stored article. The address, memberships and overview rows enter the same transaction
 and replay from that transaction's log records. Only the address row contributes an occurrence or a
 stream wake. The read check tries the primary stream and, if necessary, resumes the exact lookup and
 grant check for one further ordinal at a time. The first readable stream supplies the overview and

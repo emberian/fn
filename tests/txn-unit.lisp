@@ -589,7 +589,7 @@
          (prof7 (put-assoc-equal :max-groups-per-article 7 base))
          (prof2 (put-assoc-equal :max-groups-per-article 2 base))
          (lines7 (append (fn2-tu-xref-post "<g7@example.invalid>"
-                           "local.g1,local.g2,local.g3,local.g4,local.g5,local.g6,local.g7")
+                           "local.g1,local.g2,local.g3,local.g4,local.g5,local.g6,local.g7,local.g2")
                          '("GROUP local.g7" "HEAD 1" "QUIT")))
          (oct7 (fn2-tu-text lines7))
          (r7 (fn2-tu-run prof7 nil (list (list oct7 (fn2-tu-sizes (len oct7) 4096)))))
@@ -600,7 +600,7 @@
                              "221 1 <g7@example.invalid> headers follow"
                              "Xref: fn2.invalid local.g1:1 local.g2:1 local.g3:1 local.g4:1 local.g5:1 local.g6:1 local.g7:1"
                              "From: a@example.invalid" "Subject: hello"
-                             "Newsgroups: local.g1,local.g2,local.g3,local.g4,local.g5,local.g6,local.g7"
+                             "Newsgroups: local.g1,local.g2,local.g3,local.g4,local.g5,local.g6,local.g7,local.g2"
                              "Message-ID: <g7@example.invalid>" "."
                              *fn2-tu-205*))))
          (lines2 (append (fn2-tu-xref-post "<g2ok@example.invalid>" "local.g1,local.g2")
