@@ -296,6 +296,41 @@ def main():
         empty = stream("read-after-authorized-now", "read", "--cursor", now["cursor"], actor=other)
         assert empty["outcome"] == "accepted" and empty["count"] == 0 and not empty["more"], empty
         assert empty["next"] == now["position"] and empty["items"] == [], empty
+        denied_ack = stream("ack-beyond-authorized-frontier", "ack", hidden["position"],
+                            "--cursor", now["cursor"], actor=other, expected=1)
+        assert denied_ack == {"outcome": "refused", "reason": "beyond-frontier"}, denied_ack
+        from_now = stream("register-now-with-hidden-tail", "register", "--consumer", "2",
+                          "--start", "now", actor=other)
+        assert from_now["outcome"] == "accepted" and from_now["position"] == limited["next"], from_now
+
+        mid = "<native-cursor-visible-after-hidden@example.invalid>"
+        _, tail_lines = fixture.restart.article(mid.encode("ascii"), 3)
+        tail_article = fixture.restart.wire(tail_lines).replace(b"Newsgroups: local.test\r\n",
+                                                               b"Newsgroups: local.other\r\n", 1)
+        tail_path = directory / "submitted-visible-tail.article"
+        tail_path.write_bytes(tail_article)
+        tail = stream("append-visible-after-hidden", "append", "--file", tail_path, "--op", 86, actor=other)
+        assert tail["outcome"] == "accepted" and tail["position"] > hidden["position"], tail
+        cross_history = stream("history-for-cross-stream-page", "register", "--consumer", "4",
+                               "--start", "history", actor=other)
+        assert cross_history["outcome"] == "accepted" and cross_history["position"] == 0, cross_history
+        bounded = stream("more-across-hidden", "read", "--cursor", cross_history["cursor"],
+                         "--max-items", 1, actor=other)
+        check_page(bounded, other_receipt, other_article, more=True)
+        final_page = stream("resume-across-hidden", "read", "--cursor", bounded["cursor"],
+                           "--max-items", 1, actor=other)
+        check_page(final_page, tail, tail_article, more=False)
+        status = stream("visible-frontier-after-hidden", "status", "--consumer", consumer, actor=other)
+        assert status["outcome"] == "accepted" and status["frontier"] == final_page["next"], status
+
+        grant("hide-all-addressed-events", other, "read", "local.other", "--revoke")
+        only_hidden = stream("register-now-with-no-visible-event", "register", "--consumer", "3",
+                             "--start", "now", actor=other)
+        assert only_hidden["outcome"] == "accepted" and only_hidden["position"] == 0, only_hidden
+        status = stream("status-with-only-hidden-events", "status", "--consumer", "3", actor=other)
+        assert (status["position"], status["frontier"], status["gap"]) == (0, 0, 0), status
+        empty = stream("read-with-only-hidden-events", "read", "--cursor", only_hidden["cursor"], actor=other)
+        assert empty["outcome"] == "accepted" and empty["count"] == 0 and not empty["more"], empty
         node.kill()
         processes.append(dict(phase="rebase-recovered", pid=node.node_pid, exit=node.proc.returncode,
                               position=rebased["position"]))
