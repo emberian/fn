@@ -42,6 +42,12 @@ class ServedNativeProgramTests(unittest.TestCase):
                     '(fn2-n-boundary host "device-submit" slot 0)')
         self.assertFalse(checker.check(self.root)['audit_ok'])
 
+    def test_terminal_post_cut_cannot_drop_generation(self):
+        self.change('host/adapter.lisp',
+                    '(fn2-n-boundary host "post" slot (fn2-nop-gen op))',
+                    '(fn2-n-boundary host "post" slot 0)')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
     def test_worker_cut_cannot_drop_actual_job(self):
         self.change('host/device.lisp',
                     '(funcall (fn2-device-boundary device) "device-syscall-return" job)',
@@ -62,6 +68,8 @@ class ServedNativeProgramTests(unittest.TestCase):
     def test_partial_storage_path_cannot_claim_tls_or_compress(self):
         report = checker.check(self.root)
         self.assertEqual(len(report['physical_cut_replay']['labels']), 4)
+        self.assertIn('post', report['physical_cut_replay']['conditional_labels'])
+        self.assertIn(['fn2-n-post-completions', 'post'], report['unmapped_sites'])
         self.assertEqual(len(report['unmapped_sites']), 15)
         self.assertIn(['fn2-native-compress-record-step', 'compress-transform'], report['unmapped_sites'])
         self.assertEqual(report['cut_mapping_status'], 'incomplete')
