@@ -767,36 +767,36 @@ Outbound feeding and catchup coverage remain the implementation frontier in
 
 ### Authority at the addressed frontier
 
-FETCH checks consume admission before its cursorless walk and the current read grant on the selected
-address row's stream before article lookup. Every live article eligible for a successful FETCH has
-positive length. `fn2-cns-article-next` requires an exact retained source capture for those articles,
-including raw-source articles that fit a single reply. The `:item` arm sends FETCH through that source
-or returns `unavailable` if the binding is missing. Successful single-reply FETCH is
-`unreachable-in-composition`. The source checks the read grant again before opening the reply prefix.
-Read denials use the same `unavailable` result as a missing occurrence. Single-frame replies still carry
-refusals. A `withdrawn` reply checks the read grant again in the same step as the reply handoff and
-uses `unavailable` if the grant no longer allows reading. A consume admission failure remains
-`access`. A second consume check at reply freeze remains owed.
+FETCH checks consume admission before its cursorless walk and requires a current read grant on at
+least one recorded membership of the exact addressed occurrence before reading its article. Every
+live article eligible for a successful FETCH has positive length. `fn2-cns-article-next` requires
+an exact retained source capture for those articles, including raw-source articles that fit one reply.
+Successful single-reply FETCH is `unreachable-in-composition`. Immediately before opening the source
+prefix, or before posting a single-frame `withdrawn` refusal, FETCH checks the occurrence's memberships
+and consume grant again. The membership search and final consume check use the same authority head.
+If the head changes during that search, the check resumes from the first membership. A missing read
+grant yields `unavailable` and a consume denial yields `access`.
 
 READ and WAIT pin an authority head for that request and recheck consume authority and the head before
-sealing each page, including empty WAIT replies. They check the recorded address stream's current read
-grant before materializing an item. A hidden row advances only the private scan. An issued cursor
-advances only through visible items, and a full page's MORE bit needs a readable next item. Resuming a
-parked request repeats consume admission and refuses a superseded head. REGISTER records the
-authorized head separately from the query version. READ, WAIT and ACK require the issued view to
-match both the persisted registration and the current head. ACK and REGISTER stage against the
-checked head; an equal ACK rechecks it before replying. Restoring a grant creates a new head and
-does not revive old cursor bytes. Repeat REGISTER returns the existing recorded view. REGISTER and
-REBASE refuse a view that cannot be represented by the current v1 issuer before staging a transaction.
+sealing each page, including empty WAIT replies. An item needs a read grant on one of its recorded
+memberships. The same check determines the frontier used by STATUS, ACK, REGISTER NOW and REBASE NOW.
+A hidden row advances only the private scan. An issued cursor advances only through visible items, and
+a full page's MORE bit needs a readable next item. Resuming a parked request repeats consume admission
+and refuses a superseded head. REGISTER records the authorized head separately from the query version.
+READ, WAIT and ACK require the issued view to match both the persisted registration and the current
+head. ACK and REGISTER stage against the checked head. An equal ACK rechecks it before replying.
+Restoring a grant creates a new head and does not revive old cursor bytes. Repeat REGISTER returns the
+existing recorded view. REGISTER and REBASE refuse a view that cannot be represented by the current v1
+issuer before staging a transaction.
 
 TXN emits one address row per principal and event. It records the first accepted group's stream
-and the number of additional streams. For each further accepted group it emits one unique
-article-stream row keyed by the same article event and a positive ordinal. The stream ID comes
-from the group lookup used for append authority and numbering. The address, memberships and
-overview rows enter the same transaction and replay from that transaction's log records.
-Only the address row contributes an occurrence or a stream wake. A reader may try the primary
-stream and then advance one membership ordinal at a time under the same authority head.
-The current page and FETCH readers still select the primary stream.
+and the number of additional streams. Each further accepted group has one unique article-stream row
+keyed by the article event and a positive ordinal. The stream ID comes from the group lookup used for
+append authority and numbering. The address, memberships and overview rows enter the same transaction
+and replay from that transaction's log records. Only the address row contributes an occurrence or a
+stream wake. The read check tries the primary stream and, if necessary, resumes the exact lookup and
+grant check for one further ordinal at a time. The first readable stream supplies the overview and
+Message-ID lookup. The remaining memberships do not create extra page items.
 
 The active registration is keyed by durable principal and consumer. Its value holds the epoch,
 position, query version and authority revision. POSITION returns that revision even after authority
