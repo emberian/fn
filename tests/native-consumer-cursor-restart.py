@@ -33,7 +33,8 @@ def main():
     image = directory / "node.img"
     control = Path(f"/tmp/fn2-cursor-{os.getpid()}-{time.time_ns()}.sock")
     principal = "cursor-reader"
-    consumer = "inbox1"
+    consumer = "1"
+    other = "cursor-other"
 
     def run(label, *args, expected=0):
         return fixture.run_fn(directory, label, *args, "--control-sock", control, expected=expected)
@@ -53,7 +54,7 @@ def main():
                                 env=fixture.environment())
     try:
         node.marker(b"LISTENING-LOCAL ")
-        for actor in (principal, "cursor-other"):
+        for actor in (principal, other):
             created = run(f"create-{actor}", "principal", "create", actor)
             assert created["outcome"] == "accepted", created
             grant(f"consume-{actor}", actor, "consume")
@@ -67,6 +68,14 @@ def main():
         assert registered["outcome"] == "accepted", registered
         position = stream("status-registered", "status", "--consumer", consumer)
         assert position["outcome"] == "accepted" and position["position"] == registered["position"], position
+        unrelated = stream("other-status-before-register", "status", "--consumer", consumer,
+                           actor=other, expected=1)
+        assert unrelated == {"outcome": "refused", "reason": "unknown-consumer"}, unrelated
+        other_registered = stream("other-register-same-consumer", "register", "--consumer", consumer,
+                                  "--start", "history", actor=other)
+        assert other_registered["outcome"] == "accepted", other_registered
+        assert other_registered["position"] == registered["position"], other_registered
+        assert other_registered["cursor"] != registered["cursor"], other_registered
         for index in range(2):
             message_id = f"<native-cursor-{index}@example.invalid>"
             _, lines = fixture.restart.article(message_id.encode("ascii"), 3 + index)
@@ -92,7 +101,7 @@ def main():
         before = stream("status-before-ack", "status", "--consumer", consumer)
         assert before["outcome"] == "accepted" and before["position"] == registered["position"], before
         denied = stream("foreign-ack", "ack", first["next"], "--cursor", first["cursor"],
-                        actor="cursor-other", expected=1)
+                        actor=other, expected=1)
         assert denied["outcome"] == "refused" and denied["reason"] == "scope", denied
         ahead = stream("ahead-ack", "ack", second["next"] + 1, "--cursor", second["cursor"], expected=1)
         assert ahead["outcome"] == "refused" and ahead["reason"] == "beyond-frontier", ahead
@@ -117,6 +126,9 @@ def main():
         assert status["outcome"] == "accepted" and status["domain"] == ack["domain"], status
         assert status["position"] == first["next"] and status["frontier"] == second["next"], status
         assert status["gap"] == second["next"] - first["next"], status
+        other_status = stream("other-status-after-restart", "status", "--consumer", consumer, actor=other)
+        assert other_status["outcome"] == "accepted", other_status
+        assert other_status["position"] == other_registered["position"] < status["position"], other_status
 
         # Omitting --cursor makes the public CLI ask the fresh node for POSITION.
         redelivery = stream("read-from-persisted", "read", "--consumer", consumer, "--max-items", 1)
@@ -134,6 +146,8 @@ def main():
         article = fixture.restart.wire(lines)
         path = directory / "submitted-wake.article"
         path.write_bytes(article)
+        # This public check observes a pending client and a later item reply.
+        # sim-layer-e checks the internal parked phase and linked edge.
         with ThreadPoolExecutor(max_workers=1) as clients:
             waiting = clients.submit(stream, "wait-for-append", "wait", "--cursor",
                                      second["cursor"], "--seconds", 30)
@@ -166,7 +180,7 @@ def main():
                                 env=foreign_env)
     try:
         node.marker(b"LISTENING-LOCAL ")
-        for actor in (principal, "cursor-other"):
+        for actor in (principal, other):
             created = run(f"foreign-create-{actor}", "principal", "create", actor)
             assert created["outcome"] == "accepted", created
             grant(f"foreign-consume-{actor}", actor, "consume")
@@ -188,7 +202,7 @@ def main():
     finally:
         node.close()
 
-    print("NATIVE CONSUMER CURSOR RESTART PASS: durable ACK, redelivery, and foreign scope")
+    print("NATIVE CONSUMER CURSOR RESTART PASS: independent ACK positions, redelivery, and foreign scope")
 
 
 if __name__ == "__main__":

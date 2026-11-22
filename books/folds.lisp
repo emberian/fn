@@ -32,11 +32,11 @@
 ; wire's "behind" outcome); a rebase installs a new query version and its
 ; start position. D8's wait machine reads it; E3's ack writes it.
 (defrunschema fn2-consumer-cursor :id 6
- :key ((consumer (:id consumer)) (epoch :u32))
+ :key ((principal (:id principal)) (consumer (:id consumer)) (epoch :u32))
  :value ((position (:id position)) (version (:id version)))
  :merge :latest
- :fold (:events ((:ack (consumer epoch to) :when (< position to) :unless-when :unchanged :set ((position to)))
-                 (:rebase (consumer epoch query start) :when (< version query)
+ :fold (:events ((:ack (principal consumer epoch to) :when (< position to) :unless-when :unchanged :set ((position to)))
+                 (:rebase (principal consumer epoch query start) :when (< version query)
                   :set ((version query) (position start))))
         :init :empty :coverage :history-start
         :observe (position version)))

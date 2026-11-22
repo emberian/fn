@@ -729,8 +729,10 @@ Outbound feeding and catchup coverage remain the implementation frontier in
    work. The interim zero history and incarnation fail `scope`. The served epoch-1 cursor requires
    a record in the published cursor ledger. An absent row answers `unknown-consumer`, and an
    unavailable lookup yields no cursor. If a durably settled mutation cannot be read back, the reply
-   is uncertain. The per-principal ledger namespace, current query/view-version checks, and v2 cursor
-   issuance remain owed. Other interim rules are
+   is uncertain. The cursor ledger keys records by durable principal, consumer ID and epoch. Register
+   writes the same durable principal into the name table. Address selection still uses the scheduler's
+   principal slot. Current query/view-version checks and v2 cursor issuance remain owed. Other interim
+   rules are
    the served consumer id is the consumer octets read big-endian (at most 7; owed: the (principal, name) row);
    register takes only the empty stream list (the principal's inbox, the one served query; otherwise `query`);
    an append's stream field is empty (the article's Newsgroups names its groups, as POST; otherwise `frame`);
