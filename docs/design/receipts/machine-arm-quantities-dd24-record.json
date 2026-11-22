@@ -91,7 +91,48 @@
         "prover_steps": 377948
       }
     ],
-    "d26_next_investigation": "Prove the aggregate shape and quantity propositions once with each body open, then derive projections from the aggregate with each body closed. Preserve public statements and rule classes.",
-    "qualified": false
+    "d26_next_investigation": "Test narrower theory at generated child call boundaries, and retain admitted prefixes with a single topologically ordered child-event plan and incremental shard books.",
+    "qualified": false,
+    "aggregate_pilot": {
+      "scope": "Source-derived SEEK-IDENTITY and RUN-SELECT proof-only changes on the pinned record toolchain.",
+      "log": "/home/fn/build/arm-aggregate-pilot/pilot.log",
+      "seek_identity_events": {
+        "original_seconds": 43.41,
+        "pilot_seconds": 45.91,
+        "both_prover_steps": 3911448,
+        "shape_baseline_steps": 829924,
+        "shape_aggregate_and_projection_steps": [
+          777486,
+          52438
+        ],
+        "quantities_baseline_steps": 1955996,
+        "quantities_aggregate_and_projection_steps": [
+          1883612,
+          72384
+        ]
+      },
+      "run_select_shape_steps": 16336,
+      "run_select_quantities_aggregate_and_projection_steps": [
+        66884,
+        23732
+      ],
+      "run_select_through_issued_effect": true,
+      "decision": "Retain the existing public corollary proof scheme. Explicit aggregate proofs reproduced the same counted steps."
+    },
+    "opacity_pilot": {
+      "event": "FN2-CURSOR-SUB-SEEK-IDENTITY-CHILDREN-QUANTITIES",
+      "log": "/home/fn/build/arm-aggregate-pilot/opacity.log",
+      "same_world_control": true,
+      "closed_in_candidate_proof": [
+        "FN2-CURSOR-HDR-P",
+        "FN2-CURSOR-OVERVIEW-P"
+      ],
+      "public_statement_and_rule_classes_sha256": "455c799d959df1e1815b70eac7d82749f53ad65df7cd5be0d8f3a79b1736a3df",
+      "original_seconds": 21.0,
+      "candidate_seconds": 13.2,
+      "original_prover_steps": 1955996,
+      "candidate_prover_steps": 1187981,
+      "proved_through": "FN2-CURSOR-SUB-SEEK-IDENTITY-CHILDREN-ISSUED-EFFECT"
+    }
   }
 }
