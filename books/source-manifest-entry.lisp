@@ -4,6 +4,15 @@
 (in-package "ACL2")
 (include-book "article-manifest")
 (fn2-book-layer :d)
+
+;; Keep offset normalization and field accessors opaque. The field row
+;; count is already natural, so its NFIX does not need a case split.
+(local (defthm fn2-source-manifest-entry-nfix-natp
+  (implies (natp x) (equal (nfix x) x))))
+(local (in-theory (disable floor nfix fn2-fields-rows fn2-fields-ref-slot
+                            fn2-fields-ref-len fn2-fields-ref-off
+                            fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp)))
+
 (defun fn2-source-manifest-entry (base prefix lslot lgen mpos total okind oslot ogen fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-fields fn2-pool)
                  :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
@@ -32,8 +41,7 @@
  (implies (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))
   (let ((after (mv-nth 9 (fn2-source-manifest-entry base prefix lslot lgen mpos total okind oslot ogen fn2-fields fn2-pool))))
    (and (fn2-fieldsp after) (fn2-fields-wfp after)
-        (equal (fn2-fields-rows after) (fn2-fields-rows fn2-fields)))))
- :hints (("Goal" :in-theory (disable fn2-fields-rows fn2-fieldsp fn2-fields-wfp fn2-poolp fn2-pool-wfp))))
+        (equal (fn2-fields-rows after) (fn2-fields-rows fn2-fields))))))
 (defthm fn2-source-manifest-entry-naturals
  (and
   (natp (mv-nth 1 (fn2-source-manifest-entry base prefix lslot lgen mpos total okind oslot ogen fn2-fields fn2-pool)))
