@@ -266,6 +266,10 @@
 (defcost fn2-auth-find-outcome :answers (:ok :absent :more :state) :bytes 4096
  :tables (fn2-core-reads fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields fn2-core-pool)
  :doc "One step of the retry lookup in fn2-outcome: (mv code event same-request).")
+(defcost fn2-conn-read-allows :answers (:ok :more :access :state) :bytes 4096
+ :tables (fn2-core-reads fn2-core-ranges fn2-core-seeks fn2-core-succ-txns fn2-core-run-cursors
+          fn2-core-run-paths fn2-core-fields)
+ :doc "Check a protected NNTP principal's committed stream READ grant on the live cursor's owned read row.")
 (defcost fn2-auth-find-head :answers (:ok :more :state) :bytes 4096
  :tables (fn2-core-reads fn2-core-succ-txns fn2-core-run-cursors fn2-core-run-paths fn2-core-fields)
  :doc "One step of a principal's authority-head lookup (0 when none): (mv code head).")
@@ -435,18 +439,13 @@
    ;; of the head), with GRANT 0 when no grant governs (an administering
    ;; connection: the owner's bootstrap authority; or a core serving none); :access when no current
    ;; grant, or a disabled one, allows it; :state when the request moved on.
-   (defun fn2-cns-authority-allows (cns gen right scope target xstep head grant budget fn2-core)
+   (defun fn2-authority-principal-allows (x pid right scope target xstep head grant budget fn2-core)
      (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-     (b* (((unless (fn2-auth-served fn2-core)) (mv :ok 0 0 0 fn2-core))
-          ((mv pc pid) (fn2-cns-principal cns gen fn2-core))
-          ((unless (eq pc :ok)) (mv :state 0 0 0 fn2-core))
-          ((when (fn2-cns-admin-p cns fn2-core)) (mv :ok 0 0 0 fn2-core))
-          ((unless (posp pid)) (mv :access 0 0 0 fn2-core))
-          ((unless (and (unsigned-byte-p 60 pid) (unsigned-byte-p 60 right) (unsigned-byte-p 60 scope)
-                        (unsigned-byte-p 60 target) (unsigned-byte-p 60 head) (unsigned-byte-p 60 grant)))
+     (b* (((unless (and (posp pid) (unsigned-byte-p 60 pid)
+                        (unsigned-byte-p 60 right) (unsigned-byte-p 60 scope)
+                        (unsigned-byte-p 60 target) (unsigned-byte-p 60 head)
+                        (unsigned-byte-p 60 grant) (unsigned-byte-p 32 x)))
            (mv :state 0 0 0 fn2-core))
-          ((mv xc x) (fn2-cns-read-row cns fn2-core))
-          ((unless (eq xc :ok)) (mv :state 0 0 0 fn2-core))
           ((mv & fn2-core) (if (posp xstep) (mv :ok fn2-core) (fn2-read-release x fn2-core)))
           (step (if (posp xstep) (- xstep 1) 0)))
        (cond
@@ -471,6 +470,78 @@
            (cond ((not (eq c :ok)) (mv (if (eq c :more) :more :state) 4 head grant fn2-core))
                  ((equal h head) (mv :ok 4 head grant fn2-core))
                  (t (mv :more 1 0 0 fn2-core))))))))
+   (fn2-core-preserves fn2-authority-principal-allows
+     (x pid right scope target xstep head grant budget fn2-core) :position 4 :rows nil)
+   (defthm fn2-authority-principal-allows-types
+     (and (unsigned-byte-p 8 (mv-nth 1 (fn2-authority-principal-allows x pid right scope target xstep head grant budget fn2-core)))
+          (unsigned-byte-p 60 (mv-nth 2 (fn2-authority-principal-allows x pid right scope target xstep head grant budget fn2-core)))
+          (unsigned-byte-p 60 (mv-nth 3 (fn2-authority-principal-allows x pid right scope target xstep head grant budget fn2-core))))
+     :hints (("Goal" :in-theory (enable fn2-authority-principal-allows))))
+
+   (defun fn2-cns-authority-allows (cns gen right scope target xstep head grant budget fn2-core)
+     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+     (b* (((unless (fn2-auth-served fn2-core)) (mv :ok 0 0 0 fn2-core))
+          ((mv pc pid) (fn2-cns-principal cns gen fn2-core))
+          ((unless (eq pc :ok)) (mv :state 0 0 0 fn2-core))
+          ((when (fn2-cns-admin-p cns fn2-core)) (mv :ok 0 0 0 fn2-core))
+          ((unless (posp pid)) (mv :access 0 0 0 fn2-core))
+          ((mv xc x) (fn2-cns-read-row cns fn2-core))
+          ((unless (eq xc :ok)) (mv :state 0 0 0 fn2-core)))
+       (fn2-authority-principal-allows x pid right scope target xstep head grant budget fn2-core)))
+
+   (defun fn2-conn-read-principal (conn gen fn2-core)
+     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                     :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
+     (b* (((mv code principal) (fn2-conn-authenticated-principal conn gen fn2-core))
+          ((when (or (eq code :ok) (eq code :state))) (mv code principal))
+          (mask (fn2-conn-row-mask conn fn2-core))
+          ((unless (and (equal 0 (logand mask *fn2-nntp-state-authenticated*))
+                        (not (equal 0 (logand mask *fn2-nntp-state-anonymous*)))
+                        (not (member-equal (fn2-conn-row-phase conn fn2-core)
+                                (list *fn2-conn-state-free* *fn2-conn-state-retired*
+                                      *fn2-conn-state-closing* *fn2-conn-state-draining*)))))
+           (mv :access 0))
+          (slot (fn2-conn-row-principal-slot conn fn2-core))
+          (principal
+           (stobj-let ((fn2-accounts (fn2-core-accounts fn2-core))) (principal)
+             (if (and (natp slot) (< slot (fn2-accounts-rows fn2-accounts)))
+                 (fn2-account-principal-id slot fn2-accounts)
+               0)
+             principal)))
+        (if (and (posp principal) (unsigned-byte-p 60 principal)) (mv :ok principal)
+          (mv :access 0))))
+   (in-theory (disable fn2-conn-read-principal))
+
+   ;; The query cursor owns its read rows.  A sibling, replaced cursor or
+   ;; closing transport cannot use a saved connection principal to read.
+   (defun fn2-conn-read-allows (conn gen stream x xstep head grant budget fn2-core)
+     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+     (b* (((mv pc pid) (fn2-conn-read-principal conn gen fn2-core))
+          ((unless (eq pc :ok)) (mv pc 0 0 0 fn2-core))
+          (cursor (fn2-conn-row-query conn fn2-core))
+          ((unless (and (eq (fn2-cursor-snapshot-read-code cursor fn2-core) :ok)
+                        (equal (fn2-machine-generation cursor fn2-core)
+                               (fn2-conn-row-query-gen conn fn2-core))
+                        (equal (fn2-cursor-row-conn cursor fn2-core) conn)
+                        (equal (fn2-cursor-row-conn-gen cursor fn2-core) gen)
+                        (equal (fn2-cursor-row-conn-kind cursor fn2-core) *fn2-conn-kind*)))
+           (mv :state 0 0 0 fn2-core))
+          (row (* 2 (nfix (fn2-machine-slot cursor fn2-core))))
+          ((unless (or (equal x row) (equal x (+ 1 row)))) (mv :state 0 0 0 fn2-core))
+          ((unless (fn2-auth-served fn2-core)) (mv :ok 0 0 0 fn2-core))
+          ((mv code next observed grant0 fn2-core)
+           (fn2-authority-principal-allows x pid *fn2-authority-right-read* *fn2-authority-scope-stream*
+                                          stream xstep head grant budget fn2-core))
+          ((when (eq code :more)) (mv code next observed grant0 fn2-core))
+          ((mv release fn2-core) (fn2-read-release x fn2-core)))
+       (mv (if (eq release :ok) code :state) next observed grant0 fn2-core)))
+   (fn2-core-preserves fn2-conn-read-allows (conn gen stream x xstep head grant budget fn2-core)
+     :position 4 :rows nil)
+   (defthm fn2-conn-read-allows-widths
+     (and (unsigned-byte-p 8 (mv-nth 1 (fn2-conn-read-allows conn gen stream x xstep head grant budget fn2-core)))
+          (unsigned-byte-p 60 (mv-nth 2 (fn2-conn-read-allows conn gen stream x xstep head grant budget fn2-core)))
+          (unsigned-byte-p 60 (mv-nth 3 (fn2-conn-read-allows conn gen stream x xstep head grant budget fn2-core)))))
+   (in-theory (disable fn2-conn-read-allows))
    (fn2-core-preserves fn2-cns-authority-allows (cns gen right scope target xstep head grant budget fn2-core) :position 4 :rows nil)
    (defthm fn2-cns-authority-allows-types
      (and (natp (mv-nth 1 (fn2-cns-authority-allows cns gen right scope target xstep head grant budget fn2-core)))
@@ -484,7 +555,7 @@
                     (:type-prescription :corollary (natp (mv-nth 2 (fn2-cns-authority-allows cns gen right scope target xstep head grant budget fn2-core))))
                     (:type-prescription :corollary (natp (mv-nth 3 (fn2-cns-authority-allows cns gen right scope target xstep head grant budget fn2-core)))))
      :hints (("Goal" :in-theory (disable fn2-cns-authority-allows-types) :use fn2-cns-authority-allows-types)))
-   (in-theory (disable fn2-cns-authority-allows))
+   (in-theory (disable fn2-cns-authority-allows fn2-authority-principal-allows))
    ))
 
 (defmacro fn2-auth-op-events ()
