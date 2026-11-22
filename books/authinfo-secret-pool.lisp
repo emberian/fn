@@ -61,6 +61,6 @@
       (let* ((expected (fn2-fc-word-byte (nfix (fn2-digest-word digest (floor (nfix i) 4) fn2-digests))
                                         (mod (nfix i) 4)))
              (diff (if (eq code :ok) (logxor (nfix byte) expected) 256)))
-        (fn2-authinfo-verifier-mismatch (+ 1 i) (logior (nfix acc) (nfix diff))
+        (fn2-authinfo-verifier-mismatch (+ 1 (nfix i)) (logior (nfix acc) (nfix diff))
                                        digest slot gen off kind id ogen fn2-digests fn2-pool)))))
 (in-theory (disable fn2-authinfo-verifier-mismatch))
