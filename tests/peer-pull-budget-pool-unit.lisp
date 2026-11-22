@@ -1,7 +1,6 @@
 ; A reply cursor can widen by 20 octets at the V1 position boundary.
 (in-package "ACL2")
-(include-book "../books/fncu-pool")
-(include-book "../books/xfnc-batch-codec")
+(include-book "../books/xfnc-batch-header")
 
 (defun fn2-ppbp-seal (items next cursor-at cursor-len slot gen fn2-fields fn2-digests fn2-b3 fn2-pool)
   (declare (xargs :stobjs (fn2-fields fn2-digests fn2-b3 fn2-pool) :verify-guards nil))

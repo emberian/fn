@@ -606,7 +606,7 @@ observation and evidence does not circulate as new around a ring (B: yes).
   connectivity, authority and funding.
 
 The v1 accepted XFNC read result uses kind 28, class 0 and an empty reason. Its result
-starts with the following fields in order (books/xfnc-batch-codec.lisp). All fixed-width
+starts with the following fields in order (books/xfnc-batch-header.lisp). All fixed-width
 integers are unsigned big-endian. Identity counters in u64 fields carry at most 60 bits.
 
 | Field | Encoding |
