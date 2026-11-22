@@ -32,6 +32,51 @@ class ExactFetch(unittest.TestCase):
                 store.write(header + group)
             self.assertEqual(campaign.read_genesis(image), (header, group))
 
+    def test_unterminated_file_requires_framing_refusal_and_unpublished_mid(self):
+        mid = "<eof@example.invalid>"
+        article = campaign.crossing_article(mid)
+        absent = b"430 no article with that message-id\r\n"
+        refused = dict(outcome="refused", reason="framing", op=70)
+        empty = dict(outcome="accepted", more=False, cursor="start", items=[])
+        for reply, page, stat, succeeds in (
+            (refused, empty, absent, True),
+            (dict(refused, outcome="uncertain"), empty, absent, False),
+            (dict(refused, reason="unavailable"), empty, absent, False),
+            (refused, dict(empty, items=[dict(message_id=mid, position=8)]), absent, False),
+            (refused, empty, b"223 0 <eof@example.invalid>\r\n", False),
+        ):
+            with self.subTest(reply=reply, page=page, stat=stat), tempfile.TemporaryDirectory() as tmp:
+                directory = Path(tmp)
+                valid = directory / "submitted.article"
+                valid.write_bytes(article)
+                sock = mock.MagicMock()
+                with mock.patch.object(campaign, "run_fn", side_effect=[reply, page]) as run, \
+                     mock.patch.object(campaign.restart, "connect", return_value=(sock, io.BytesIO(stat))):
+                    args = directory, "control", 1, "reader", dict(cursor="start", position=0), (mid, article, valid)
+                    if succeeds:
+                        campaign.check_unterminated_file(*args)
+                        sock.sendall.assert_called_once_with(b"STAT " + mid.encode() + b"\r\n")
+                    else:
+                        with self.assertRaises(AssertionError):
+                            campaign.check_unterminated_file(*args)
+                    bad = directory / "unterminated.article"
+                    self.assertEqual(bad.read_bytes() + b"\r\n", valid.read_bytes())
+                    self.assertEqual(run.call_args_list[0],
+                                     mock.call(directory, "unterminated", "stream", "append", "--as", "reader",
+                                               "--file", bad, "--op", "70", "--control-sock", "control", expected=1))
+
+    def test_crosspost_receipt_must_match_the_fixture_allocation(self):
+        mid = "<crosspost@example.invalid>"
+        expected = b" local.test:2 local.other:1"
+        receipt = b"\x01" + b"".join(n.to_bytes(8, "big") for n in (711, 712, 1, 25))
+        accepted = dict(outcome="accepted", evidence="committed", message_id=mid, position=25,
+                        receipt=receipt.hex(), numbers=expected.hex())
+        campaign.checked_append_receipt(accepted, mid, expected)
+        for wrong in (b" local.other:1 local.test:2", b" local.test:1 local.other:2",
+                      expected + b" local.spurious:1", b" local.test:2"):
+            with self.subTest(wrong=wrong), self.assertRaises(AssertionError):
+                campaign.checked_append_receipt(dict(accepted, numbers=wrong.hex()), mid, expected)
+
     def test_reopened_crosspost_numbers_use_each_groups_actual_nntp_number(self):
         mid = b"<crosspost@example.invalid>"
         headers = (b"Newsgroups: local.test,local.other",)

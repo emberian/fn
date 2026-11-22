@@ -25,6 +25,10 @@ client_spec = importlib.util.spec_from_file_location("fn_admin", ROOT / "tools/f
 client = importlib.util.module_from_spec(client_spec)
 client_spec.loader.exec_module(client)
 
+# The fresh image starts both groups at article 1. Only the second submission
+# is crossposted. The optional unread article follows both in local.test.
+EXPECTED_NUMBERS = (b" local.test:1", b" local.test:2 local.other:1", b" local.test:3")
+
 
 def environment():
     """One explicit origin for this isolated image and both fresh processes."""
@@ -148,7 +152,7 @@ def check_retry_occurrences(directory, phase, control, principal, registered, ac
         if not reply["more"]:
             assert actual == expected, (actual, expected, reply)
             return reply["cursor"]
-        assert cursor != reply["cursor"] and position < reply["next"] <= expected[-1][1], reply
+        assert expected and cursor != reply["cursor"] and position < reply["next"] <= expected[-1][1], reply
         cursor, position = reply["cursor"], reply["next"]
         page += 1
 
@@ -173,14 +177,30 @@ def observe_unread_append(directory, control, principal, tail_cursor, previous, 
     return {key: item[key] for key in ("message_id", "domain", "position")}
 
 
-def checked_append_receipt(accepted, mid):
+def check_unterminated_file(directory, control, port, principal, registered, submission):
+    mid, article, _ = submission
+    assert article.endswith(b"\r\n") and article[-3:-2] not in (b"\r", b"\n")
+    path = directory / "unterminated.article"
+    path.write_bytes(article[:-2])
+    reply = append_file(directory, "unterminated", control, principal, 70, path, expected=1)
+    assert reply == {"outcome": "refused", "reason": "framing", "op": 70}, reply
+    check_retry_occurrences(directory, "after-unterminated", control, principal, registered, [])
+    sock, stream = restart.connect(port)
+    with sock, stream:
+        sock.sendall(b"STAT " + mid.encode("ascii") + b"\r\n")
+        line = stream.readline()
+        (directory / "unterminated-stat.wire").write_bytes(line)
+        assert line == b"430 no article with that message-id\r\n", line
+
+
+def checked_append_receipt(accepted, mid, expected_numbers):
     assert accepted["outcome"] == "accepted" and accepted["evidence"] == "committed", accepted
     assert accepted["message_id"] == mid and accepted["position"] > 0, accepted
     receipt = bytes.fromhex(accepted["receipt"])
     assert len(receipt) == 33 and receipt[0] == 1, accepted
     origin_event = tuple(int.from_bytes(receipt[i:i + 8], "big") for i in range(1, 33, 8))
     assert origin_event == (711, 712, 1, accepted["position"]), accepted
-    assert accepted["numbers"], accepted
+    assert bytes.fromhex(accepted["numbers"]) == expected_numbers, accepted
 
 
 def crossing_article(mid, body_variant=0, crosspost=False):
@@ -255,6 +275,7 @@ def main():
     node = restart.Node(directory, image, "serve", "append", control_sock=control,
                         env=environment())
     try:
+        port = int(node.marker(b"LISTENING ").split()[1])
         node.marker(b"LISTENING-LOCAL ")
         created = run_fn(directory, "principal", "principal", "create", principal, "--control-sock", control)
         assert created["outcome"] == "accepted", created
@@ -272,6 +293,10 @@ def main():
         registered = run_fn(directory, "register", "stream", "register", "--as", principal,
                             "--consumer", "inbox1", "--start", "history", "--control-sock", control)
         assert registered["outcome"] == "accepted", registered
+        if not args.durable_retry:
+            # The ordinary CLI submits this same MID and file with its final
+            # CRLF immediately afterwards. Both original crash cuts follow.
+            check_unterminated_file(directory, control, port, principal, registered, submissions[0])
         accepted_articles = []
         for index, submission in enumerate(submissions):
             mid, article, article_path = submission
@@ -299,7 +324,7 @@ def main():
             else:
                 accepted = append_file(directory, f"accepted-{index}", control, principal,
                                        operation, article_path)
-            checked_append_receipt(accepted, mid)
+            checked_append_receipt(accepted, mid, EXPECTED_NUMBERS[index])
             accepted_articles.append(accepted)
         assert len({(a["domain"], a["position"]) for a in accepted_articles}) == len(submissions)
         observed_articles = list(accepted_articles)
@@ -364,9 +389,8 @@ def main():
             observed_articles, registered["position"], status_before)
         if args.durable_retry:
             recovered = append_file(directory, "reopened-unread-retry", control, principal, 75, unread_submission[2])
-            checked_append_receipt(recovered, unread_submission[0])
+            checked_append_receipt(recovered, unread_submission[0], EXPECTED_NUMBERS[2])
             assert all(recovered[key] == value for key, value in unread.items()), (recovered, unread)
-            assert bytes.fromhex(recovered["numbers"]) == b" local.test:3", recovered
             submissions.append(unread_submission)
             accepted_articles.append(recovered)
             retry_controls(directory, "reopened", control, principal, submissions[0], accepted_articles[0])
@@ -419,8 +443,7 @@ def main():
         for mid, article, _ in submissions:
             lines = article.removesuffix(b"\r\n").split(b"\r\n")
             articles.append((mid.encode("ascii"), lines[:lines.index(b"")], lines))
-        xrefs = {article[0]: bytes.fromhex(receipt["numbers"])
-                 for article, receipt in zip(articles, accepted_articles)}
+        xrefs = {article[0]: EXPECTED_NUMBERS[index] for index, article in enumerate(articles)}
         (directory / "nntp-after.wire").write_bytes(restart.read_back(port, articles, xrefs=xrefs))
         # The crosspost is article 2 in the first group and article 1 in the
         # second. Check both actual NNTP status numbers and the full Xref.
