@@ -99,7 +99,7 @@
      (mv-let (code tag nargs f0 a0 b0 f1 a1 b1 f2 a2 b2 f3 a3 b3)
        (fn2-nntp-parse-line (nfix s) (nfix e) mask rx rgen *fn2-conn-kind* conn gen fn2-pool)
        (declare (ignore b0 f2 a2 b2 f3 a3 b3))
-       (cond ((and (eq code :ok) (equal tag *fn2-nntp-command-capabilities*) (equal nargs 0))
+       (cond ((and (eq code :ok) (equal tag *fn2-nntp-command-capabilities*))
               (mv *fn2-conn-authinfo-capabilities* 0 0))
              ((and (eq code :ok) (equal tag *fn2-nntp-command-authinfo*) (equal nargs 2)
                    (eq f0 :keyword) (eq f1 :span) (unsigned-byte-p 32 a1)
