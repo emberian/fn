@@ -9,6 +9,11 @@ The client encodes the declared octets16 Message-ID, u32be domain, and u64be
 position from `books/consumer-codec.lisp`; it rejects truncated or trailing
 accepted result data.
 
+`fn stream append --file PATH` submits the complete article byte for byte.
+Piped input has the same behavior. With `--group`, the client composes the
+article from the supplied fields and body. For a complete article, the node
+therefore receives the exact line endings present in the file.
+
 `tests/native-append-fetch-restart.py` uses the actual image launcher and local
 FNCT socket. In a new isolated image it creates a test principal and grants
 read/append through the existing owner-only control channel. It APPENDs a

@@ -15,6 +15,19 @@ must be derived from that store and the actual served call/attachment graph.
 | Consumer restart | The successor fixture at `5bdd74d14` reopens the same image and checks every retired cursor, including the first epoch, after same-name registration. It reads the recovered position before subsequent mutations. | Execute that fixture against the qualified native successor. The exercised store-fold controls supply rows directly. |
 | Native APPEND | Forge certified `assembly-core` in `certify-20261122T211811Z-2555392`, `assembly-init` in `certify-20261122T212222Z-2560534`, and the corrected dispatch owner initialization in `certify-20261122T212619Z-2564904`. The TLS record-start contract discharges the actual external record-next guard. | Complete callback assembly, then observe durable acceptance, process death and byte-exact FETCH through the socket. |
 
+On the peer candidate `64c73ccf6`, a valid XFNC command on a protected,
+authenticated connection reaches `fn2-answer-xfnc-gate`, replies 403 and
+closes. The receive step and peer history reader have no socket caller.
+The peer lane owns the counted-body handoff and durable resume path.
+
+For APPEND, the `05557d1a6` client sent the 6,142-byte unterminated file
+and the valid 6,144-byte file verbatim in separate Unix-socket captures.
+The native fixture at `ccdaaeaf2` requires a framing refusal, an empty
+stream and NNTP 430, followed by acceptance of the valid file with the same
+Message-ID. Those node observations await native execution. Page reclamation
+also requires an observation of the refused upload's old lease after drain.
+Successful retry alone can consume another free page.
+
 Forge certified the actual host adapters on the `8c37b5042` source.
 The TLS external record, child, close and cancel guards passed in
 `certify-20261122T213807Z-2577694`, and the four compression entry guards
