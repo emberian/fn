@@ -69,5 +69,5 @@
                    (msg "~x0 is (:if E (STEP ...) (STEP ...))."
                         '(:if (posp row-count) ((:set (count 0)) . malformed) ()))))
        '(value-triple :conditional-continuations-checked)
-     (er soft 'machine-if-continuation-unit "Shared ~x0, explicit ~x1, terminal ~x2, malformed ~x3, stale read ~x4."
+     (er hard 'machine-if-continuation-unit "Shared ~x0, explicit ~x1, terminal ~x2, malformed ~x3, stale read ~x4."
          shared-error explicit-error terminal-error malformed-error stale-error))))
