@@ -32,9 +32,9 @@
   (equal (mv-list 4 (fn2-nde-cut-prefix '((:boundary 1 "take" nil nil nil)
                                          (:boundary 2 "device-submit" 4 7 t)) 0 nil nil))
          '( :ok nil nil (:boundary 2 "device-submit" 4 7 t)))
-  (eq (mv-nth 0 (fn2-nde-cut-prefix '((:boundary 2 "device-submit" 4 7 t)) 0 nil nil)) :malformed-cut-capture)
-  (eq (mv-nth 0 (fn2-nde-cut-prefix '((:boundary 1 "device-submit" 4 7 t) (:begin 1)) 0 nil nil)) :after-cut)
-  (eq (mv-nth 0 (fn2-nde-cut-prefix '((:boundary 1 "device-submit" 4 7 nil)) 0 nil nil)) :missing-cut)))
+  (eq (car (mv-list 4 (fn2-nde-cut-prefix '((:boundary 2 "device-submit" 4 7 t)) 0 nil nil))) :malformed-cut-capture)
+  (eq (car (mv-list 4 (fn2-nde-cut-prefix '((:boundary 1 "device-submit" 4 7 t) (:begin 1)) 0 nil nil))) :after-cut)
+  (eq (car (mv-list 4 (fn2-nde-cut-prefix '((:boundary 1 "device-submit" 4 7 nil)) 0 nil nil))) :missing-cut)))
 ; Shape/coordinate controls alone cannot produce a successful replay: this
 ; forged empty control prefix fails before any core transition is attempted.
 (assert-event
