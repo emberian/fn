@@ -847,7 +847,21 @@
 (defmachine-arms fn2-cursor :child-plan
  :subarms
  (;; the page is ready: TX is the connection's move; wake it and wait
-  (hand (:set (turn 0)) (:wake-row row-conn) (:next :send) (:charge :steps *fn2-work-transition*))
+  (hand :on-refusal ((:stop :machine-phase))
+   (:let bound (not (equal row-read-subject *fn2-cursor-read-subject-unbound*)))
+   (:do (pc principal) (fn2-conn-read-principal row-conn row-conn-gen id row-generation)
+    :when bound :else (:state 0) :accept (:ok :public :access :state)
+    :why "a lost or changed connection binding cannot send buffered private data")
+   (:if (and bound
+             (not (or (and (equal row-read-subject *fn2-cursor-read-subject-ledger*)
+                           (eq pc :ok) (equal principal row-read-principal))
+                      (and (equal row-read-subject *fn2-cursor-read-subject-public*) (eq pc :public)))))
+        ((:do (rc) (fn2-cursor-reset row-tx-slot row-tx-gen
+                                    :okind row-conn-kind :oslot row-conn :ogen row-conn-gen)
+          :accept (:ok))
+         (:set (done 1) (roff 0) (update *fn2-cursor-update-close*)))
+        ())
+   (:set (turn 0)) (:wake-row row-conn) (:next :send) (:charge :steps *fn2-work-transition*))
   ;; a status line alone (REPLY), the last page
   (refuse :on-refusal ((:stop :machine-phase))
    (:do (code) (fn2-cursor-say row-tag row-reply row-mask 0 0 0 row-tx-slot row-tx-gen 0 0 row-tx-slot row-tx-gen
@@ -856,20 +870,33 @@
    (:set (done 1) (roff 0) (update *fn2-cursor-update-none*))
    (:goto hand))
   ;; The primary row can retain a directory/overview entry while the grant
-  ;; decision resumes on the secondary row. A denied candidate is never sent.
+  ;; decision resumes on the secondary row. READ and stream scope are fixed
+  ;; here, and CHECK-GROUP is written only by a candidate's start arm.
+  ;; The pending mode dispatches here before any candidate can advance.
   (group-authorize :on-refusal ((:stop :machine-phase))
    (:let x (+ 1 (* 2 row-slot)))
    (:do (pc principal)
         (fn2-conn-read-principal row-conn row-conn-gen id row-generation)
     :accept (:ok :public :access :state)
     :why ":public is the no-authority profile; invalid or denied connection binding is invisible")
+   (:let unbound (equal row-read-subject *fn2-cursor-read-subject-unbound*))
+   (:let ledger (and (eq pc :ok)
+                     (or unbound
+                         (and (equal row-read-subject *fn2-cursor-read-subject-ledger*)
+                              (equal principal row-read-principal)))))
+   (:let public (and (eq pc :public)
+                     (or unbound (equal row-read-subject *fn2-cursor-read-subject-public*))))
+   (:if (and unbound (or ledger public))
+        ((:set (read-subject (if ledger *fn2-cursor-read-subject-ledger* *fn2-cursor-read-subject-public*))
+               (read-principal principal)))
+        ())
    (:do (rc) (fn2-read-release x)
-    :when (and (not (eq pc :ok)) (< 0 row-check-step)) :else (:ok) :accept (:ok))
+    :when (and (not ledger) (< 0 row-check-step)) :else (:ok) :accept (:ok))
    (:do (ac step head grant)
         (fn2-authority-principal-allows x principal *fn2-authority-right-read* *fn2-authority-scope-stream*
                                        row-check-group row-check-step row-check-head row-check-grant
                                        *fn2-cursor-step-budget*)
-    :when (eq pc :ok) :else ((if (eq pc :public) :ok :access) 0 0 0)
+    :when ledger :else ((if public :ok :access) 0 0 0)
     :accept (:ok :access :state :more)
     :why ":more carries exact reader progress; other non-ok results hide the candidate")
    (:if (eq ac :more)
@@ -882,9 +909,12 @@
            (:if (eq ac :ok)
                 ((:do (vc a) (fn2-read-value (* 2 row-slot) *fn2-overview-entry-field-article*)
                   :accept (:ok :stale) :why ":stale: retry the membership after a concurrent range update")
-                 (:if (eq vc :stale)
+                 (:do (gc g) (fn2-read-value (* 2 row-slot) *fn2-overview-entry-field-group*)
+                  :when (eq vc :ok) :else (:stale 0) :accept (:ok :stale)
+                  :why "bind the granted group and article to the rendered membership")
+                 (:if (eq gc :stale)
                       ((:set (lo row-next)) (:goto range))
-                      ((:set (have (if (equal a row-spin) 2 0)))
+                      ((:set (have (if (and (equal a row-spin) (equal g row-check-group)) 2 0)))
                        (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))
                 ((:set (have 0)) (:charge :bytes 4096 :steps *fn2-work-transition* :runnable t))))
           ((equal check *fn2-cursor-group-check-list*)

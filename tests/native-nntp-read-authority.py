@@ -208,6 +208,10 @@ def main():
                 reply = peer.command(command)
                 assert reply.startswith(b"412 "), (command, reply)
             denied(peer)
+            admin("restore-secondary", "grant", "set", "fixture-reader", "read", VISIBLE.decode("ascii"))
+            assert peer.command(b"GROUP " + VISIBLE) == b"211 2 1 2 " + VISIBLE
+            overview(peer, CROSSPOST, b"1")
+            assert peer.command(b"STAT " + CROSSPOST) == b"223 0 " + CROSSPOST + b" retrieved"
     finally:
         node.close()
         for path in (control, Path(f"{control}.groups")):
