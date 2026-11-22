@@ -61,7 +61,8 @@
           (view-step (if more n 0)) (view-head (if more h 0)) (view-grant (if more g 0)))))
       (cond (accepted (mv :ok pid h fn2-core))
             ((or valid more) (mv :more 0 0 fn2-core))
-            (t (mv (if (eq code :access) :access :state) 0 0 fn2-core)))))
+            ((eq code :access) (mv (if readp :absent :access) 0 0 fn2-core))
+            (t (mv :state 0 0 fn2-core)))))
 
    ; A published result requires consume and read under the same current
    ; authority head. Between the initial and final check, scan one record
@@ -116,6 +117,7 @@
      (mv (cond ((equal reason *fn2-xfnc-end-empty*) :empty)
                ((equal reason *fn2-xfnc-end-complete*) :complete)
                ((equal reason *fn2-xfnc-end-access*) :access)
+               ((equal reason *fn2-xfnc-end-absent*) :absent)
                ((equal reason *fn2-xfnc-end-dependency*) :dependency)
                ((equal reason *fn2-xfnc-end-uncertain*) :uncertain)
                ((equal reason *fn2-xfnc-end-invalid*) :invalid)
@@ -143,8 +145,9 @@
                (granted (and (eq rights :ok) (equal pid principal) (posp head) (unsigned-byte-p 60 head)))
                (fn2-core (if granted (fn2-cursor-put-core cursor (view-version head))
                           (if (eq rights :more) fn2-core
-                            (fn2-cursor-put-core cursor (view-end (if (eq rights :access) *fn2-xfnc-end-access*
-                                                     *fn2-xfnc-end-uncertain*)))))))
+                            (fn2-cursor-put-core cursor (view-end (cond ((eq rights :absent) *fn2-xfnc-end-absent*)
+                                            ((eq rights :access) *fn2-xfnc-end-access*)
+                                            (t *fn2-xfnc-end-uncertain*))))))))
            (mv :more 0 0 0 0 fn2-core)))
          ((mv state fn2-core) (fn2-xfnc-reader-step conn cgen budget fn2-core))
          ((when (member-eq state '(:wait :more :busy :exhausted :drain :stopped)))
@@ -155,7 +158,8 @@
                (allowed (and (eq rights :ok) (equal pid principal)
                              (equal head (fn2-cursor-row-view-version cursor fn2-core))))
                (fn2-core (fn2-cursor-put-core cursor
-                          (view-end (cond ((and (not allowed) (not (member-eq rights '(:access :ok))))
+                          (view-end (cond ((eq rights :absent) *fn2-xfnc-end-absent*)
+                                          ((and (not allowed) (not (member-eq rights '(:access :ok))))
                                            *fn2-xfnc-end-uncertain*)
                                           ((not allowed) *fn2-xfnc-end-access*)
                                           ((eq state :empty) *fn2-xfnc-end-empty*)
@@ -173,7 +177,8 @@
            (mv (if (member-eq advance '(:ok :next :complete)) :more advance) 0 0 0 0 fn2-core)))
          ((when (member-eq code '(:item :more))) (mv code hs he es ee fn2-core))
          (fn2-core (fn2-cursor-put-core cursor
-                    (view-end (cond ((eq code :access) *fn2-xfnc-end-access*)
+                    (view-end (cond ((eq code :absent) *fn2-xfnc-end-absent*)
+                                    ((eq code :access) *fn2-xfnc-end-access*)
                                     ((eq code :dependency) *fn2-xfnc-end-dependency*)
                                     (t *fn2-xfnc-end-invalid*))))))
       (mv :more 0 0 0 0 fn2-core)))))

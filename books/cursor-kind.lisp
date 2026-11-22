@@ -41,7 +41,7 @@
           ;; The durable grant lookup continuation for the protected peer view.
           (view-principal :u60) (view-stream :u60) (view-anchor :u60) (view-right :bool)
           (view-step :u8) (view-head :u60) (view-grant :u60) (view-version :u60) (view-publish :bool)
-          (view-end (:enum fn2-xfnc-end (:none :empty :complete :access :dependency :uncertain :invalid)))
+          (view-end (:enum fn2-xfnc-end (:none :empty :complete :access :dependency :uncertain :invalid :absent)))
           ;; block reads in flight (the terminal of each completion consumes one)
           (pending :u32)
           ;; the pool class a row parked for its lease waits on (:park :pool's field)
