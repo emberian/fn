@@ -119,7 +119,7 @@ def race_appends(directory, label, control, principal, operation, candidates):
         def finish(side, session, frame):
             start.wait(timeout=30)
             session.sock.sendall(frame[-32:])
-            reply = client.decode_cns_reply("append", session._recv_frame(mutating=True))
+            reply = client.decode_cns_reply("append", session._recv_frame())
             reply["op"] = operation
             (directory / f"{label}-{side}.stdout").write_text(json.dumps(reply) + "\n")
             return reply
@@ -146,10 +146,37 @@ def check_retry_occurrences(directory, phase, control, principal, registered, ac
         assert actual == expected[:len(actual)], (actual, expected, reply)
         if not reply["more"]:
             assert actual == expected, (actual, expected, reply)
-            return
+            return reply["cursor"]
         assert cursor != reply["cursor"] and position < reply["next"] <= expected[-1][1], reply
         cursor, position = reply["cursor"], reply["next"]
         page += 1
+
+
+def observe_unread_append(directory, control, principal, tail_cursor, previous, submission, operation):
+    """Prove publication on another connection before closing the submitting socket unread."""
+    mid, article, _ = submission
+    with client.ControlSession(str(control), timeout=90) as sender:
+        bound = sender.bind_as(principal)
+        assert bound and bound["outcome"] == "accepted", bound
+        sender.sock.sendall(client.build_cns_request("append", op=operation, article=article))
+        page = run_fn(directory, "unread-append-observed", "stream", "wait", "--as", principal,
+                      "--consumer", "inbox1", "--cursor", tail_cursor, "--seconds", 30,
+                      "--max-items", 3, "--max-octets", 4096, "--control-sock", control)
+        assert page["outcome"] == "accepted" and len(page["items"]) == 1, page
+        item = page["items"][0]
+        assert item["message_id"] == mid and item["domain"] == previous["domain"], page
+        assert item["position"] > previous["position"], page
+    return {key: item[key] for key in ("message_id", "domain", "position")}
+
+
+def checked_append_receipt(accepted, mid):
+    assert accepted["outcome"] == "accepted" and accepted["evidence"] == "committed", accepted
+    assert accepted["message_id"] == mid and accepted["position"] > 0, accepted
+    receipt = bytes.fromhex(accepted["receipt"])
+    assert len(receipt) == 33 and receipt[0] == 1, accepted
+    origin_event = tuple(int.from_bytes(receipt[i:i + 8], "big") for i in range(1, 33, 8))
+    assert origin_event == (711, 712, 1, accepted["position"]), accepted
+    assert accepted["numbers"], accepted
 
 
 def crossing_article(mid, body_variant=0, crosspost=False):
@@ -160,9 +187,9 @@ def crossing_article(mid, body_variant=0, crosspost=False):
         lines[group] = b"Newsgroups: local.test,local.other"
     # Vary every body window, not just the Message-ID in the first unit.
     # A reused extent from the other article must change the exact FETCH bytes.
-    assert body_variant in (0, 1)
+    assert body_variant in (0, 1, 2)
     if body_variant:
-        mapping = bytes.maketrans(b"0123456789", b"abcdefghij")
+        mapping = bytes.maketrans(b"0123456789", (b"abcdefghij", b"ABCDEFGHIJ")[body_variant - 1])
         lines = lines[:5] + [line.translate(mapping) for line in lines[5:]]
     article = restart.wire(lines)
     # Keep the varied body (including a dot-leading line), and shorten only
@@ -266,15 +293,10 @@ def main():
             else:
                 accepted = append_file(directory, f"accepted-{index}", control, principal,
                                        operation, article_path)
-            assert accepted["outcome"] == "accepted" and accepted["evidence"] == "committed", accepted
-            assert accepted["message_id"] == mid and accepted["position"] > 0, accepted
-            receipt = bytes.fromhex(accepted["receipt"])
-            assert len(receipt) == 33 and receipt[0] == 1, accepted
-            actual_origin_event = tuple(int.from_bytes(receipt[i:i + 8], "big") for i in range(1, 33, 8))
-            assert actual_origin_event == (711, 712, 1, accepted["position"]), accepted
-            assert accepted["numbers"], accepted
+            checked_append_receipt(accepted, mid)
             accepted_articles.append(accepted)
         assert len({(a["domain"], a["position"]) for a in accepted_articles}) == len(submissions)
+        observed_articles = list(accepted_articles)
         status_before = checked_status(
             run_fn(directory, "status-before", "stream", "status", "--as", principal,
                    "--consumer", "inbox1", "--control-sock", control),
@@ -294,7 +316,19 @@ def main():
             checked_status(run_fn(directory, "status-after-retries", "stream", "status", "--as", principal,
                                   "--consumer", "inbox1", "--control-sock", control),
                            accepted_articles, registered["position"], status_before)
-            check_retry_occurrences(directory, "before-restart", control, principal, registered, accepted_articles)
+            tail = check_retry_occurrences(directory, "before-unread", control, principal, registered, accepted_articles)
+            mid = "<unread-append@example.invalid>"
+            article = crossing_article(mid, body_variant=2)
+            path = directory / "submitted-unread.article"
+            path.write_bytes(article)
+            unread_submission = (mid, article, path)
+            unread = observe_unread_append(directory, control, principal, tail, accepted_articles[-1],
+                                           unread_submission, 75)
+            observed_articles.append(unread)
+            status_before = checked_status(
+                run_fn(directory, "status-after-unread", "stream", "status", "--as", principal,
+                       "--consumer", "inbox1", "--control-sock", control), observed_articles, registered["position"])
+            check_retry_occurrences(directory, "before-restart", control, principal, registered, observed_articles)
             revoked = run_fn(directory, "revoke-append", "grant", "set", principal, "append",
                              "local.test", "--revoke", "--control-sock", control)
             assert revoked["outcome"] == "accepted" and not revoked["enabled"], revoked
@@ -302,12 +336,13 @@ def main():
         node.kill()
         cut = "SIGKILL after both committed APPEND receipts"
         if args.durable_retry:
-            cut += ", the committed conflict receipt, and the accepted APPEND revocation"
+            cut += ", committed conflict receipt, independently observed unread APPEND, and accepted APPEND revocation"
         receipts.append(dict(phase="accepted", node_pid=node.node_pid, exit=node.proc.returncode,
                              article_octets=[len(article) for _, article, _ in submissions],
                              append_receipts=accepted_articles, cut=cut))
         if args.durable_retry:
             receipts[-1]["conflict_receipt"] = conflict
+            receipts[-1]["unread_append_occurrence"] = unread
     finally:
         node.close()
     assert read_genesis(image, genesis_groups) == genesis, "APPEND changed immutable genesis bytes"
@@ -320,8 +355,14 @@ def main():
         checked_status(
             run_fn(directory, "status-after", "stream", "status", "--as", principal,
                    "--consumer", "inbox1", "--control-sock", control),
-            accepted_articles, registered["position"], status_before)
+            observed_articles, registered["position"], status_before)
         if args.durable_retry:
+            recovered = append_file(directory, "reopened-unread-retry", control, principal, 75, unread_submission[2])
+            checked_append_receipt(recovered, unread_submission[0])
+            assert all(recovered[key] == value for key, value in unread.items()), (recovered, unread)
+            assert bytes.fromhex(recovered["numbers"]) == b" local.test:3", recovered
+            submissions.append(unread_submission)
+            accepted_articles.append(recovered)
             retry_controls(directory, "reopened", control, principal, submissions[0], accepted_articles[0])
             replayed = append_file(directory, "reopened-conflict", control, principal, 73, conflict_path, expected=1)
             assert replayed == conflict, (replayed, conflict)
@@ -342,6 +383,14 @@ def main():
                                    "--domain", conflict["domain"], "--position", conflict["position"],
                                    "--control-sock", control, expected=1)
             assert evidence_only == {"outcome": "refused", "reason": "unavailable"}, evidence_only
+            # Revoking append advanced this principal's durable authorization revision.
+            # Recover the original submission before this first post-restart journal write.
+            stale = run_fn(directory, "stale-cursor-after-revocation", "stream", "read", "--as", principal,
+                           "--consumer", "inbox1", "--cursor", registered["cursor"], "--control-sock", control, expected=1)
+            assert stale == {"outcome": "refused", "reason": "rebase-required"}, stale
+            registered = run_fn(directory, "rebase-after-revocation", "stream", "rebase", "--as", principal,
+                                "--consumer", "inbox1", "--start", "history", "--control-sock", control)
+            assert registered["outcome"] == "accepted" and registered["position"] == status_before["position"], registered
             check_retry_occurrences(directory, "reopened", control, principal, registered, accepted_articles)
             checked_status(run_fn(directory, "status-after-reopened-retries", "stream", "status", "--as",
                                   principal, "--consumer", "inbox1", "--control-sock", control),
@@ -349,7 +398,7 @@ def main():
         for index, ((mid, article, _), accepted) in enumerate(zip(submissions, accepted_articles)):
             # Cross each position with the other real Message-ID, then change
             # only the ID and require this same position to yield its bytes.
-            other_mid = submissions[1 - index][0]
+            other_mid = submissions[(index + 1) % len(submissions)][0]
             denied = run_fn(directory, f"wrong-mid-{index}", "stream", "fetch", other_mid,
                             "--as", principal, "--domain", accepted["domain"],
                             "--position", accepted["position"], "--control-sock", control, expected=1)
@@ -370,7 +419,7 @@ def main():
         # The crosspost is article 2 in the first group and article 1 in the
         # second. Check both actual NNTP status numbers and the full Xref.
         (directory / "nntp-other-after.wire").write_bytes(
-            restart.read_back(port, articles[1:], group="local.other", xrefs=xrefs))
+            restart.read_back(port, articles[1:2], group="local.other", xrefs=xrefs))
         # A fresh registration moves the durable tail without adding an addr
         # entry. Keep this write after the restart readbacks so it cannot
         # mask a missing APPEND fence at the first process-death cut.
@@ -389,8 +438,8 @@ def main():
     assert read_genesis(image, genesis_groups) == genesis, "reopen changed immutable genesis bytes"
     (directory / "processes.json").write_text(json.dumps(receipts, indent=2) + "\n")
     if args.durable_retry:
-        print("NATIVE DURABLE APPEND RETRY PASS: same-key races had one occurrence each; original receipts replayed after restart and revocation")
-    print("NATIVE APPEND/FETCH RESTART PASS: two 6144-byte articles recovered by FNCT and NNTP")
+        print("NATIVE DURABLE APPEND RETRY PASS: the unread APPEND kept its sole observed occurrence after restart and revocation")
+    print(f"NATIVE APPEND/FETCH RESTART PASS: {len(submissions)} 6144-byte articles recovered by FNCT and NNTP")
 
 
 if __name__ == "__main__":

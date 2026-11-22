@@ -73,14 +73,59 @@ class ExactFetch(unittest.TestCase):
             with self.subTest(wrong=wrong), self.assertRaises(AssertionError):
                 campaign.checked_status(wrong, articles, 0, stable)
 
+    def test_socket_race_completes_both_frames_with_the_current_transport(self):
+        sessions = [mock.create_autospec(campaign.client.ControlSession, instance=True) for _ in range(2)]
+        for session in sessions:
+            session.__enter__.return_value = session
+            session.bind_as.return_value = {"outcome": "accepted"}
+            session.sock = mock.Mock()
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(campaign.client, "ControlSession", side_effect=sessions), \
+             mock.patch.object(campaign.client, "decode_cns_reply", side_effect=[{}, {}]):
+            replies = campaign.race_appends(Path(tmp), "race", "sock", "reader", 71,
+                                            [("<a>", b"source", None)] * 2)
+        self.assertEqual(replies, [{"op": 71}] * 2)
+        expected = campaign.client.build_cns_request("append", op=71, article=b"source")
+        for session in sessions:
+            self.assertEqual(session.sock.sendall.call_args_list, [mock.call(expected[:-32]), mock.call(expected[-32:])])
+            session._recv_frame.assert_called_once_with()
+
+    def test_unread_append_requires_independent_publication_before_socket_close(self):
+        mid = "<unread@example.invalid>"
+        previous = dict(domain=0, position=20)
+        item = dict(message_id=mid, domain=0, position=25)
+        for items, valid in (([item], True), ([], False), ([item, item], False),
+                             ([dict(item, message_id="<other>")], False), ([dict(item, position=20)], False)):
+            with self.subTest(items=items), mock.patch.object(campaign.client, "ControlSession") as session, \
+                 mock.patch.object(campaign, "run_fn") as observer:
+                events = []
+                sender = session.return_value.__enter__.return_value
+                sender.bind_as.return_value = {"outcome": "accepted"}
+                sender.sock.sendall.side_effect = lambda frame: events.append("submitted")
+                session.return_value.__exit__.side_effect = lambda *_: events.append("closed")
+                def wait_for_publication(*args):
+                    self.assertIn("wait", args)
+                    self.assertEqual(args[args.index("--cursor") + 1], "old-tail")
+                    events.append("observed")
+                    return {"outcome": "accepted", "items": items}
+                observer.side_effect = wait_for_publication
+                args = (Path("."), "sock", "reader", "old-tail", previous, (mid, b"source", None), 75)
+                if valid:
+                    self.assertEqual(campaign.observe_unread_append(*args), item)
+                else:
+                    with self.assertRaises(AssertionError):
+                        campaign.observe_unread_append(*args)
+                self.assertEqual(events, ["submitted", "observed", "closed"])
+                sender._recv_frame.assert_not_called()
+                sender.sock.recv.assert_not_called()
+
     def test_occurrence_enumeration_follows_cursor_and_checks_terminal_page(self):
         registered = dict(cursor="origin", position=0)
         articles = [dict(message_id="<one>", position=20), dict(message_id="<two>", position=21)]
         first = dict(outcome="accepted", more=True, cursor="first", next=20, items=articles[:1])
         second = dict(outcome="accepted", more=True, cursor="second", next=21, items=articles[1:])
-        terminal = dict(outcome="accepted", more=False, items=[])
+        terminal = dict(outcome="accepted", more=False, cursor="tail", next=21, items=[])
         with mock.patch.object(campaign, "run_fn", side_effect=[first, second, terminal]) as run:
-            campaign.check_retry_occurrences(None, "test", None, None, registered, articles)
+            self.assertEqual(campaign.check_retry_occurrences(None, "test", None, None, registered, articles), "tail")
             self.assertEqual([c.args[c.args.index("--cursor") + 1] for c in run.call_args_list],
                              ["origin", "first", "second"])
         for invalid in (
