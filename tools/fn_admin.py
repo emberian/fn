@@ -746,24 +746,24 @@ def load_cursor_bytes(
     return bytes.fromhex(pos_res["cursor"]), None
 
 
-def read_article_source(
+def read_article_input(body: str | None, file_path: Path | None) -> bytes:
+    if file_path is not None:
+        return file_path.read_bytes()
+    if body is not None:
+        return body.encode("utf-8")
+    if not sys.stdin.isatty():
+        return sys.stdin.buffer.read()
+    return b""
+
+
+def article_lines(
     group: str | None,
     subject: str | None,
     sender: str | None,
     msgid: str | None,
-    body: str | None,
-    file_path: Path | None,
+    raw_bytes: bytes,
 ) -> list[bytes]:
-    """Return raw RFC 5536 article lines (without CR LF or dot-stuffing)."""
-    if file_path is not None:
-        raw_bytes = file_path.read_bytes()
-    elif body is not None:
-        raw_bytes = body.encode("utf-8")
-    elif not sys.stdin.isatty():
-        raw_bytes = sys.stdin.buffer.read()
-    else:
-        raw_bytes = b""
-
+    """Compose or split article lines for CRLF rendering."""
     # If no --group is supplied and input already begins with RFC 5536 headers, preserve raw lines.
     if group is None and (b"\r\n\r\n" in raw_bytes or b"\n\n" in raw_bytes or raw_bytes.startswith((b"From:", b"Newsgroups:", b"Subject:"))):
         text_lines = raw_bytes.replace(b"\r\n", b"\n").split(b"\n")
@@ -1192,8 +1192,13 @@ def cmd_stream_unregister(args: argparse.Namespace) -> int:
 
 def cmd_stream_append(args: argparse.Namespace) -> int:
     sock_path = require_control_sock(args)
-    lines = read_article_source(args.group, args.subject, args.sender, args.msgid, args.body, args.file)
-    article_bytes = b"".join(line + b"\r\n" for line in lines)
+    source = read_article_input(args.body, args.file)
+    full_input = args.file is not None or (args.body is None and not sys.stdin.isatty())
+    if args.group is None and full_input:
+        article_bytes = source
+    else:
+        lines = article_lines(args.group, args.subject, args.sender, args.msgid, source)
+        article_bytes = b"".join(line + b"\r\n" for line in lines)
     op_id = parse_u60_op(args.op, required=False)
     try:
         with ControlSession(sock_path) as sess:
@@ -1430,7 +1435,8 @@ def cmd_groups(args: argparse.Namespace) -> int:
 
 def cmd_post(args: argparse.Namespace) -> int:
     host, port = nntp_endpoint(args)
-    lines = read_article_source(args.group, args.subject, args.sender, args.msgid, args.body, args.file)
+    source = read_article_input(args.body, args.file)
+    lines = article_lines(args.group, args.subject, args.sender, args.msgid, source)
     stuffed = [(b"." + ln if ln.startswith(b".") else ln) for ln in lines] + [b"."]
     wire_body = b"".join(ln + b"\r\n" for ln in stuffed)
 
@@ -1643,7 +1649,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_sapp.add_argument("--from", dest="sender", help="From header")
     p_sapp.add_argument("--msgid", help="Message-ID header (optional; node generates one if omitted)")
     p_sapp.add_argument("--body", help="article body text")
-    p_sapp.add_argument("--file", type=Path, help="read article body or full RFC 5536 article from file")
+    p_sapp.add_argument("--file", type=Path, help="send a complete article verbatim, or use as the body with --group")
     p_sapp.add_argument("--op", help="idempotent operation id (1..2^60-1)")
     _add_control_args(p_sapp)
 
