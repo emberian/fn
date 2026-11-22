@@ -294,6 +294,17 @@
                    (equal *fn2-cns-scope-stream* *fn2-authority-scope-stream*)))
 (defmacro fn2-auth-read-events ()
  '(progn
+   (defun fn2-auth-known (p fn2-core)
+     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                     :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
+     (let ((slot (floor (nfix p) 4294967296)))
+       (stobj-let ((fn2-accounts (fn2-core-accounts fn2-core))) (k)
+         (and (fn2-accountsp fn2-accounts) (fn2-accounts-wfp fn2-accounts) (fn2-accounts-shapep fn2-accounts)
+              (posp p) (< slot (fn2-accounts-rows fn2-accounts))
+              (equal (fn2-account-principal-id slot fn2-accounts) p)
+              (not (equal (fn2-accounts-state slot fn2-accounts) *fn2-account-state-free*)))
+         (if k :ok :absent))))
+   (in-theory (disable fn2-auth-known))
    ;; Whether the core serves authority (the profile gives fn2-auth rows):
    ;; a profile serving none has no principals directory and no grants, and
    ;; its appends are not governed by them (as its genesis names none).
@@ -572,7 +583,11 @@
                             (or (not (equal op *fn2-auth-op-password*))
                                 (and (< (+ base 3) (fn2-fields-rows fn2-fields))
                                      (equal (fn2-fields-ref-len (+ base 2) fn2-fields) *fn2-authinfo-salt-octets*)
-                                     (posp (fn2-fields-ref-len (+ base 3) fn2-fields)))))
+                                     (fn2-authinfo-token-span-p slot gen noff len okind oslot ogen fn2-pool)
+                                     (fn2-authinfo-token-span-p
+                                      slot gen (fn2-fields-ref-off (+ base 3) fn2-fields)
+                                      (fn2-fields-ref-len (+ base 3) fn2-fields)
+                                      okind oslot ogen fn2-pool))))
                        (mv :ok noff len fn2-fields)
                      (mv :frame 0 0 fn2-fields))))))))
        (mv code (nfix noff) (nfix nlen) fn2-core)))
@@ -759,17 +774,6 @@
      :position 1 :rows nil)
    (in-theory (disable fn2-auth-put-grant))
    ;; a durable principal id names a live account incarnation (created or genesis'):
-   (defun fn2-auth-known (p fn2-core)
-     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
-                     :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
-     (let ((slot (floor (nfix p) 4294967296)))
-       (stobj-let ((fn2-accounts (fn2-core-accounts fn2-core))) (k)
-         (and (fn2-accountsp fn2-accounts) (fn2-accounts-wfp fn2-accounts) (fn2-accounts-shapep fn2-accounts)
-              (posp p) (< slot (fn2-accounts-rows fn2-accounts))
-              (equal (fn2-account-principal-id slot fn2-accounts) p)
-              (not (equal (fn2-accounts-state slot fn2-accounts) *fn2-account-state-free*)))
-         (if k :ok :absent))))
-   (in-theory (disable fn2-auth-known))
    ;; principal-create's one write. The name is copied from the connection's
    ;; frame (owner OKIND OSLOT OGEN) to the start of the row's key range
    ;; KSLOT/KGEN (owner DK DS DG, the row), and the write names it there.
@@ -825,10 +829,12 @@
                           (equal (fn2-fields-ref-len salt fn2-fields) *fn2-authinfo-salt-octets*)
                           (posp size) (<= size *fn2-authinfo-pass-max*)))
              (mv :state fn2-fields fn2-pool fn2-digests fn2-b3))
+            ((mv cleared fn2-pool) (fn2-pool-reset who wgen own wi wg fn2-pool))
+            ((unless (eq cleared :ok)) (mv :state fn2-fields fn2-pool fn2-digests fn2-b3))
             ((mv code n fn2-pool)
              (fn2-authinfo-stage-preimage slot gen salt-off okind oslot ogen
                                         slot gen secret-off size okind oslot ogen
-                                        who wgen own wi wg fn2-pool))
+                                        who wgen 0 own wi wg fn2-pool))
             ((mv hash-code fn2-digests fn2-b3)
              (if (eq code :ok)
                  (fn2-pool-block-hash row who wgen 0 n own wi wg fn2-digests fn2-b3 fn2-pool)

@@ -50,7 +50,7 @@
 (defconst *fn2-cursor-update-close* 4)
 
 (defmachine fn2-conn
- :states (:free :greeting :command :article-input :reply :upgrading :closing :draining :retired :query)
+ :states (:free :greeting :command :article-input :reply :upgrading :closing :draining :retired :query :dispatch :authenticate :login-reply)
  :fields ((cap-index :u32) (cap-nonce :u32)
           (rx-slot :link) (rx-gen :u60) (tx-slot :link) (tx-gen :u60)
           (start :u32) (pos :u32) (overflow :bool) (compacting :bool) (cursor :u32)
@@ -60,6 +60,8 @@
           ;; Durable principal of a successful protected login. Positional
           ;; accounting and the transport mask are distinct observations.
           (login-principal :u60)
+          (login-candidate :u60) (login-off :u32) (login-len :u32) (login-loaded :bool)
+          (login-mode (:enum fn2-conn-login (:none :user :pass))) (login-failures :u8)
           (upgrade-target (:enum fn2-conn-upgrade-target (:none :tls :compress)))
           (tls-token :link) (tls-token-gen :u60) (tls-op :u32) (tls-op-gen :u60)
           (upgrade-stage (:enum fn2-conn-upgrade-stage (:none :admitted :running :finished))) (tls-ok :bool)
@@ -87,7 +89,10 @@
  :holds ((:greeting :connection-row :rx-range :tx-range) (:command :connection-row :rx-range :tx-range)
          (:article-input :connection-row :rx-range :tx-range) (:reply :connection-row :rx-range :tx-range)
          (:upgrading :connection-row :rx-range :tx-range) (:closing :connection-row :rx-range :tx-range)
-         (:draining :connection-row :rx-range :tx-range) (:query :connection-row :rx-range :tx-range))
+         (:draining :connection-row :rx-range :tx-range) (:query :connection-row :rx-range :tx-range)
+         (:dispatch :connection-row :rx-range :tx-range)
+         (:authenticate :connection-row :rx-range :tx-range)
+         (:login-reply :connection-row :rx-range :tx-range))
  :budget (:bytes 4096 :steps 32 :descriptors 4)
  :capacity (fn2-profile-c profile)
  ;; The listener admits a connection into :greeting with its RX and TX
@@ -95,12 +100,13 @@
  :admission (:phase :greeting :ranges (:rx-range :tx-range)
              :copy (principal-slot account-ref peer-family peer-port peer-w0 peer-w1 peer-w2 peer-w3)
              :clear (start pos overflow compacting cursor tx-off pending borrows ordinal refused
-                     auth-pending login-principal upgrade-target tls-token-gen tls-op-gen upgrade-stage tls-ok access-ref upload-gen rule request feed-mode feed-discard fed word
+                     auth-pending login-principal login-candidate login-off login-len login-loaded login-mode login-failures
+                     upgrade-target tls-token-gen tls-op-gen upgrade-stage tls-ok access-ref upload-gen rule request feed-mode feed-discard fed word
                      outcome-ready posting query-gen line-s line-e group current pin))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (rx-slot *fn2-none*) (tx-slot *fn2-none*) (account-ref *fn2-none*) (next-free fn2-machine-initial-next-free)
            (upload *fn2-none*) (query *fn2-none*) (tls-token *fn2-none*) (tls-op *fn2-none*))
- :arms ((:free) (:greeting) (:command) (:article-input) (:reply) (:upgrading) (:closing) (:draining) (:retired) (:query))
+ :arms ((:free) (:greeting) (:command) (:article-input) (:reply) (:upgrading) (:closing) (:draining) (:retired) (:query) (:dispatch) (:authenticate) (:login-reply))
  :observes ((:receive-result) (:send-result) (:borrow-released) (:close-result) (:tls-result) (:compress-result) (:cancel-result)))
 
 ; MACHINE-FORM 6.5 P4: the kind's admission in child form, proved here;
