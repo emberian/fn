@@ -7,22 +7,82 @@
 (include-book "cns-source-workspace")
 (include-book "cns-source-state")
 (include-book "txn-kind")
-(include-book "cns-source-retention")
+(include-book "ordered")
+(include-book "cns-source-retention-rows")
 (fn2-book-layer :d)
 (defmacro fn2-cns-source-capture-mv (code total)
  `(mv ,code ,total fn2-cns-sources fn2-pool))
+(local
+ (defthm fn2-cns-source-capture-workspace-row
+  (implies (equal (fn2-pool-workspace-code slot gen kind owner owner-gen fn2-pool) :ok)
+   (and (natp slot) (< slot (fn2-pool-rows fn2-pool))))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (e/d (fn2-pool-workspace-code fn2-pool-handle-code)
+                                  (fn2-pool-ownerp fn2-pool-rows))))))
+(local
+ (fn2-pool-dimensions fn2-pool-reset :observations (:data)
+  :opaque (fn2-pool-workspace-code) :enables (fn2-pool-data-length)))
+(local
+ (defthm fn2-cns-source-zero-data-length
+  (implies (posp (fn2-pool-data-length fn2-pool))
+   (equal (fn2-pool-data-length
+           (mv-nth 1 (fn2-run-zero n slot gen pos kind owner owner-gen fn2-pool)))
+          (fn2-pool-data-length fn2-pool)))
+  :hints (("Goal" :induct (fn2-run-zero n slot gen pos kind owner owner-gen fn2-pool)
+                  :in-theory (e/d (fn2-run-zero) (fn2-pool-write fn2-pool-data-length))))))
+
+(defun fn2-cns-capture-descriptor-p
+ (s cns cnsgen ctl ctlgen request lslot lgen kind article version total loc unit epoch allocation hashes manifest-count
+    fn2-cns-sources)
+ (declare (xargs :stobjs fn2-cns-sources :guard (fn2-cns-sources-wfp fn2-cns-sources)))
+ (and (natp s) (< s (fn2-cns-sources-rows fn2-cns-sources))
+      (fn2-pool-mrefp kind cns cnsgen)
+      (unsigned-byte-p 32 ctl) (unsigned-byte-p 60 ctlgen) (unsigned-byte-p 60 request)
+      (unsigned-byte-p 32 lslot) (unsigned-byte-p 60 lgen)
+      (unsigned-byte-p 60 article) (unsigned-byte-p 60 version) (unsigned-byte-p 60 total)
+      (unsigned-byte-p 8 loc) (unsigned-byte-p 60 unit) (unsigned-byte-p 60 epoch)
+      (unsigned-byte-p 60 allocation) (unsigned-byte-p 32 hashes) (unsigned-byte-p 32 manifest-count)))
+
+(defun fn2-cns-capture-stage-descriptor
+ (s cns cnsgen ctl ctlgen request lslot lgen kind article version total loc unit epoch allocation hashes manifest-count
+    fn2-cns-sources)
+ (declare (xargs :stobjs fn2-cns-sources
+  :guard (and (fn2-cns-sources-wfp fn2-cns-sources)
+              (fn2-cns-capture-descriptor-p s cns cnsgen ctl ctlgen request lslot lgen kind article version total
+                                            loc unit epoch allocation hashes manifest-count fn2-cns-sources))))
+ (fn2-cns-sources-put s (phase *fn2-cns-source-phase-capturing*)
+  (cns-id cns) (owner-kind kind) (cns-gen cnsgen) (ctl-id ctl) (ctl-gen ctlgen) (request request) (lslot lslot) (lgen lgen)
+  (article article) (version version) (total total) (location-kind loc) (unit unit) (epoch epoch) (allocation allocation)
+  (root-unit unit) (root-epoch epoch) (root-allocation allocation) (hashes hashes)
+  (offset 0) (unit-index 0) (unit-length 0) (unit-copied 0) (unit-hashed 0) (hash-offset 0) (hash-phase 0)
+  (pending 0) (uncertain 0) (borrow-count 0) (retention-phase 0) (retain-row 0) (release-row 0)
+  (retain-entry-index 0) (retain-entry-count 0) (manifest-position 0) (manifest-index 0)
+  (manifest-count manifest-count) (manifest-seen 0)))
+(fn2-cns-sources-preserves fn2-cns-capture-stage-descriptor
+ (s cns cnsgen ctl ctlgen request lslot lgen kind article version total loc unit epoch allocation hashes manifest-count
+    fn2-cns-sources)
+ :wfp-type t
+ :hyps ((fn2-cns-sourcesp fn2-cns-sources) (fn2-cns-sources-wfp fn2-cns-sources)
+        (fn2-cns-capture-descriptor-p s cns cnsgen ctl ctlgen request lslot lgen kind article version total
+                                      loc unit epoch allocation hashes manifest-count fn2-cns-sources)))
+
 (defun fn2-cns-source-capture-read-children (s cns cnsgen ctl ctlgen request x lslot lgen kind
  fn2-cns-sources fn2-reads fn2-run-installed fn2-fields fn2-pool)
  (declare (xargs :stobjs (fn2-cns-sources fn2-reads fn2-run-installed fn2-fields fn2-pool)
  :guard (and (fn2-cns-sources-wfp fn2-cns-sources) (fn2-reads-wfp fn2-reads)
-             (fn2-run-installed-wfp fn2-run-installed) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
+             (fn2-run-installed-wfp fn2-run-installed) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))
+ :guard-hints ((fn2-columns-call-guard-hint 'fn2-cns-source-capture-read-children
+   '(fn2-pool-workspace-code fn2-rd-entry-row fn2-read-value-children
+     fn2-read-octets-children fn2-run-zero fn2-pool-reset fn2-cns-capture-descriptor-p)
+   nil world))))
  (b* (((unless (and (natp s) (< s (fn2-cns-sources-rows fn2-cns-sources))
                     (equal (fn2-cns-sources-phase s fn2-cns-sources) *fn2-cns-source-phase-free*)
                     (fn2-pool-mrefp kind cns cnsgen) (posp cnsgen) (posp ctlgen)
                     (unsigned-byte-p 32 ctl) (unsigned-byte-p 60 ctlgen) (unsigned-byte-p 60 request)
                     (natp x) (< x (fn2-reads-rows fn2-reads))
-                    (equal (fn2-reads-sid x fn2-reads) *fn2-article-sid*)
+                    (equal (fn2-reads-sid x fn2-reads) *fn2-txn-article-sid*)
                     (eq (fn2-pool-workspace-code lslot lgen kind cns cnsgen fn2-pool) :ok)
+                    (posp (fn2-pool-data-length fn2-pool))
                     (<= (+ *fn2-cns-source-prefix* (* 2 *fn2-commit-unit-bytes*)) (fn2-pool-cap lslot fn2-pool))))
        (fn2-cns-source-capture-mv :bad 0))
       ((mv c0 article) (fn2-read-value-children x *fn2-article-entry-field-article* fn2-reads fn2-run-installed fn2-fields))
@@ -36,13 +96,16 @@
       ((mv r0 source-row) (fn2-rd-entry-row x *fn2-article-entry-field-source* fn2-reads fn2-run-installed fn2-fields))
       ((mv r1 stored-row) (fn2-rd-entry-row x *fn2-article-entry-field-stored-source* fn2-reads fn2-run-installed fn2-fields))
       ((mv r2 vector-row) (fn2-rd-entry-row x *fn2-article-entry-field-location-hashes* fn2-reads fn2-run-installed fn2-fields))
-      (units (if (equal loc *fn2-txn-location-raw-source*) (ceiling (nfix total) *fn2-commit-unit-bytes*) (fn2-am-units total)))
+      (manifest-count (fn2-am-units total))
+      (units (if (equal loc *fn2-txn-location-raw-source*) (ceiling (nfix total) *fn2-commit-unit-bytes*) manifest-count))
       (hashes (* 32 units))
       ((unless (and (eq c0 :ok) (eq c1 :ok) (eq c2 :ok) (eq c3 :ok) (eq c4 :ok) (eq c5 :ok) (eq c6 :ok) (eq c7 :ok)
                     (eq r0 :ok) (eq r1 :ok) (eq r2 :ok)
                     (equal state *fn2-article-state-live*) (posp article) (posp total)
-                    (unsigned-byte-p 60 total) (unsigned-byte-p 60 article) (unsigned-byte-p 60 version)
-                    (unsigned-byte-p 60 unit) (posp epoch) (unsigned-byte-p 60 epoch) (posp allocation) (unsigned-byte-p 60 allocation)
+                    (posp epoch) (posp allocation)
+                    (fn2-cns-capture-descriptor-p
+                     s cns cnsgen ctl ctlgen request lslot lgen kind article version total
+                     loc unit epoch allocation hashes manifest-count fn2-cns-sources)
                     (if (equal loc *fn2-txn-location-raw-source*) (not (fn2-am-manifestp total))
                      (and (equal loc *fn2-txn-location-source-manifest*) (fn2-am-manifestp total) (fn2-am-fits total)))
                     (< 0 units) (<= units *fn2-commit-write-resources*)
@@ -53,13 +116,9 @@
                     (not (equal lslot (fn2-fields-ref-slot stored-row fn2-fields)))
                     (not (equal lslot (fn2-fields-ref-slot vector-row fn2-fields)))))
        (fn2-cns-source-capture-mv :bad 0))
-      (fn2-cns-sources (fn2-cns-sources-put s (phase *fn2-cns-source-phase-capturing*)
-       (cns-id cns) (owner-kind kind) (cns-gen cnsgen) (ctl-id ctl) (ctl-gen ctlgen) (request request) (lslot lslot) (lgen lgen)
-       (article article) (version version) (total total) (location-kind loc) (unit unit) (epoch epoch) (allocation allocation)
-       (root-unit unit) (root-epoch epoch) (root-allocation allocation) (hashes hashes)
-       (offset 0) (unit-index 0) (unit-length 0) (unit-copied 0) (unit-hashed 0) (hash-offset 0) (hash-phase 0)
-       (pending 0) (uncertain 0) (borrow-count 0) (retention-phase 0) (retain-row 0) (release-row 0)
-       (retain-entry-index 0) (retain-entry-count 0) (manifest-position 0) (manifest-index 0) (manifest-count (fn2-am-units total)) (manifest-seen 0)))
+      (fn2-cns-sources (fn2-cns-capture-stage-descriptor
+                        s cns cnsgen ctl ctlgen request lslot lgen kind article version total
+                        loc unit epoch allocation hashes manifest-count fn2-cns-sources))
       ((mv reset fn2-pool) (fn2-pool-reset lslot lgen kind cns cnsgen fn2-pool))
       ((mv padded fn2-pool) (if (eq reset :ok) (fn2-run-zero *fn2-cns-source-prefix* lslot lgen 0 kind cns cnsgen fn2-pool) (mv :bad fn2-pool)))
       ((mv v copied left fn2-pool) (if (eq padded :ok)
@@ -78,6 +137,28 @@
   ; same external capture callback BEFORE releasing the READ.
   (fn2-cns-source-capture-mv (if good :captured :bad) (if good total 0))))
 
+(local
+ (defthm fn2-cns-source-captured-row
+  (implies (equal (car (fn2-cns-source-capture-read-children
+                        s cns cnsgen ctl ctlgen request x lslot lgen kind
+                        fn2-cns-sources fn2-reads fn2-run-installed fn2-fields fn2-pool))
+                  :captured)
+   (and (natp s) (< s (fn2-cns-sources-rows fn2-cns-sources))))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :cases ((and (natp s) (< s (fn2-cns-sources-rows fn2-cns-sources))))
+                  :in-theory (e/d (fn2-cns-source-capture-read-children)
+                                  (fn2-cns-sources-rows))))))
+
+(fn2-cns-source-frames fn2-cns-source-capture-read-children
+ (s cns cnsgen ctl ctlgen request x lslot lgen kind fn2-cns-sources fn2-reads fn2-run-installed fn2-fields fn2-pool)
+ (fn2-cns-sources fn2-reads fn2-run-installed fn2-fields fn2-pool)
+ ((fn2-cns-sources 2) (fn2-pool 3))
+ ((fn2-columns-call-guard-hint 'fn2-cns-source-capture-read-children
+   '(fn2-pool-workspace-code fn2-rd-entry-row fn2-read-value-children
+     fn2-read-octets-children fn2-run-zero fn2-pool-reset fn2-pool-data-length
+     fn2-cns-capture-descriptor-p ceiling nfix (:rewrite ceiling-to-floor))
+   '(fn2-cns-source-capture-read-children) world)))
+
 ; Complete external capture admission in one call: copied metadata is never
 ; published as a usable source before its real promised-read root exists.
 (defun fn2-cns-source-capture-children (s cns cnsgen ctl ctlgen request x lslot lgen kind
@@ -85,7 +166,9 @@
  (declare (xargs :stobjs (fn2-cns-sources fn2-reads fn2-run-installed fn2-fields fn2-pool fn2-checkpoints fn2-extents fn2-alloc-edges fn2-ops)
  :guard (and (fn2-cns-sources-wfp fn2-cns-sources) (fn2-reads-wfp fn2-reads) (fn2-run-installed-wfp fn2-run-installed)
   (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-checkpoints-wfp fn2-checkpoints)
-  (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-ops-wfp fn2-ops))))
+  (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-ops-wfp fn2-ops))
+ :guard-hints ((fn2-columns-call-guard-hint 'fn2-cns-source-capture-children
+   '(fn2-cns-source-capture-read-children fn2-cns-source-root-hold-children) nil world))))
  (b* (((mv code total fn2-cns-sources fn2-pool)
        (fn2-cns-source-capture-read-children s cns cnsgen ctl ctlgen request x lslot lgen kind fn2-cns-sources fn2-reads fn2-run-installed fn2-fields fn2-pool))
       ((unless (eq code :captured)) (mv :bad 0 fn2-cns-sources fn2-pool fn2-extents fn2-alloc-edges))
@@ -94,11 +177,10 @@
       (fn2-cns-sources (if (eq held :ok) fn2-cns-sources (fn2-cns-sources-set-phase s *fn2-cns-source-phase-bad* fn2-cns-sources))))
   (mv (if (eq held :ok) :ok :bad) (if (eq held :ok) total 0) fn2-cns-sources fn2-pool fn2-extents fn2-alloc-edges)))
 
-(fn2-cns-source-frames fn2-cns-source-capture-read-children
- (s cns cnsgen ctl ctlgen request x lslot lgen kind fn2-cns-sources fn2-reads fn2-run-installed fn2-fields fn2-pool)
- (fn2-cns-sources fn2-reads fn2-run-installed fn2-fields fn2-pool)
- ((fn2-cns-sources 2) (fn2-pool 3)))
 (fn2-cns-source-frames fn2-cns-source-capture-children
  (s cns cnsgen ctl ctlgen request x lslot lgen kind fn2-cns-sources fn2-reads fn2-run-installed fn2-fields fn2-pool fn2-checkpoints fn2-extents fn2-alloc-edges fn2-ops)
  (fn2-cns-sources fn2-reads fn2-run-installed fn2-fields fn2-pool fn2-checkpoints fn2-extents fn2-alloc-edges fn2-ops)
- ((fn2-cns-sources 2) (fn2-pool 3) (fn2-extents 4) (fn2-alloc-edges 5)))
+ ((fn2-cns-sources 2) (fn2-pool 3) (fn2-extents 4) (fn2-alloc-edges 5))
+ ((fn2-columns-call-guard-hint 'fn2-cns-source-capture-children
+   '(fn2-cns-source-capture-read-children fn2-cns-source-root-hold-children)
+   '(fn2-cns-source-capture-children) world)))
