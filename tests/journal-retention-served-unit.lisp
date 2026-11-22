@@ -89,7 +89,7 @@
       (kind *fn2-scribe-kind*)
       (owner (fn2-machine-kind-base kind fn2-core))
       (gen (fn2-machine-generation owner fn2-core))
-      ((mv begin token fn2-core) (fn2-csnapshot-begin kind owner gen fn2-core))
+      ((mv begin token fn2-core) (fn2-retained-journal-acquire kind owner gen fn2-core))
       ((mv settled accepted clients store fn2-core)
        (fn2-csu-drive 200000 *fn2-succ-phase-idle* accepted clients store fn2-core))
       ; No adapter turn intervenes while the first stable cut is acquired.
@@ -97,6 +97,7 @@
        (fn2-jrs-cut 200 token kind owner gen fn2-core))
       ((mv began fn2-core) (fn2-retained-journal-begin token kind owner gen fn2-core))
       ((mv ready fn2-core) (fn2-jrs-collect 200 token kind owner gen fn2-core))
+      ((mv competing & fn2-core) (fn2-retained-journal-acquire kind owner gen fn2-core))
       (reopened (not (fn2-storage-checkpoint-active fn2-core)))
       ((mv & clients store fn2-core) (fn2-cw-loop 200000 0 accepted clients store fn2-core))
       (published (stobj-let ((fn2-commit-root (fn2-core-commit-root fn2-core))) (cut)
@@ -121,7 +122,7 @@
       ((mv returned fn2-core) (fn2-core-release slot sgen kind owner gen fn2-core)))
    (mv (and (eq epoch :ok) (eq bound :ok) (eq begin :ok) (eq settled :ok)
             (eq held :held) (= cut 1) (= event 1) (eq began :ok) (eq ready :ready)
-            reopened (= published 2) (eq buffer :ok) (eq opened :ok)
+            (eq competing :busy) reopened (= published 2) (eq buffer :ok) (eq opened :ok)
             (= retained 1) (= unpinned 0)
             (eq source :ok) (= seal (+ previous 1)) (eq issued :ok) checked
             (eq closed :done) (eq unavailable :owner) (eq returned :ok)

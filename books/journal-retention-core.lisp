@@ -11,6 +11,15 @@
 
 (defmacro fn2-journal-retention-core-events ()
  '(progn
+ ; A second reader cannot close C while the prior reader holds a lease.
+ (fn2-csnapshot-op fn2-retained-journal-acquire (kind owner generation) 2
+  (if (stobj-let ((fn2-journal-lease (fn2-core-journal-lease fn2-core))) (available)
+        (and (< 0 (fn2-journal-lease-rows fn2-journal-lease))
+             (= (fn2-journal-lease-phase 0 fn2-journal-lease) *fn2-journal-lease-phase-idle*))
+        available)
+      (fn2-csnapshot-begin kind owner generation fn2-core)
+    (mv :busy 0 fn2-core)))
+
  (fn2-csnapshot-op fn2-retained-journal-begin (token kind owner generation) 1
   (if (fn2-core-stopped-p fn2-core) (mv :stopped fn2-core)
    (stobj-let ((fn2-csnapshot (fn2-core-csnapshot fn2-core))
