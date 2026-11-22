@@ -102,11 +102,13 @@ The socket run and the generated callbacks' records are outstanding. The
 receipt identifies a local event. Checkpoint inclusion and power-loss recovery
 require separate evidence.
 
-The partitioned cursor facade passed its 150-book closure on isolated
-`f0da5ee89`. The combined candidate still needs a matching record. Its
-consumer fold and fixture have matching records through `tests/folds-unit`
-(key prefix `5c3beb2b`), covering stale CAS and sealed and overlay views.
-These fixtures do not open a server or restart a process.
+The combined candidate's 150-book cursor closure passed on Forge in
+`certify-20261122T211222Z-2548645` (facade key `cf8667f20cff`). An ordinary
+fresh include exposed the 62 guard-verified child signatures and 273 planned
+events. The facade took 91.69 seconds and the slowest shard took 109.22
+seconds. D26 proof cost and final dispatch remain open. The consumer fold
+fixture on this source (`tests/folds-unit`, key prefix `5c3beb2b`) covers
+stale CAS and sealed and overlay views. Neither fixture opens a socket.
 
 In the prior combined source the CNS and transaction callback books included
 each other. On `e3239dd5c` CNS acquires the shared grant-dependency definitions
@@ -114,6 +116,24 @@ before the transaction callback loads. All eleven original generated events
 are preserved and the 296-book union of the two native roots is acyclic.
 The cache planner rejects the earlier circular source before looking up any
 certificates.
+
+On native candidate `6ede9a7d3`, the retry fixture sends an APPEND whose
+reply the sender never reads. Before it closes the sender, an independent
+consumer must observe the event and FETCH the exact input. After grant
+revocation, process death and reopen, the fixture requires the original
+position and group number, enumerates the stream and checks NNTP group
+counts. The fixture controls passed. Execution against the assembled node
+remains outstanding.
+
+That candidate also fixes the generated CNS flag accessor that collided
+with the width theorem for `page-head`. Its image init and serve call the
+same guarded ACL2 group parser. The parser and its unit book passed Forge
+record `certify-20261122T210620Z-2541691`. The CLI preserves the original
+init text for a fresh serve, including an empty input and the profile default.
+The combined native fixture supplies two groups only to init, then checks
+both persisted groups after reopen. The host refuses executor initialization
+failure before opening files or listeners. The isolated host-wrapper
+control covers that ordering. The full host load is pending.
 
 ## Integration frontier — 2026-11-16 01:35 UTC
 
