@@ -56,7 +56,7 @@
           ;; Scoped peer page progress and one pair's hash continuation.
           (peer-page-phase (:enum fn2-xfnc-page-phase (:start :scan :history :evidence :append :finish :close :confirm :ready)))
           (peer-page-stop (:enum fn2-xfnc-page-stop (:none :item-limit :octet-limit)))
-          (peer-page-fault (:enum fn2-xfnc-page-fault (:none :state :scope :beyond-frontier :access :absent :dependency :uncertain :rebase-required)))
+          (peer-page-fault (:enum fn2-xfnc-page-fault (:none :state :scope :beyond-frontier :access :absent :dependency :uncertain :rebase-required :meter)))
           (peer-page-end :u60) (peer-page-next :u60) (peer-page-revision :u60)
           (peer-page-count :u32) (peer-page-bytes :u32) (peer-page-hashed :u32) (peer-page-output :bool)
           ;; block reads in flight (the terminal of each completion consumes one)
