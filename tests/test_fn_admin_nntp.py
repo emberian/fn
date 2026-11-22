@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Socket-level NNTP POST outcome tests for the fn CLI."""
+"""Socket-level NNTP response and outcome tests for the fn CLI."""
 from __future__ import annotations
 
 import json
@@ -117,6 +117,36 @@ class PostOutcome(unittest.TestCase):
                 proc = self.post_with_reply(reply)
                 self.assertEqual(proc.returncode, 3, (proc.stdout, proc.stderr))
                 self.assertEqual(json.loads(proc.stdout)["outcome"], "uncertain")
+
+
+class ReaderOutcome(unittest.TestCase):
+    def test_complete_command_specific_replies(self) -> None:
+        article = ("article", "<one@example.invalid>")
+        head = (*article, "--head")
+        for command, request, response, outcome, code in (
+            (("groups",), b"LIST ACTIVE", b"", "error", 2),
+            (("groups",), b"LIST ACTIVE", b"502 denied\r\n", "refused", 1),
+            (("groups",), b"LIST ACTIVE", b"215 list\r\nlocal.test 1 1 y\r\n.\r\n", "accepted", 0),
+            (("article", "local.test", "1"), b"GROUP local.test", b"411 no group", "error", 2),
+            (article, b"ARTICLE <one@example.invalid>", b"221 1 <one@example.invalid>\r\n.\r\n", "error", 2),
+            (head, b"HEAD <one@example.invalid>", b"220 1 <one@example.invalid>\r\n.\r\n", "error", 2),
+            (head, b"HEAD <one@example.invalid>", b"221 1 <one@example.invalid>\r\n.\r\n", "accepted", 0),
+            (article, b"ARTICLE <one@example.invalid>", b"220 1 <one@example.invalid>\r\npartial\n.\r\n", "error", 2),
+        ):
+            with self.subTest(command=command, response=response), socket.create_server(("127.0.0.1", 0)) as listener:
+                listener.settimeout(5)
+                port = listener.getsockname()[1]
+                with subprocess.Popen([str(ROOT / "fn"), *command, "--port", str(port), "--json"],
+                                      stdout=subprocess.PIPE, stderr=subprocess.PIPE) as proc:
+                    conn, _ = listener.accept()
+                    with conn, conn.makefile("rb") as reader:
+                        conn.settimeout(5)
+                        conn.sendall(b"200 fn ready\r\n")
+                        self.assertEqual(reader.readline(), request + b"\r\n")
+                        conn.sendall(response)
+                        conn.shutdown(socket.SHUT_WR)
+                        stdout, stderr = proc.communicate(timeout=5)
+                    self.assertEqual((proc.returncode, json.loads(stdout)["outcome"]), (code, outcome), stderr)
 
 
 class EndpointValidation(unittest.TestCase):
