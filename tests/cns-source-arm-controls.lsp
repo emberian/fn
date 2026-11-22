@@ -150,11 +150,11 @@
 ; Exercise ITEM on both retained source states and the actual single-frame
 ; handoff on a currently authorized, suspended, or now-denied withdrawal.
 (defparameter *handoff-vars*
- (append *source-vars* '((id . 5) (row-ctl-gen . 9) (row-verb . 13)
-                         (*fn2-cns-verb-fetch* . 13)
+ (append *source-vars* '((id . 5) (row-ctl-gen . 9) (row-verb . 8)
+                         (*fn2-cns-verb-fetch* . 8)
                          (*fn2-cns-outcome-refused* . 2)
                          (*fn2-cns-reason-withdrawn* . 11)
-                         (*fn2-cns-reason-unavailable* . 4))))
+                         (*fn2-cns-reason-unavailable* . 1))))
 (let ((arm (cdddr (assoc :item (getf (cdddr *cns*) :arms)))))
  (dolist (bound '(nil t))
   (let ((*source-bound* bound))
@@ -165,7 +165,7 @@
         (assert (member '(:next :source) effects :test #'equal))
         (progn
           (assert (member '(:goto page-fail) effects :test #'equal))
-          (assert (= (cdr (assoc 'row-reason vars)) 4))
+          (assert (= (cdr (assoc 'row-reason vars)) 1))
           (assert (= (cdr (assoc 'row-outcome vars)) 2))))))))
 (let ((hand (cdddr (assoc 'hand (getf (cdddr *cns*) :subarms))))
       (authorize (cdddr (assoc :fetch-authorize (getf (cdddr *cns*) :arms))))
@@ -181,20 +181,20 @@
         (progn
           (assert (not (assoc :posted-reason effects)))
           (assert (= (cdr (assoc 'row-reason result)) 11))
-          (assert (= (cdr (assoc 'row-verb result)) 13))
+          (assert (= (cdr (assoc 'row-verb result)) 8))
           (assert (= (cdr (assoc 'row-outcome result)) 2))
           (assert (= (cdr (assoc 'row-xstep result)) 4))
           (assert (member '(:next :fetch-authorize) effects :test #'equal))
           (assert (member '(:goto hand) (run-source authorize result) :test #'equal)))
         (progn
           (assert (equal (assoc :posted-reason effects)
-                         (list :posted-reason (if (eq status :ok) 11 4))))
+                         (list :posted-reason (if (eq status :ok) 11 1))))
           (assert (member '(:next :draining) effects :test #'equal)))))))
  ;; An existing access refusal posts directly without rechecking read rights.
  (let ((*results* '((fn2-cns-post-reply :ok))))
-  (dolist (ordinary (list (acons 'row-reason 8 vars)
+  (dolist (ordinary (list (acons 'row-reason 2 vars)
                           ;; APPEND's header-octets reason has the same code.
-                          (acons 'row-verb 11 vars)))
+                          (acons 'row-verb 7 vars)))
    (let ((effects (run-source hand ordinary)))
     (assert (equal (source-calls effects) '(fn2-cns-post-reply)))
     (assert (equal (assoc :posted-reason effects)
