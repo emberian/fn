@@ -75,7 +75,7 @@
           (b* (((mv fn2-fields fn2-pool) (fn2-layout-test-init fn2-fields fn2-pool))
                (fn2-fields (fn2-fields-init 128 fn2-fields))
                ((mv code offset length fn2-fields fn2-pool)
-                (fn2-cns-put-cursor 0 1 4294967297 270 527 1 1 1 5 0 1 1 0 1 fn2-fields fn2-pool))
+                (fn2-cns-put-cursor 0 1 4294967297 270 527 1 17 1 5 0 1 1 0 1 fn2-fields fn2-pool))
                ((unless (eq code :ok)) (mv (list code) fn2-fields fn2-pool))
                (octets (fn2-layout-test-read length 0 offset fn2-pool))
                ((mv reason cid epoch position fn2-fields)
@@ -86,7 +86,7 @@
       observation)))
 
 (defconst *fn2-cdu-scope-encoded*
-  '(:ok (:cursor 0 (1 14) (2 15) (1) (1 0 0 0 1) (1) 1 1 1 5)))
+  '(:ok (:cursor 0 (1 14) (2 15) (1) (1 0 0 0 1) (1) 1 17 1 5)))
 
 (assert-event
  (equal (fn2-cdu-scope 4294967297 270 527)
@@ -95,7 +95,7 @@
 ; Remove the decoder theorem's success hypothesis by changing one expected
 ; component at a time. The actual range still carries the original bytes.
 (assert-event
- (let ((refusal (list :ok *fn2-cdu-scope-encoded* *fn2-cns-reason-scope* 0 0 0 0)))
+ (let ((refusal (list :ok *fn2-cdu-scope-encoded* *fn2-cns-reason-scope* 0 0 0)))
    (and (equal (fn2-cdu-scope 1 270 527) refusal)
         (equal (fn2-cdu-scope 4294967297 271 527) refusal)
         (equal (fn2-cdu-scope 4294967297 270 528) refusal)
