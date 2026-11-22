@@ -800,17 +800,22 @@ changes. REBASE compares the issued cursor's epoch and recorded revision, then a
 the next epoch with the current revision. KEEP preserves the durable ACK position, and HISTORY
 starts at zero. The fold checks the old epoch and durable position, so a concurrent ACK and KEEP
 cannot rewind the position. Requests bearing a superseded epoch receive scope refusal. REBASE NOW
-requires an authorized frontier. Serving UNREGISTER will require retaining the last epoch in a
-tombstone so registration after reclamation cannot reuse it.
+uses the same authorized frontier as STATUS. UNREGISTER clears the active position and view in a
+durable tombstone that retains the last epoch. Reusing the name advances the retained epoch.
+Publication of a retired epoch wakes the principal's parked WAIT so it can refuse unknown-consumer.
+Using inactive registrations to release reclamation holds remains separate work.
 
-STATUS, REGISTER from now and ACK's frontier limit must use the highest authorized addressed position under the
-same authority revision as the page walk. The current positioned seek cannot filter memberships. A
-bounded reverse address walk with resumable membership/grant reads is one direct implementation.
+STATUS, REBASE NOW, REGISTER NOW and advancing ACK walk addressed rows in bounded steps, using
+the same stream read check as READ. They pin the authority revision before the walk and recheck it
+before replying or staging a mutation. The raw addressed tip only bounds their private scan. A reverse
+address walk could stop at the first visible row.
 A retained projection keyed by principal, authority revision and position would instead need a
 readiness boundary and an ordered replay rule before exposing a new revision. Neither path can use the
-unfiltered address tip as an answer. A parked WAIT also needs a principal authority dependency so a
-grant update resumes its view check without waiting for a new article. Recheck the revision at reply
-freeze so an in-flight page cannot mix visibility decisions from different revisions.
+unfiltered address tip as an answer. A published grant-head update schedules the principal's parked
+WAIT through the same bucket as an address publication. WAIT captures the published watermark before
+registration lookup and compares it when linking, so an update before parking also forces a reread.
+A WAIT with a stale view refuses rebase-required if consume authority remains. At reply handoff the
+node rechecks the revision and epoch.
 
 ## 15. Astra's read (`lanes/e-quests/astra-1.md`): what it changed
 Taken: losses as a product, not a chain (§2.3); grammar bindings name terminal replies (§2.2); fn1's

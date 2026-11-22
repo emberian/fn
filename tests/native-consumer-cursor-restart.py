@@ -234,7 +234,20 @@ def main():
                       "--position", other_receipt["position"])
         readable = stream("fetch-with-read-grant", "fetch", *occurrence, actor=other)
         fixture.exact_fetch(readable, other_article)
-        grant("revoke-other-read", other, "read", "local.other", "--revoke")
+        # Observe a pending public client and a grant-induced refusal without APPEND.
+        # The assembled test separately observes exact park state and suppresses the callback.
+        with ThreadPoolExecutor(max_workers=1) as clients:
+            waiting = clients.submit(stream, "wait-for-grant-revision", "wait", "--consumer",
+                                     consumer, "--seconds", 30, actor=other, expected=1)
+            try:
+                early = waiting.result(timeout=0.75)
+            except TimeoutError:
+                pass
+            else:
+                raise AssertionError(("WAIT returned before grant change", early))
+            grant("revoke-other-read", other, "read", "local.other", "--revoke")
+            changed = waiting.result(timeout=10)
+            assert changed == {"outcome": "refused", "reason": "rebase-required"}, changed
         revoked = stream("fetch-after-read-revocation", "fetch", *occurrence, actor=other, expected=1)
         assert revoked == denied_fetch, (revoked, denied_fetch)
         grant("restore-other-read", other, "read", "local.other")
@@ -274,12 +287,94 @@ def main():
         assert historical["outcome"] == "accepted" and historical["position"] == 0, historical
         history_page = stream("read-after-history-rebase", "read", "--consumer", consumer, actor=other)
         check_page(history_page, other_receipt, other_article, more=False)
+        grant("append-grant-without-read", other, "append", "local.test")
+        mid = "<native-cursor-hidden-tail@example.invalid>"
+        _, hidden_lines = fixture.restart.article(mid.encode("ascii"), 3)
+        hidden_path = directory / "submitted-hidden-tail.article"
+        hidden_path.write_bytes(fixture.restart.wire(hidden_lines))
+        hidden = stream("append-hidden-tail", "append", "--file", hidden_path, "--op", 85, actor=other)
+        assert hidden["outcome"] == "accepted" and hidden["position"] > other_receipt["position"], hidden
+        latest_history = stream("history-under-hidden-tail-view", "rebase", "--start", "history",
+                                "--cursor", historical["cursor"], actor=other)
+        assert latest_history["outcome"] == "accepted" and latest_history["position"] == 0, latest_history
+        limited = stream("read-window-before-hidden-tail", "read", "--cursor", latest_history["cursor"],
+                         "--max-items", 1, actor=other)
+        check_page(limited, other_receipt, other_article, more=False)
+        status = stream("status-with-hidden-tail", "status", "--consumer", consumer, actor=other)
+        assert status["outcome"] == "accepted" and status["position"] == 0, status
+        assert status["frontier"] == limited["next"] and status["gap"] == limited["next"], status
+        now = stream("rebase-now-stops-before-hidden-tail", "rebase", "--start", "now",
+                     "--cursor", latest_history["cursor"], actor=other)
+        assert now["outcome"] == "accepted" and now["position"] == limited["next"], now
+        empty = stream("read-after-authorized-now", "read", "--cursor", now["cursor"], actor=other)
+        assert empty["outcome"] == "accepted" and empty["count"] == 0 and not empty["more"], empty
+        assert empty["next"] == now["position"] and empty["items"] == [], empty
+        denied_ack = stream("ack-beyond-authorized-frontier", "ack", hidden["position"],
+                            "--cursor", now["cursor"], actor=other, expected=1)
+        assert denied_ack == {"outcome": "refused", "reason": "beyond-frontier"}, denied_ack
+        from_now = stream("register-now-with-hidden-tail", "register", "--consumer", "2",
+                          "--start", "now", actor=other)
+        assert from_now["outcome"] == "accepted" and from_now["position"] == limited["next"], from_now
+
+        mid = "<native-cursor-visible-after-hidden@example.invalid>"
+        _, tail_lines = fixture.restart.article(mid.encode("ascii"), 3)
+        tail_article = fixture.restart.wire(tail_lines).replace(b"Newsgroups: local.test\r\n",
+                                                               b"Newsgroups: local.other\r\n", 1)
+        tail_path = directory / "submitted-visible-tail.article"
+        tail_path.write_bytes(tail_article)
+        tail = stream("append-visible-after-hidden", "append", "--file", tail_path, "--op", 86, actor=other)
+        assert tail["outcome"] == "accepted" and tail["position"] > hidden["position"], tail
+        cross_history = stream("history-for-cross-stream-page", "register", "--consumer", "4",
+                               "--start", "history", actor=other)
+        assert cross_history["outcome"] == "accepted" and cross_history["position"] == 0, cross_history
+        bounded = stream("more-across-hidden", "read", "--cursor", cross_history["cursor"],
+                         "--max-items", 1, actor=other)
+        check_page(bounded, other_receipt, other_article, more=True)
+        final_page = stream("resume-across-hidden", "read", "--cursor", bounded["cursor"],
+                           "--max-items", 1, actor=other)
+        check_page(final_page, tail, tail_article, more=False)
+        status = stream("visible-frontier-after-hidden", "status", "--consumer", consumer, actor=other)
+        assert status["outcome"] == "accepted" and status["frontier"] == final_page["next"], status
+
+        grant("hide-all-addressed-events", other, "read", "local.other", "--revoke")
+        only_hidden = stream("register-now-with-no-visible-event", "register", "--consumer", "3",
+                             "--start", "now", actor=other)
+        assert only_hidden["outcome"] == "accepted" and only_hidden["position"] == 0, only_hidden
+        status = stream("status-with-only-hidden-events", "status", "--consumer", "3", actor=other)
+        assert (status["position"], status["frontier"], status["gap"]) == (0, 0, 0), status
+        empty = stream("read-with-only-hidden-events", "read", "--cursor", only_hidden["cursor"], actor=other)
+        assert empty["outcome"] == "accepted" and empty["count"] == 0 and not empty["more"], empty
+        removed = stream("retire-active-registration", "unregister", "--consumer", consumer, actor=other)
+        assert removed == {"outcome": "accepted", "reason": "none"}, removed
+        missing = stream("retired-registration-status", "status", "--consumer", consumer, actor=other, expected=1)
+        assert missing == {"outcome": "refused", "reason": "unknown-consumer"}, missing
         node.kill()
         processes.append(dict(phase="rebase-recovered", pid=node.node_pid, exit=node.proc.returncode,
                               position=rebased["position"]))
     finally:
         node.close()
     report.write_text(json.dumps(processes, indent=2) + "\n")
+
+    node = fixture.restart.Node(directory, image, "serve", "after-unregister", control_sock=control,
+                                env=fixture.environment())
+    try:
+        node.marker(b"LISTENING-LOCAL ")
+        missing = stream("retired-after-recovery", "status", "--consumer", consumer, actor=other, expected=1)
+        assert missing == {"outcome": "refused", "reason": "unknown-consumer"}, missing
+        replacement = stream("register-after-tombstone-recovery", "register", "--consumer", consumer,
+                             "--start", "history", actor=other)
+        assert replacement["outcome"] == "accepted" and replacement["position"] == 0, replacement
+        for label, verb in (("read", "read"), ("unregister", "unregister"), ("rebase", "rebase")):
+            stale = stream(f"{label}-retired-epoch", verb, "--cursor", now["cursor"], actor=other, expected=1)
+            assert stale == {"outcome": "refused", "reason": "scope"}, stale
+        stale_ack = stream("ack-retired-epoch", "ack", now["position"],
+                           "--cursor", now["cursor"], actor=other, expected=1)
+        assert stale_ack == {"outcome": "refused", "reason": "scope"}, stale_ack
+        assert stream("register-new-epoch-still-active", "register", "--consumer", consumer,
+                      "--start", "history", actor=other) == replacement
+        node.kill()
+    finally:
+        node.close()
 
     # A second persisted image with the same credentials and consumer exposes
     # only the physical history difference. Try the exact cursor from image 1.
@@ -300,7 +395,7 @@ def main():
         assert foreign_reg["outcome"] == "accepted", foreign_reg
         assert foreign_reg["position"] == registered["position"], foreign_reg
         before = stream("foreign-status-before", "status", "--consumer", consumer)
-        for verb in ("read", "wait", "ack", "rebase"):
+        for verb in ("read", "wait", "ack", "rebase", "unregister"):
             options = ["--cursor", registered["cursor"]]
             if verb == "ack":
                 # Equal in both stores: only scope can cause this ACK refusal.

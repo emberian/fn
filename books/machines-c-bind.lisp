@@ -642,39 +642,40 @@
  (fn2-succ-txns-phase fn2-succ-release-slots fn2-succ-replay-records fn2-succ-room fn2-idc-scratch fn2-idc-hold-spares
   fn2-succ-bind fn2-id-engine-arena))
 
-;; The stream members of published batch B (E's fn2-commit-stream-wake,
-;; attached to B's hook right after fn2-successor-publish, before any
-;; transaction of B is released): its fn2-addr writes, one per call. Cursor
-;; I = tx * W + slot walks the transaction rows bound to B (now :published)
-;; and their non-empty addr slots, reading the staged row (its position the
-;; member's commit position, filled at bind). An addr entry is a position in
-;; its principal's own addr stream (e-surface.md 7), the stream a served
-;; registration reads and parks on, so the member's stream is the entry's
-;; principal (the entry's stream field is the stream it was selected through,
-;; an item's detail). (mv code stream position next):
-;; :ok with the entry's principal and position and the cursor of the next call;
-;; :done past the last; :state when the tables are not well formed. At most
-;; K slots visited per call (the whole table: W x t, a profile bound).
+;; Wake candidates from a published batch, before member release. The
+;; principal is the address key, the grant head's grantee, or the owner of
+;; an epoch-changing cursor row. The watermark is the member's commit
+;; position, independent of any position inside an updated registration.
+;; Cursor I = TX * W + SLOT. Returns (mv code principal position next).
 (defconst *fn2-succ-addr-sid* 4)
 (defun fn2-succ-stream-scan (k i b fcrows fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields)
  (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields) :measure (nfix k)
   :guard (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-succ-slots-wfp fn2-succ-slots) (fn2-fields-wfp fn2-fields) (natp i))))
  (b* (((unless (and (posp k) (natp i) (< i (fn2-succ-slots-rows fn2-succ-slots)))) (mv :done 0 0 0))
       (tx (floor i *fn2-succ-slots*)) (j (mod i *fn2-succ-slots*))
-      ((unless (and (< tx (fn2-succ-txns-rows fn2-succ-txns))
+      (sid (fn2-succ-slots-sid i fn2-succ-slots))
+      (kind (fn2-succ-slots-kind i fn2-succ-slots))
+      (principal-field
+       (cond ((equal sid *fn2-succ-addr-sid*) *fn2-addr-entry-field-principal*)
+             ((equal sid *fn2-authority-head-sid*) *fn2-authority-head-entry-field-principal*)
+             ((and (equal sid *fn2-consumer-cursor-sid*)
+                   (or (equal kind *fn2-succ-kind-register*) (equal kind *fn2-succ-kind-rebase*)
+                       (equal kind *fn2-succ-kind-unregister*)))
+              *fn2-consumer-cursor-entry-field-principal*)
+             (t nil)))
+      ((unless (and principal-field (< tx (fn2-succ-txns-rows fn2-succ-txns))
                     (equal (fn2-succ-txns-phase tx fn2-succ-txns) *fn2-succ-phase-published*)
                     (equal (fn2-succ-txns-batch tx fn2-succ-txns) b)
                     (not (equal (fn2-succ-slots-phase i fn2-succ-slots) *fn2-succ-slot-phase-empty*))
-                    (equal (fn2-succ-slots-sid i fn2-succ-slots) *fn2-succ-addr-sid*)))
+                    (equal (fn2-succ-slots-unchanged i fn2-succ-slots) 0)))
        (fn2-succ-stream-scan (- k 1) (+ 1 i) b fcrows fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields))
       ((mv c b0) (fn2-idc-stripe tx fcrows fn2-id-decides fn2-fields))
       ((unless (eq c :ok)) (mv c 0 0 0))
       (entry (+ b0 (* *fn2-succ-block* j)))
-      ((unless (and (< (+ entry *fn2-addr-entry-field-principal*) (fn2-fields-rows fn2-fields))
-                    (< (+ entry *fn2-addr-entry-field-position*) (fn2-fields-rows fn2-fields))))
+      ((unless (< (+ entry principal-field) (fn2-fields-rows fn2-fields)))
        (mv :bounds 0 0 0)))
-  (mv :ok (fn2-fields-value (+ entry *fn2-addr-entry-field-principal*) fn2-fields)
-      (fn2-fields-value (+ entry *fn2-addr-entry-field-position*) fn2-fields) (+ 1 i))))
+  (mv :ok (fn2-fields-value (+ entry principal-field) fn2-fields)
+      (fn2-succ-txns-event tx fn2-succ-txns) (+ 1 i))))
 (defun fn2-succ-stream-member (b i fcrows fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields)
  (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-fields) :guard t))
  (if (not (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-succ-slots-wfp fn2-succ-slots) (fn2-fields-wfp fn2-fields)
@@ -847,7 +848,7 @@
  :tables (fn2-core-fields fn2-core-pool)
  :doc "Emit a staged transaction's write slots as B's transaction records into a workspace.")
 (defcost fn2-successor-stream-member :child fn2-succ-stream-member-children :answers (:ok :done :state :bounds)
- :doc "One fn2-addr write of a published batch (E's stream wake): (mv code stream position next).")
+ :doc "One applied address, authority or consumer-epoch write of a published batch: (mv code principal position next).")
 (defcost fn2-successor-published :answers (:ok :state)
  :doc "Read the greatest published commit position (D's read frontier, C-S4 (c)).")
 (defcost fn2-successor-publish :answers (:bounds :ok :state)
