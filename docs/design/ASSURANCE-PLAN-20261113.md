@@ -5,6 +5,16 @@ Owner: integration. Commissioned by ember on 2026-11-13, following the
 `fn2-squares` remains the obligation store. Reports and public-claim coverage
 must be derived from that store and the actual served call/attachment graph.
 
+## What the running client can establish — 2026-11-22
+
+| Path | Evidence in hand | First missing observation |
+| --- | --- | --- |
+| Protected NNTP reader | The current connection dispatcher records USER and returns 481 for the following PASS. The earlier native AUTHINFO suite launches the donor host with a TOML credential store. | Provision a credential through the current owner socket, reopen the image, authenticate over TLS and observe one allowed group and one denied group on that connection. |
+| Message-ID lookup | The reader candidate removes the eight-group search bound for article and overview forms. At `3b6ffd44d` STAT also searches for a membership. The grant decision and the staged native TCP fixture still need to meet at the served caller. | Use the authenticated reader and the ordinary wire commands to check visibility when only a secondary group is readable, then revoke that grant. |
+| Peer catch-up | The Forge-qualified `books/peer-view-member` at `2793bac02` checks the candidate history/evidence pair. The higher reader receives a principal, stream and authority from its caller. | Carry an authenticated peer and its current stream grant through the serving actor, send the selected item and resume from the receiver's verified position. |
+| Consumer restart | The successor fixture at `5bdd74d14` reopens the same image and checks every retired cursor, including the first epoch, after same-name registration. It reads the recovered position before subsequent mutations. | Execute that fixture against the qualified native successor. The exercised store-fold controls supply rows directly. |
+| Native APPEND | Forge certified `assembly-core` in `certify-20261122T211811Z-2555392`, `assembly-init` in `certify-20261122T212222Z-2560534`, and the corrected dispatch owner initialization in `certify-20261122T212619Z-2564904`. The TLS record-start contract discharges the actual external record-next guard. | Complete the child codec and callback assembly, then observe durable acceptance, process death and byte-exact FETCH through the socket. |
+
 ## Native APPEND and restart — 2026-11-22
 
 The next client milestone is two committed socket APPENDs, a STATUS before
@@ -102,11 +112,13 @@ The socket run and the generated callbacks' records are outstanding. The
 receipt identifies a local event. Checkpoint inclusion and power-loss recovery
 require separate evidence.
 
-The partitioned cursor facade passed its 150-book closure on isolated
-`f0da5ee89`. The combined candidate still needs a matching record. Its
-consumer fold and fixture have matching records through `tests/folds-unit`
-(key prefix `5c3beb2b`), covering stale CAS and sealed and overlay views.
-These fixtures do not open a server or restart a process.
+The combined candidate's 150-book cursor closure passed on Forge in
+`certify-20261122T211222Z-2548645` (facade key `cf8667f20cff`). An ordinary
+fresh include exposed the 62 guard-verified child signatures and 273 planned
+events. The facade took 91.69 seconds and the slowest shard took 109.22
+seconds. D26 proof cost and final dispatch remain open. The consumer fold
+fixture on this source (`tests/folds-unit`, key prefix `5c3beb2b`) covers
+stale CAS and sealed and overlay views. Neither fixture opens a socket.
 
 In the prior combined source the CNS and transaction callback books included
 each other. On `e3239dd5c` CNS acquires the shared grant-dependency definitions
@@ -114,6 +126,31 @@ before the transaction callback loads. All eleven original generated events
 are preserved and the 296-book union of the two native roots is acyclic.
 The cache planner rejects the earlier circular source before looking up any
 certificates.
+
+On native candidate `6ede9a7d3`, the retry fixture sends an APPEND whose
+reply the sender never reads. Before it closes the sender, an independent
+consumer must observe the event and FETCH the exact input. After grant
+revocation, process death and reopen, the fixture requires the original
+position and group number, enumerates the stream and checks NNTP group
+counts. The fixture controls passed. Execution against the assembled node
+remains outstanding.
+
+On that source the repaired CNS declaration passed its 151-book record
+`certify-20261122T211416Z-2550719`. The previous Boolean accessor name
+collided with the generated width theorem for `page-head`. The combined
+machine index then passed `certify-20261122T211629Z-2553473` with 166 warm
+parents. ACL2 expanded both the index and machine directory over the actual
+declarations. The assembled core, callbacks, host load and socket scenarios
+are downstream gates.
+
+Image init and serve call the
+same guarded ACL2 group parser. The parser and its unit book passed Forge
+record `certify-20261122T210620Z-2541691`. The CLI preserves the original
+init text for a fresh serve, including an empty input and the profile default.
+The combined native fixture supplies two groups only to init, then checks
+both persisted groups after reopen. The host refuses executor initialization
+failure before opening files or listeners. The isolated host-wrapper
+control covers that ordering. The full host load is pending.
 
 ## Integration frontier — 2026-11-16 01:35 UTC
 
