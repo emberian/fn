@@ -113,6 +113,16 @@
   (if (atom ts) t
     (and (fn2-gu-all-masks (car ts) masks) (fn2-gu-all-splits (cdr ts) masks))))
 (in-theory (disable fn2-gu-all-splits))
+; An apparent NNTP command inside a coalesced counted body is never a
+; second command event, even when the line and body arrive separately.
+(assert-event
+ (let* ((octets (fn2-gu-text (fn2-gu-lines '("XFNC 6" "QUIT"))))
+        (coalesced (fn2-nntp-run octets nil *fn2-gu-reader*))
+        (separate (fn2-nntp-run octets '(8) *fn2-gu-reader*)))
+   (and (equal coalesced separate)
+        (eq (nth 2 coalesced) :stopped)
+        (equal (len (nth 3 coalesced)) 1))))
+
 (defun fn2-gu-codes (events)
   (declare (xargs :verify-guards nil))
   (if (atom events) nil

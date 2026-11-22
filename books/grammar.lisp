@@ -545,7 +545,7 @@
 ;     :fields ((WORD :number|:span|:digits14) ...)   ; template field words
 ;     :general ((KEY :code N :text T :layer L :class C) ...)   ; replies of no command
 ;     :commands ((CMD :keyword K :args (ARG ...) :states (S ...) :state-refusal KEY
-;                     :block nil|(:after CODE)|(:immediate) :block-refusal KEY
+;                     :block nil|(:after CODE)|(:immediate)|(:counted BOUND) :block-refusal KEY
 ;                     :hand-off nil|(:tls CODE)|(:compress CODE)
 ;                     :help ROW-or-nil :spec "citation"
 ;                     :replies ((KEY :code N :text T :layer L :class C) ...)) ...))
@@ -556,6 +556,9 @@
 ; whose keyword stands first, in a state that admits it and with structural
 ; framing, parses to :discard; its block is framed and discarded, and its
 ; :block-refusal reply is due after the terminator.
+; A (:counted BOUND) block also follows immediately. Keep the command tag
+; on a structural syntax refusal so the connection can close instead of
+; interpreting its body as commands. The line runner stops at this boundary.
 ; Expansion helpers run at macro time only (lists live there, never at run time).
 
 (defun fn2-gram-cat (parts)
@@ -696,7 +699,8 @@
                     (:block-refusal (let ((r (fn2-decl-get :block-refusal p)))
                                       (if r (fn2-gram-const g "-reply-" (caar commands) "-" r) (fn2-gram-const g "-reply-none"))))
                     (:block (list 'quote (car (fn2-decl-get :block p))))
-                    (:block-code (or (cadr (fn2-decl-get :block p)) 0))
+                    (:block-code (if (eq (car (fn2-decl-get :block p)) :after)
+                                     (cadr (fn2-decl-get :block p)) 0))
                     (:hand-off (list 'quote (car (fn2-decl-get :hand-off p))))
                     (:hand-off-code (or (cadr (fn2-decl-get :hand-off p)) 0))
                     (otherwise `(,(fn2-gram-sym g "-args-" (caar commands)) s end slot gen okind oslot ogen fn2-pool))))
@@ -912,7 +916,8 @@
                        (mv-let (rcode fn2-pool)
                          (,render cmd (fn2-gram-fault-reply fault reply0 ,rsyntax ,runknown)
                                   mask 0 0 0 slot gen s 0 tslot tgen 1 1 1 fn2-pool)
-                         (let ((next (cond ((eq code :malformed) (if (eq fault :drop) :command :stopped))
+                         (let ((next (cond ((eq (,(fn2-gram-sym g "-block") tag) :counted) :stopped)
+                                           ((eq code :malformed) (if (eq fault :drop) :command :stopped))
                                            ((not (eq code :ok)) :command)
                                            ((,(fn2-gram-sym g "-hand-off") tag) :stopped)
                                            ((,(fn2-gram-sym g "-block") tag) :block)
@@ -1027,11 +1032,14 @@
              (let* ((end (nfix (- e 2)))
                     (te (fn2-gram-skip (nfix (- end s)) s end nil ,@std))
                     (itag (,(fn2-gram-sym g "-keyword-tag") s (nfix (- te s)) ,@std)))
-               (if (and (eq (,(fn2-gram-sym g "-block") itag) :immediate)
-                        (integerp mask) (logtest mask (,(fn2-gram-sym g "-command-states") itag))
-                        (fn2-gram-structural-p s e ,@std))
-                   (mv :discard itag 0 ,@absent)
-                 (mv code tag nargs f0 a0 b0 f1 a1 b1 f2 a2 b2 f3 a3 b3))))))
+               (cond ((and (eq (,(fn2-gram-sym g "-block") itag) :counted)
+                           (fn2-gram-structural-p s e ,@std))
+                      (mv code itag 0 ,@absent))
+                     ((and (eq (,(fn2-gram-sym g "-block") itag) :immediate)
+                           (integerp mask) (logtest mask (,(fn2-gram-sym g "-command-states") itag))
+                           (fn2-gram-structural-p s e ,@std))
+                      (mv :discard itag 0 ,@absent))
+                     (t (mv code tag nargs f0 a0 b0 f1 a1 b1 f2 a2 b2 f3 a3 b3)))))))
        ; Typed rendering: a reply is written only for its own command, in a
        ; state its layer admits; its status code is the declared one.
        (defun ,(fn2-gram-sym g "-render") (cmd reply mask n0 n1 n2 sslot sgen soff slen ,@std)
