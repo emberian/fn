@@ -127,7 +127,8 @@ class ReplyDecoding(unittest.TestCase):
 
 
 class InvalidReplyOutcome(unittest.TestCase):
-    def run_command(self, reply: bytes, *args: str, cursor_file: bool = False, json_output: bool = True) -> subprocess.CompletedProcess:
+    def run_command(self, reply: bytes, *args: str, cursor_file: bool = False,
+                    json_output: bool = True, position_reply: bytes | None = None) -> subprocess.CompletedProcess:
         with tempfile.TemporaryDirectory() as directory:
             path = str(Path(directory) / "ctl.sock")
             ready = threading.Event()
@@ -143,6 +144,10 @@ class InvalidReplyOutcome(unittest.TestCase):
                         conn.recv(65536)
                         try:
                             conn.sendall(reply)
+                            if position_reply is not None:
+                                conn.settimeout(5)
+                                if conn.recv(65536):
+                                    conn.sendall(position_reply)
                         except BrokenPipeError:
                             # A local usage error closes without waiting for a reply.
                             pass
@@ -213,6 +218,36 @@ class InvalidReplyOutcome(unittest.TestCase):
         self.assertEqual(decoded["outcome"], "accepted")
         self.assertEqual(decoded["position"], 6)
         self.assertIn("cursor_refresh_error", decoded)
+
+    def test_local_cursor_write_failure_preserves_accepted_register_and_ack(self) -> None:
+        position = cns_reply(CURSOR)
+        ack = cns_reply(bytes(4) + (6).to_bytes(8, "big"))
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "exists-as-directory"
+            target.mkdir()
+            for args, reply, refresh in ((("register", "--consumer", "reader"), position, None),
+                                         (("ack", "6", "--cursor", CURSOR.hex()), ack, position)):
+                with self.subTest(command=args[0]):
+                    proc = self.run_command(reply, "stream", *args, "--cursor-file", str(target),
+                                            position_reply=refresh)
+                    self.assertEqual(proc.returncode, 0, (proc.stdout, proc.stderr))
+                    receipt = json.loads(proc.stdout)
+                    self.assertEqual(receipt["outcome"], "accepted")
+                    self.assertEqual(receipt["cursor"], CURSOR.hex())
+                    self.assertIn("cursor_file_error", receipt)
+                    self.assertEqual(list(Path(directory).iterdir()), [target])
+                    self.assertTrue(target.is_dir())
+
+    def test_register_replaces_local_cursor_with_private_issued_bytes(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory) / "cursor"
+            target.write_text("old\n", encoding="ascii")
+            proc = self.run_command(cns_reply(CURSOR), "stream", "register", "--consumer",
+                                    "reader", "--cursor-file", str(target))
+            self.assertEqual(proc.returncode, 0, (proc.stdout, proc.stderr))
+            self.assertNotIn("cursor_file_error", json.loads(proc.stdout))
+            self.assertEqual(target.read_text(encoding="ascii"), CURSOR.hex() + "\n")
+            self.assertEqual(target.stat().st_mode & 0o777, 0o600)
 
     def test_negative_limit_is_local_usage_error(self) -> None:
         proc = self.run_command(

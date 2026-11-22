@@ -673,14 +673,21 @@ def resolve_principal_on_node(sock_path: str, raw: str) -> tuple[int, int, dict 
     return res["id"], res["authority_head"], None
 
 
-def save_cursor_file(path: Path, cursor_hex: str) -> None:
-    tmp = Path(f"{path}.tmp.{os.getpid()}")
-    fd = os.open(str(tmp), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+def save_cursor_file(path: Path, receipt: dict) -> None:
+    """Cache the issued cursor while preserving the server's accepted receipt."""
+    tmp = None
     try:
-        os.write(fd, (cursor_hex.strip() + "\n").encode("ascii"))
+        with tempfile.NamedTemporaryFile(dir=path.parent, delete=False) as output:
+            tmp = Path(output.name)
+            output.write((receipt["cursor"] + "\n").encode("ascii"))
+        os.replace(tmp, path)
+        tmp = None
+    except OSError as exc:
+        receipt["cursor_file_error"] = str(exc)
     finally:
-        os.close(fd)
-    os.replace(tmp, path)
+        if tmp is not None:
+            with suppress(OSError):
+                tmp.unlink()
 
 
 def load_cursor_bytes(
@@ -1078,7 +1085,7 @@ def cmd_stream_register(args: argparse.Namespace) -> int:
             return emit(bind_res, args.json)
         res = sess.cns("register", consumer=cbytes, start=args.start)
     if res["outcome"] == "accepted" and args.cursor_file:
-        save_cursor_file(args.cursor_file, res["cursor"])
+        save_cursor_file(args.cursor_file, res)
     return emit(res, args.json)
 
 
@@ -1185,8 +1192,8 @@ def cmd_stream_ack(args: argparse.Namespace) -> int:
                 res["cursor_refresh_error"] = str(exc)
             else:
                 if pos_res["outcome"] == "accepted":
-                    save_cursor_file(args.cursor_file, pos_res["cursor"])
                     res["cursor"] = pos_res["cursor"]
+                    save_cursor_file(args.cursor_file, res)
                 else:
                     res["cursor_refresh_error"] = pos_res.get("reason", pos_res["outcome"])
     return emit(res, args.json)
