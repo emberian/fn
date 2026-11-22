@@ -2372,7 +2372,14 @@
                 (and (fn2-run-quantitiesp (car ,call) (mv-nth 1 ,call)
                                      (mv-nth 2 ,call) ,residual ,work-limit)
                      ,(nth 5 terms)))
-       :rule-classes ,(fn2-run-quantity-rules hyps terms)
+       ; An enclosing arm's addition guard asks for ACL2-NUMBERP directly.
+       ; Ordinary rewriting can establish the callee's guard hypotheses
+       ; through earlier setters' preservation rules.
+       :rule-classes ,(append (fn2-run-quantity-rules hyps terms)
+                              (fn2-run-quantity-rewrites hyps
+                                `((acl2-numberp (car ,call))
+                                  (acl2-numberp (mv-nth 1 ,call))
+                                  (acl2-numberp (mv-nth 2 ,call)))))
        :hints (("Goal" :in-theory (e/d (,name fn2-run-quantitiesp)
                        (nfix nth ,@(fn2-arms-shape-fns ins)
                         ,@(fn2-arms-rows-fns ins)
