@@ -97,10 +97,13 @@ ACL2_BOOKS = \
   books/assurance-completion \
   books/assurance-proof-support \
   books/assurance-resource-join \
+  books/authinfo-secret \
+  books/authinfo-secret-pool \
   books/authority \
   books/authority-codec \
   books/authority-kind \
   books/authority-port \
+  books/authority-read \
   books/authority-schema \
   books/blake3 \
   books/blake3-pool-spec \
@@ -189,6 +192,8 @@ ACL2_BOOKS = \
   books/conn-answer \
   books/tls-schema \
   books/conn-schema \
+  books/conn-authinfo-read \
+  books/conn-read-principal \
   books/conn-kind \
   books/consumer-codec \
   books/consumer-model \
