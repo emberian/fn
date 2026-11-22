@@ -9,24 +9,32 @@ must be derived from that store and the actual served call/attachment graph.
 
 The next client milestone is two committed socket APPENDs, a STATUS before
 process death, the same STATUS after restart, and two byte-exact FETCHes.
-The application fixture also requests the first Message-ID at the second
-position and requires a refusal. The native run remains outstanding.
+The application fixture requests the first Message-ID at the second
+position and requires a refusal. An NNTP reader opens the recovered group
+and checks ARTICLE and HEAD against the same two FNCT submissions. The
+native run remains outstanding.
 
 Upstream `f1050d7f1` fixes the schema check that stopped application loading.
 The production assembly and its reversed-import fixture passed on Forge.
 Adding a schema produced a checked expansion mismatch at the assembly table.
 The fixture's 44-book closure reused 43 parents in the final record
-`certify-20261122T032527Z-1553111`. On application source `50c6ea6bd`, all
-139 parents of `books/cns-source-raw` now load together. ACL2 reaches
-`fn2-cns-source-issue-children-fn2-control-rows` and leaves the row count
-of the control table returned by `fn2-block-read-children` unproved.
+`certify-20261122T032527Z-1553111`.
 
-On that application source, the accepted APPEND reply in `books/cns.lisp`
-encodes a zero-length Message-ID. The client decodes that field and the
-fixture requires the committed article's ID. Candidate `da4336965` carries
-the ID from the transaction through reply encoding. The actor and native
-socket tests still need to exercise that path. Consumer positions use domain
-0 in this profile.
+The following Forge records match application candidate `01fba448c`.
+
+| Subject | Record | What passed |
+| --- | --- | --- |
+| `books/cns-source-raw` | `certify-20261122T034535Z-1575717` | 140-book closure, including the control-table row count across the block read |
+| `tests/cns-source-issue-unit` | `certify-20261122T192629Z-2429004` | 143-book closure. With a queued sibling, a successful typed pinned read adds one queued and one issued descriptor. Stale and waiting cases preserve the eight observed state images. |
+| `books/txn` | `certify-20261122T192333Z-2425108` | 140-book transaction declaration closure |
+
+The APPEND implementation carries the transaction's committed Message-ID into
+the reply. Its concrete operations and machine arms are emitted by the TXN
+and CNS callback books. Their qualification and a native socket run are
+required to establish delivery. The separate cursor scenario checks that
+READ and WAIT honor the position in an issued token and that a fresh process
+redelivers the unacknowledged article after a durable ACK. That scenario
+still needs native execution. Consumer positions use domain 0 in this profile.
 
 ## Integration frontier — 2026-11-16 01:35 UTC
 
