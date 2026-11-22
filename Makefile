@@ -6,6 +6,7 @@ ACL2_BOOKS = \
   tests/native-device-envelope-unit \
   tests/native-device-cut-unit \
   books/checkpoint-geometry \
+  books/checkpoint-zero-range \
   books/boot-config-state \
   books/boot-bootstrap-pack \
   books/boot-bootstrap-pack-contracts \
