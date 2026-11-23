@@ -1,6 +1,7 @@
 ; A completed/cancelled query can unblock its source owner without an I/O
 ; completion. The owner is a real machine reference; pool slots are not IDs.
 (in-package "ACL2")
+(include-book "assembly-callbacks-b2")
 (include-book "core-scheduler-wake")
 (include-book "enqueue-trace")
 
