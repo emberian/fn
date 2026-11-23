@@ -156,6 +156,7 @@
                         (natp (mv-nth 1 (fn2-format-retirement-scan
                                          fuel base phase pos v hi size ref payload next
                                          slot gen end okind oslot ogen fn2-fields fn2-pool))))
+               :rule-classes (:rewrite :type-prescription)
                :hints (("Goal"
                         :induct (fn2-format-retirement-scan
                                  fuel base phase pos v hi size ref payload next
@@ -177,6 +178,7 @@
                         (natp (mv-nth 1 (fn2-format-retirement-decode-step
                                          base slot gen off end okind oslot ogen budget
                                          fn2-fields fn2-pool))))
+               :rule-classes (:rewrite :type-prescription)
                :hints (("Goal"
                         :in-theory (e/d (fn2-format-retirement-decode-step)
                                         (nth fn2-layout-range-code fn2-format-retirement-scan
@@ -188,12 +190,10 @@
                              (fn2-fields-wfp fn2-fields)
                              (natp base)
                              (< base (fn2-fields-rows fn2-fields)))
-                        (and (natp (mv-nth 1 (fn2-format-retirement-decode
-                                              base slot gen off end okind oslot ogen
-                                              fn2-fields fn2-pool)))
-                             (acl2-numberp (mv-nth 1 (fn2-format-retirement-decode
-                                                      base slot gen off end okind oslot ogen
-                                                      fn2-fields fn2-pool)))))
+                        (natp (mv-nth 1 (fn2-format-retirement-decode
+                                         base slot gen off end okind oslot ogen
+                                         fn2-fields fn2-pool))))
+               :rule-classes (:rewrite :type-prescription)
                :hints (("Goal"
                         :in-theory (e/d (fn2-format-retirement-decode)
                                         (fn2-format-retirement-start

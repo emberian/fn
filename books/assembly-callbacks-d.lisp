@@ -28,9 +28,28 @@
                     (:forward-chaining fn2-ops-wfp-of-fn2-core-ops))))
 (make-event
  (value `(local (in-theory (disable nth
+                                    fn2-b3-rows
+                                    fn2-digests-rows
                                     ,@(fn2-columns-getter-runes
                                         '(fn2-input-config fn2-extents fn2-fields)
                                         (w state)))))))
+(local
+ (defthm fn2-block-hash-into-ok-result-rowp
+   (implies (and (equal (mv-nth 0 (fn2-block-hash-into
+                                   row lslot lgen boff len okind oslot ogen
+                                   fn2-b3 fn2-digests fn2-pool))
+                        :ok)
+                 (natp row))
+            (fn2-digest-rowp
+             (fn2-digest-slot row *fn2-b3-result*)
+             (mv-nth 2 (fn2-block-hash-into
+                        row lslot lgen boff len okind oslot ogen
+                        fn2-b3 fn2-digests fn2-pool))))
+   :hints (("Goal" :in-theory (e/d (fn2-block-hash-into)
+                                   (nth fn2-b3-ready fn2-b3-init
+                                        fn2-block-hash-span fn2-b3-finalize
+                                        fn2-digest-rowp fn2-digest-slot
+                                        fn2-digests-rows fn2-b3-rows))))))
 (local
  (defun fn2-subst-tree (new old x)
    (declare (xargs :mode :program))
