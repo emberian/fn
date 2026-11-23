@@ -34,19 +34,19 @@
                                         '(fn2-input-config fn2-extents fn2-fields)
                                         (w state)))))))
 (local
- (defthm fn2-block-hash-into-ok-digests-rows-linear
-   (implies (and (equal (mv-nth 0 (fn2-block-hash-into
-                                   row lslot lgen boff len okind oslot ogen
-                                   fn2-b3 fn2-digests fn2-pool))
-                        :ok)
-                 (integerp row)
-                 (<= 0 row))
-            (< (+ 57 (* 136 row))
+ (defthm fn2-block-hash-into-ok-digests-rows-fc
+   (implies (equal (car (fn2-block-hash-into
+                         row lslot lgen boff len okind oslot ogen
+                         fn2-b3 fn2-digests fn2-pool))
+                   :ok)
+            (< (+ 57 (* 136 (nfix row)))
                (fn2-digests-rows fn2-digests)))
-   :rule-classes ((:linear :trigger-terms
-                   ((car (fn2-block-hash-into
-                          row lslot lgen boff len okind oslot ogen
-                          fn2-b3 fn2-digests fn2-pool)))))
+   :rule-classes ((:forward-chaining
+                   :trigger-terms
+                   ((equal (car (fn2-block-hash-into
+                                 row lslot lgen boff len okind oslot ogen
+                                 fn2-b3 fn2-digests fn2-pool))
+                           :ok))))
    :hints (("Goal" :in-theory (e/d (fn2-block-hash-into fn2-digest-rowp fn2-digest-slot)
                                    (nth fn2-b3-ready fn2-digests-rows fn2-b3-rows))))))
 (local
