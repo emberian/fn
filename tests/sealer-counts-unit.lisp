@@ -53,6 +53,11 @@
  (let ((rows (fn2-run-installed-rows fn2-run-installed)))
   (list :most (mv-let (best best-n) (fn2-seal-most-runs rows 0 0 0 fn2-run-installed) (list best best-n))
         :fast (mv-let (best best-n) (fn2-seal-most-runs-fast max-sid fn2-run-installed) (list best best-n))
+        :by-schema (mv-let (best best-n) (fn2-seal-most-runs-by-schema rows fn2-run-installed) (list best best-n))
+        :recount (mv-let (best best-n) (fn2-seal-most-by-schema 0 *fn2-run-schema-count* 0 0 fn2-run-installed)
+                  (list best best-n))
+        :prefix (mv-let (best best-n) (fn2-seal-most-runs-by-schema (nfix (- rows 1)) fn2-run-installed) (list best best-n))
+        :prefix-scan (mv-let (best best-n) (fn2-seal-most-runs (nfix (- rows 1)) 0 0 0 fn2-run-installed) (list best best-n))
         :within (fn2-seal-live-within-p rows 0 (+ 1 max-sid) fn2-run-installed)
         :free (fn2-seal-free-rows rows 0 fn2-run-installed)
         :live (fn2-sct-live 0 *fn2-sct-schemas* fn2-run-installed)
@@ -64,6 +69,23 @@
    (b* ((fn2-run-installed (fn2-run-installed-init rows fn2-run-installed))
         ((mv code fn2-run-installed) (fn2-sct-apply-all ops fn2-run-installed)))
     (mv (if (eq code t) (fn2-sct-view max-sid fn2-run-installed) code) fn2-run-installed))
+   answer)))
+; The compaction target over a table and a pool of PAGES free 64 KiB pages:
+; (sid k rlo).
+(defun fn2-sct-target (rows ops pages)
+ (declare (xargs :verify-guards nil))
+ (with-local-stobj fn2-run-installed
+  (mv-let (answer fn2-run-installed)
+   (with-local-stobj fn2-pool
+    (mv-let (answer fn2-run-installed fn2-pool)
+     (b* ((fn2-run-installed (fn2-run-installed-init rows fn2-run-installed))
+          (fn2-pool (fn2-pool-init (list (cons pages 65536)) 1 100 fn2-pool))
+          ((mv code fn2-run-installed) (fn2-sct-apply-all ops fn2-run-installed)))
+      (mv (if (eq code t)
+              (mv-let (sid k rlo) (fn2-seal-compact-target fn2-run-installed fn2-pool) (list sid k rlo))
+            code)
+          fn2-run-installed fn2-pool))
+     (mv answer fn2-run-installed)))
    answer)))
 (defmacro fn2-sct-get (key rows ops &optional (max-sid '19))
  `(cadr (assoc-keyword ,key (fn2-sct-run ,rows ,ops ,max-sid))))
@@ -114,7 +136,8 @@
        (equal (cadr kept) (cadr (assoc-keyword :free view)))
        (equal (caddr kept) (cadr (assoc-keyword :versions view)))
        (equal (fn2-sct-pick (car kept)) (cadr (assoc-keyword :most view)))
-       (equal (cadr (assoc-keyword :fast view)) (cadr (assoc-keyword :most view))))))
+       (equal (cadr (assoc-keyword :fast view)) (cadr (assoc-keyword :most view)))
+       (equal (cadr (assoc-keyword :by-schema view)) (cadr (assoc-keyword :most view))))))
 
 ; ---------------------------------------------------------------------------
 ; The empty table: no live run anywhere, every row free, (mv 0 0).
@@ -210,3 +233,55 @@
 (assert-event (let ((before (fn2-sct-get :versions 6 '((:install 0 3 5) (:install 1 3 2))))
                     (after (fn2-sct-get :versions 6 '((:install 0 3 5) (:install 1 3 2) (:retire 0)))))
                (and (equal (nth 3 before) 5) (equal (nth 3 after) 2))))
+
+; ---------------------------------------------------------------------------
+; The recount by schema (fn2-seal-most-runs-by-schema): S passes of
+; fn2-seal-live-runs and one of fn2-seal-live-within-p, no conses; the
+; compaction target reads it.
+(assert-event (equal *fn2-run-schema-count* 20))
+(assert-event (equal (fn2-sct-get :by-schema 8 nil) '(0 0)))
+(assert-event (equal (fn2-sct-get :by-schema 0 nil) '(0 0)))
+(assert-event (equal (fn2-sct-get :by-schema 8 *fn2-sct-tie*) '(3 2)))
+(assert-event (equal (fn2-sct-get :by-schema 8 '((:install 7 19 1) (:install 0 2 2) (:install 6 19 3))) '(19 2)))
+(assert-event (equal (fn2-sct-get :by-schema 6 *fn2-sct-trace*) '(3 2)))
+; Fewer rows than the table's: over the first 7 of 8 rows, where the last
+; row's schema 1 is not met, the selection is the scan's over those rows.
+(defconst *fn2-sct-last* '((:install 7 1 1) (:install 0 2 2)))
+(assert-event (equal (fn2-sct-get :prefix 8 *fn2-sct-last*) '(2 1)))
+(assert-event (equal (fn2-sct-get :prefix-scan 8 *fn2-sct-last*) '(2 1)))
+; Out of range: schema 25 holds the most runs; the check refuses and the
+; selection falls back to the scan.
+(defconst *fn2-sct-far* '((:install 0 1 1) (:install 1 1 2) (:install 2 25 3) (:install 3 25 4) (:install 4 25 5)))
+(assert-event (equal (fn2-sct-get :most 8 *fn2-sct-far*) '(25 3)))
+(assert-event (equal (fn2-sct-get :by-schema 8 *fn2-sct-far*) '(25 3)))
+(assert-event (fn2-sct-agrees-p 8 *fn2-sct-tie*))
+
+; Compaction across schemas: schema 6 holds five live runs (over the
+; budget of four), schema 2 three; 6 is compacted, all five runs joining
+; down to its least run 1. Plenty of free rows and pages: no pressure, so
+; a schema at the budget is left alone.
+(defconst *fn2-sct-multi*
+ '((:install 0 6 1) (:install 1 2 2) (:install 2 6 3) (:install 3 6 4) (:install 4 2 5)
+   (:install 5 6 6) (:install 6 2 7) (:install 7 6 8)))
+(assert-event (equal (fn2-sct-target 24 *fn2-sct-multi* 100) '(6 5 1)))
+(assert-event (equal (fn2-sct-target 24 (take 7 *fn2-sct-multi*) 100) '(0 0 0)))
+; Ties under compaction: schemas 2 and 6 with five runs each, the smaller wins.
+(assert-event (equal (fn2-sct-target 24 (append *fn2-sct-multi* '((:install 8 2 9) (:install 9 2 10))) 100) '(2 5 2)))
+; Page pressure (8 free pages or fewer): any schema with two runs is compacted.
+(assert-event (equal (fn2-sct-target 24 (take 7 *fn2-sct-multi*) 8) '(6 4 1)))
+; Out of range under compaction: schema 25's five runs are found by the fallback.
+(assert-event (equal (fn2-sct-target 24 '((:install 0 25 1) (:install 1 25 2) (:install 2 25 3) (:install 3 25 4)
+                                          (:install 4 25 5) (:install 5 2 6))
+                                     100)
+                     '(25 5 1)))
+(assert-event (equal (fn2-sct-target 0 nil 100) '(0 0 0)))
+
+; #tooth fn2-seal-most-by-schema-is-most-runs without fn2-seal-live-within-p:
+; the recount alone never meets schema 25 and selects schema 1.
+(assert-event (equal (fn2-sct-get :recount 8 *fn2-sct-far*) '(1 2)))
+(assert-event (not (fn2-sct-get :within 8 *fn2-sct-far* 19)))
+; #tooth fn2-seal-most-runs-by-schema-is-most-runs without its row check:
+; the recount over the whole table meets row 7 and selects schema 1, the
+; scan over the first 7 rows schema 2.
+(assert-event (equal (fn2-sct-get :recount 8 *fn2-sct-last*) '(1 1)))
+(assert-event (not (equal (fn2-sct-get :recount 8 *fn2-sct-last*) (fn2-sct-get :prefix-scan 8 *fn2-sct-last*))))

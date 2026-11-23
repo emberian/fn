@@ -225,6 +225,211 @@
                 (:type-prescription :corollary (natp (mv-nth 1 (fn2-seal-most-runs k r best best-n fn2-run-installed)))))
  :hints ((fn2-columns-call-guard-hint 'fn2-seal-most-runs '(fn2-seal-live-runs) '(fn2-seal-most-runs) world)))
 ; Pressure on the shared installed-run rows or 64 KiB page pool: proactive
+
+; Schema identifiers run 0..*fn2-run-schema-count*-1, read off the declared
+; run schemas (every one is assembled before this book).
+(defun fn2-seal-schema-id-bound (rows)
+ (declare (xargs :verify-guards nil))
+ (if (atom rows) 0 (max (+ 1 (nfix (fn2-decl-get :id (cdar rows)))) (fn2-seal-schema-id-bound (cdr rows)))))
+(make-event `(defconst *fn2-run-schema-count* ,(fn2-seal-schema-id-bound (fn2-decl-rows :schema (w state)))))
+(assert-event (posp *fn2-run-schema-count*))
+; (SID, N) is better than (BEST, BEST-N) when N is greater, or equal with a
+; smaller SID: fn2-seal-most-runs's BETTER.
+(defun fn2-seal-most-better-p (sid n best best-n)
+ (declare (xargs :guard t))
+ (or (< (nfix best-n) (nfix n)) (and (equal (nfix n) (nfix best-n)) (< (nfix sid) (nfix best)))))
+; Every live row among rows R.. (K) has a schema below WIDTH.
+(defun fn2-seal-live-within-p (k r width fn2-run-installed)
+ (declare (xargs :stobjs fn2-run-installed :measure (nfix k)
+  :guard (and (fn2-run-installed-wfp fn2-run-installed) (natp r))))
+ (or (not (and (posp k) (natp r) (< r (fn2-run-installed-rows fn2-run-installed))))
+     (and (or (not (equal (fn2-run-installed-state r fn2-run-installed) *fn2-run-installed-state-live*))
+              (let ((s (fn2-run-installed-schema r fn2-run-installed))) (and (natp s) (< s (nfix width)))))
+          (fn2-seal-live-within-p (- k 1) (+ 1 r) width fn2-run-installed))))
+; Schemas SID..W-1 in order, each recounted (one pass over the rows): the
+; schema with the most live runs above BEST-N, a smaller SID breaking ties
+; and a schema without live runs never chosen: (mv best best-n). No conses.
+(defun fn2-seal-most-by-schema (sid w best best-n fn2-run-installed)
+ (declare (xargs :stobjs fn2-run-installed :measure (nfix (- (nfix w) (nfix sid)))
+  :guard (and (fn2-run-installed-wfp fn2-run-installed) (natp sid) (natp w) (natp best) (natp best-n))))
+ (if (not (< (nfix sid) (nfix w))) (mv (nfix best) (nfix best-n))
+  (let* ((n (fn2-seal-live-runs (fn2-run-installed-rows fn2-run-installed) 0 (nfix sid) fn2-run-installed))
+         (better (and (< 0 n) (fn2-seal-most-better-p (nfix sid) n best best-n))))
+   (fn2-seal-most-by-schema (+ 1 (nfix sid)) w (if better (nfix sid) best) (if better n best-n) fn2-run-installed))))
+; fn2-seal-most-runs in S*R row visits (S schemas, each counted over R rows)
+; plus one pass checking that every live schema is below S, against the
+; scan's R + L*R; the scan itself where a live schema is not.
+(defun fn2-seal-most-runs-by-schema (rows fn2-run-installed)
+ (declare (xargs :stobjs fn2-run-installed :guard (and (fn2-run-installed-wfp fn2-run-installed) (natp rows))))
+ (if (and (equal rows (fn2-run-installed-rows fn2-run-installed))
+          (fn2-seal-live-within-p rows 0 *fn2-run-schema-count* fn2-run-installed))
+     (fn2-seal-most-by-schema 0 *fn2-run-schema-count* 0 0 fn2-run-installed)
+   (fn2-seal-most-runs rows 0 0 0 fn2-run-installed)))
+; Both selections keep the better of each (schema . live runs) pair they
+; meet, a total order's least, so each depends only on the set of pairs met,
+; and the two meet the same set whenever every live schema is below W: the
+; scan one pair per live row, the recount one per schema with live runs.
+(encapsulate ()
+(local (in-theory (union-theories (theory (quote ground-zero))
+                                  (quote (fn2-seal-live-runs fn2-seal-most-runs fn2-seal-most-better-p fn2-seal-live-within-p
+                                          fn2-seal-most-by-schema (:type-prescription fn2-seal-live-runs-natp))))))
+(local (progn
+(defthm fn2-sc-nfix-nfix (equal (nfix (nfix x)) (nfix x)))
+(defthm fn2-sc-better-of-nfix
+ (and (equal (fn2-seal-most-better-p (nfix a) n b bn) (fn2-seal-most-better-p a n b bn))
+      (equal (fn2-seal-most-better-p a (nfix n) b bn) (fn2-seal-most-better-p a n b bn))
+      (equal (fn2-seal-most-better-p a n (nfix b) bn) (fn2-seal-most-better-p a n b bn))
+      (equal (fn2-seal-most-better-p a n b (nfix bn)) (fn2-seal-most-better-p a n b bn))))
+(defun fn2-sc-b (x y) (fn2-seal-most-better-p (car x) (cdr x) (car y) (cdr y)))
+(defun fn2-sc-norm (x) (cons (nfix (car x)) (nfix (cdr x))))
+(defthm fn2-sc-b-norm
+ (and (equal (fn2-sc-b (fn2-sc-norm x) y) (fn2-sc-b x y))
+      (equal (fn2-sc-b x (fn2-sc-norm y)) (fn2-sc-b x y)))
+ :hints (("Goal" :in-theory (disable fn2-seal-most-better-p nfix))))
+(defthm fn2-sc-b-asymmetric (implies (fn2-sc-b x y) (not (fn2-sc-b y x))))
+(defthm fn2-sc-b-transitive (implies (and (fn2-sc-b x y) (fn2-sc-b y z)) (fn2-sc-b x z)) :rule-classes nil)
+(defthm fn2-sc-b-total
+ (implies (and (not (fn2-sc-b x y)) (not (fn2-sc-b y x))) (equal (fn2-sc-norm x) (fn2-sc-norm y)))
+ :rule-classes nil)
+(in-theory (disable fn2-sc-b fn2-sc-norm))
+(defun fn2-sc-step (x s) (if (fn2-sc-b x s) (fn2-sc-norm x) s))
+(defun fn2-sc-fold (xs s) (if (atom xs) (fn2-sc-norm s) (fn2-sc-fold (cdr xs) (fn2-sc-step (car xs) s))))
+(defthm fn2-sc-step-commutes
+ (equal (fn2-sc-step x (fn2-sc-step y s)) (fn2-sc-step y (fn2-sc-step x s)))
+ :hints (("Goal" :use ((:instance fn2-sc-b-transitive (x x) (y y) (z s))
+                       (:instance fn2-sc-b-transitive (x y) (y x) (z s))
+                       (:instance fn2-sc-b-total (x x) (y y))))))
+(defthm fn2-sc-step-idempotent (equal (fn2-sc-step x (fn2-sc-step x s)) (fn2-sc-step x s)))
+(defthm fn2-sc-norm-norm (equal (fn2-sc-norm (fn2-sc-norm x)) (fn2-sc-norm x))
+ :hints (("Goal" :in-theory (enable fn2-sc-norm))))
+(defthm fn2-sc-fold-of-step
+ (equal (fn2-sc-fold xs (fn2-sc-step y s)) (fn2-sc-step y (fn2-sc-fold xs s)))
+ :hints (("Goal" :induct (fn2-sc-fold xs s) :in-theory (disable fn2-sc-step))
+         ("Subgoal *1/1" :in-theory (enable fn2-sc-step))))
+(defthm fn2-sc-fold-norm (equal (fn2-sc-norm (fn2-sc-fold xs s)) (fn2-sc-fold xs s)))
+(defthm fn2-sc-fold-of-norm (equal (fn2-sc-fold xs (fn2-sc-norm s)) (fn2-sc-fold xs s))
+ :hints (("Goal" :induct (fn2-sc-fold xs s))))
+(defthm fn2-sc-step-absorbed
+ (implies (member-equal y xs) (equal (fn2-sc-step y (fn2-sc-fold xs s)) (fn2-sc-fold xs s)))
+ :hints (("Goal" :induct (fn2-sc-fold xs s) :in-theory (disable fn2-sc-step))))
+(defthm fn2-sc-fold-absorbed
+ (implies (subsetp-equal xs ys) (equal (fn2-sc-fold xs (fn2-sc-fold ys s)) (fn2-sc-fold ys s)))
+ :hints (("Goal" :induct (len xs) :in-theory (disable fn2-sc-step))))
+(defthm fn2-sc-fold-swap
+ (equal (fn2-sc-fold xs (fn2-sc-fold ys s)) (fn2-sc-fold ys (fn2-sc-fold xs s)))
+ :rule-classes nil
+ :hints (("Goal" :induct (fn2-sc-fold xs s) :in-theory (disable fn2-sc-step))))
+(defthm fn2-sc-fold-set-equal
+ (implies (and (subsetp-equal xs ys) (subsetp-equal ys xs)) (equal (fn2-sc-fold xs s) (fn2-sc-fold ys s)))
+ :rule-classes nil
+ :hints (("Goal" :use ((:instance fn2-sc-fold-swap)) :in-theory (disable fn2-sc-step))))
+(defthm fn2-sc-fold-of-cons (equal (fn2-sc-fold (cons x xs) s) (fn2-sc-fold xs (fn2-sc-step x s)))
+ :hints (("Goal" :in-theory (disable fn2-sc-fold-of-step fn2-sc-step))))
+(defthm fn2-sc-step-of-pair
+ (equal (fn2-sc-step (cons a n) s)
+        (if (fn2-seal-most-better-p a n (car s) (cdr s)) (cons (nfix a) (nfix n)) s))
+ :hints (("Goal" :in-theory (enable fn2-sc-b fn2-sc-norm))))
+(defthm fn2-sc-fold-of-atom (implies (atom xs) (equal (fn2-sc-fold xs s) (cons (nfix (car s)) (nfix (cdr s)))))
+ :hints (("Goal" :in-theory (enable fn2-sc-norm))))
+(in-theory (disable fn2-sc-fold fn2-sc-step))
+
+(defun fn2-sc-row-elems (k r fn2-run-installed)
+ (declare (xargs :stobjs fn2-run-installed :measure (nfix k) :verify-guards nil))
+ (cond ((not (and (posp k) (natp r) (< r (fn2-run-installed-rows fn2-run-installed)))) nil)
+       ((equal (fn2-run-installed-state r fn2-run-installed) *fn2-run-installed-state-live*)
+        (let ((sid (nfix (fn2-run-installed-schema r fn2-run-installed))))
+         (cons (cons sid (fn2-seal-live-runs (fn2-run-installed-rows fn2-run-installed) 0 sid fn2-run-installed))
+               (fn2-sc-row-elems (- k 1) (+ 1 r) fn2-run-installed))))
+       (t (fn2-sc-row-elems (- k 1) (+ 1 r) fn2-run-installed))))
+(defthm fn2-sc-most-runs-is-fold
+ (equal (fn2-seal-most-runs k r best best-n fn2-run-installed)
+        (let ((f (fn2-sc-fold (fn2-sc-row-elems k r fn2-run-installed) (cons best best-n)))) (list (car f) (cdr f))))
+ :hints (("Goal" :induct (fn2-seal-most-runs k r best best-n fn2-run-installed)
+          :in-theory (union-theories '(fn2-seal-most-runs fn2-sc-row-elems fn2-sc-fold-of-cons fn2-sc-fold-of-atom
+                                       fn2-sc-step-of-pair fn2-seal-most-better-p nfix natp posp zp car-cons cdr-cons
+                                       (:type-prescription fn2-seal-live-runs-natp) (:type-prescription nfix))
+                                     (theory 'minimal-theory)))))
+; Matching counts' pairs, read off the table: schemas I..W-1 with live runs.
+(defun fn2-sc-count-elems (i w fn2-run-installed)
+ (declare (xargs :stobjs fn2-run-installed :measure (nfix (- (nfix w) (nfix i))) :verify-guards nil))
+ (if (not (< (nfix i) (nfix w))) nil
+  (let ((n (fn2-seal-live-runs (fn2-run-installed-rows fn2-run-installed) 0 (nfix i) fn2-run-installed)))
+   (if (< 0 n) (cons (cons (nfix i) n) (fn2-sc-count-elems (+ 1 (nfix i)) w fn2-run-installed))
+     (fn2-sc-count-elems (+ 1 (nfix i)) w fn2-run-installed)))))
+(defthm fn2-sc-count-elems-empty
+ (implies (<= (nfix w) (nfix i)) (equal (fn2-sc-count-elems i w fn2-run-installed) nil)))
+(defthm fn2-sc-most-by-schema-is-fold
+ (equal (fn2-seal-most-by-schema sid w best best-n fn2-run-installed)
+        (let ((f (fn2-sc-fold (fn2-sc-count-elems sid w fn2-run-installed) (cons best best-n)))) (list (car f) (cdr f))))
+ :hints (("Goal" :induct (fn2-seal-most-by-schema sid w best best-n fn2-run-installed)
+          :in-theory (union-theories '(fn2-seal-most-by-schema fn2-sc-count-elems fn2-sc-fold-of-cons fn2-sc-fold-of-atom
+                                       fn2-sc-step-of-pair fn2-sc-nfix-nfix nfix natp car-cons cdr-cons
+                                       (:type-prescription fn2-seal-live-runs-natp) (:type-prescription nfix))
+                                     (theory 'minimal-theory)))))
+(defthm fn2-sc-row-elems-member
+ (implies (and (natp s) (< 0 (fn2-seal-live-runs k r s fn2-run-installed)))
+          (member-equal (cons s (fn2-seal-live-runs (fn2-run-installed-rows fn2-run-installed) 0 s fn2-run-installed))
+                        (fn2-sc-row-elems k r fn2-run-installed)))
+ :hints (("Goal" :induct (fn2-seal-live-runs k r s fn2-run-installed))))
+(defthm fn2-sc-live-row-counted
+ (implies (and (natp i) (natp r) (<= r i) (< i (+ r (nfix k))) (< i (fn2-run-installed-rows fn2-run-installed))
+               (equal (fn2-run-installed-state i fn2-run-installed) *fn2-run-installed-state-live*))
+          (< 0 (fn2-seal-live-runs k r (fn2-run-installed-schema i fn2-run-installed) fn2-run-installed)))
+ :rule-classes nil
+ :hints (("Goal" :induct (fn2-seal-live-runs k r (fn2-run-installed-schema i fn2-run-installed) fn2-run-installed))))
+(defthm fn2-sc-live-row-counted-whole
+ (implies (and (natp (fn2-run-installed-rows fn2-run-installed)) (natp i)
+               (< i (fn2-run-installed-rows fn2-run-installed))
+               (equal (fn2-run-installed-state i fn2-run-installed) *fn2-run-installed-state-live*))
+          (< 0 (fn2-seal-live-runs (fn2-run-installed-rows fn2-run-installed) 0
+                                   (fn2-run-installed-schema i fn2-run-installed) fn2-run-installed)))
+ :hints (("Goal" :use ((:instance fn2-sc-live-row-counted (k (fn2-run-installed-rows fn2-run-installed)) (r 0))))))
+(defthm fn2-sc-count-elems-member
+ (implies (and (natp s) (<= (nfix i) s) (< s (nfix w))
+               (< 0 (fn2-seal-live-runs (fn2-run-installed-rows fn2-run-installed) 0 s fn2-run-installed)))
+          (member-equal (cons s (fn2-seal-live-runs (fn2-run-installed-rows fn2-run-installed) 0 s fn2-run-installed))
+                        (fn2-sc-count-elems i w fn2-run-installed)))
+ :hints (("Goal" :induct (fn2-sc-count-elems i w fn2-run-installed) :in-theory (disable fn2-seal-live-runs))))
+(defthm fn2-sc-row-elems-subset
+ (implies (and (natp (fn2-run-installed-rows fn2-run-installed)) (fn2-seal-live-within-p k r w fn2-run-installed))
+          (subsetp-equal (fn2-sc-row-elems k r fn2-run-installed) (fn2-sc-count-elems 0 w fn2-run-installed)))
+ :hints (("Goal" :induct (fn2-sc-row-elems k r fn2-run-installed)
+          :in-theory (disable fn2-seal-live-runs fn2-sc-count-elems))))
+(defthm fn2-sc-count-elems-subset
+ (subsetp-equal (fn2-sc-count-elems i w fn2-run-installed)
+                (fn2-sc-row-elems (fn2-run-installed-rows fn2-run-installed) 0 fn2-run-installed))
+ :hints (("Goal" :induct (fn2-sc-count-elems i w fn2-run-installed) :in-theory (disable fn2-seal-live-runs))))
+(defthm fn2-sc-count-elems-unsized
+ (implies (not (natp (fn2-run-installed-rows fn2-run-installed)))
+          (equal (fn2-sc-count-elems i w fn2-run-installed) nil))
+ :hints (("Goal" :induct (fn2-sc-count-elems i w fn2-run-installed))))
+; The selection over matching counts is the scan's, for any starting
+))
+; A live row counts toward its own schema's live runs.
+(defthm fn2-seal-live-row-counted
+ (implies (and (natp (fn2-run-installed-rows fn2-run-installed)) (natp i)
+               (< i (fn2-run-installed-rows fn2-run-installed))
+               (equal (fn2-run-installed-state i fn2-run-installed) *fn2-run-installed-state-live*))
+          (< 0 (fn2-seal-live-runs (fn2-run-installed-rows fn2-run-installed) 0
+                                   (fn2-run-installed-schema i fn2-run-installed) fn2-run-installed)))
+ :rule-classes nil
+ :hints (("Goal" :use fn2-sc-live-row-counted-whole)))
+(defthm fn2-seal-most-by-schema-is-most-runs
+ (implies (fn2-seal-live-within-p (fn2-run-installed-rows fn2-run-installed) 0 w fn2-run-installed)
+          (equal (fn2-seal-most-by-schema 0 w best best-n fn2-run-installed)
+                 (fn2-seal-most-runs (fn2-run-installed-rows fn2-run-installed) 0 best best-n fn2-run-installed)))
+ :hints (("Goal" :use ((:instance fn2-sc-fold-set-equal
+                        (xs (fn2-sc-row-elems (fn2-run-installed-rows fn2-run-installed) 0 fn2-run-installed))
+                        (ys (fn2-sc-count-elems 0 w fn2-run-installed))
+                        (s (cons best best-n))))
+          :cases ((natp (fn2-run-installed-rows fn2-run-installed)))
+          :in-theory (disable fn2-seal-live-runs fn2-seal-most-by-schema fn2-seal-most-runs))))
+(defthm fn2-seal-most-runs-by-schema-is-most-runs
+ (equal (fn2-seal-most-runs-by-schema rows fn2-run-installed)
+        (fn2-seal-most-runs rows 0 0 0 fn2-run-installed))
+ :hints (("Goal" :in-theory (union-theories '(fn2-seal-most-runs-by-schema fn2-seal-most-by-schema-is-most-runs)
+                                            (theory 'minimal-theory)))))
+)
 ; (merge the sealing schema's runs regardless of size ratio, and compact idle
 ; multi-run schemas once overlays drain) vs urgent (preemptively compact a
 ; multi-run schema before sealing a schema with <= 1 live run so the last free
@@ -267,7 +472,7 @@
  (declare (xargs :stobjs (fn2-run-installed fn2-pool)
   :guard (and (fn2-run-installed-wfp fn2-run-installed) (fn2-pool-wfp fn2-pool))))
  (b* ((rows (fn2-run-installed-rows fn2-run-installed))
-      ((mv sid best-n) (fn2-seal-most-runs rows 0 0 0 fn2-run-installed))
+      ((mv sid best-n) (fn2-seal-most-runs-by-schema rows fn2-run-installed))
       ((unless (and (<= 2 best-n)
                     (or (< *fn2-seal-run-budget* best-n)
                         (fn2-seal-pressured-p fn2-run-installed fn2-pool))))
@@ -287,7 +492,7 @@
                 (:type-prescription :corollary (natp (mv-nth 0 (fn2-seal-compact-target fn2-run-installed fn2-pool))))
                 (:type-prescription :corollary (natp (mv-nth 1 (fn2-seal-compact-target fn2-run-installed fn2-pool))))
                 (:type-prescription :corollary (natp (mv-nth 2 (fn2-seal-compact-target fn2-run-installed fn2-pool)))))
- :hints ((fn2-columns-call-guard-hint 'fn2-seal-compact-target '(fn2-seal-most-runs fn2-seal-pressured-p fn2-seal-select) '(fn2-seal-compact-target) world)))
+ :hints ((fn2-columns-call-guard-hint 'fn2-seal-compact-target '(fn2-seal-most-runs-by-schema fn2-seal-pressured-p fn2-seal-select) '(fn2-seal-compact-target) world)))
 (defun fn2-seal-compact-pending-p (fn2-seals fn2-run-installed fn2-pool)
  (declare (xargs :stobjs (fn2-seals fn2-run-installed fn2-pool)
   :guard (and (fn2-seals-wfp fn2-seals) (fn2-run-installed-wfp fn2-run-installed) (fn2-pool-wfp fn2-pool))))
@@ -297,7 +502,8 @@
        (declare (ignore sid rlo))
        (<= 2 k))))
 (in-theory (disable fn2-seal-live-runs fn2-seal-free-rows fn2-seal-select fn2-seal-free-pages
-                    fn2-seal-most-runs fn2-seal-pressured-p fn2-seal-urgent-p
+                    fn2-seal-most-runs fn2-seal-most-better-p fn2-seal-live-within-p fn2-seal-most-by-schema
+                    fn2-seal-most-runs-by-schema fn2-seal-pressured-p fn2-seal-urgent-p
                     fn2-seal-plan fn2-seal-compact-target fn2-seal-compact-pending-p))
 
 ; Start: pick the next overlay, or a run-only compaction when none is sealable
