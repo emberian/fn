@@ -34,6 +34,24 @@
     (value `(table fn2-machine-arm-bodies 'fn2-tls-admit
                    ',(fn2-decl-set :arms arms old))))))
 (fn2-tls-events)
+(defun fn2-issue-compress-start (cap-index cap-nonce slot gen off len okind oslot ogen principal fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (stobj-let ((fn2-pool (fn2-core-pool fn2-core))
+              (fn2-ops (fn2-core-ops fn2-core))
+              (fn2-control (fn2-core-control fn2-core)))
+    (code rslot rgen fn2-pool fn2-ops fn2-control)
+    (fn2-issue-compress-start-children cap-index cap-nonce slot gen off len okind oslot ogen principal fn2-pool fn2-ops fn2-control)
+    (mv code rslot rgen fn2-core)))
+(fn2-core-preserves fn2-issue-compress-start (cap-index cap-nonce slot gen off len okind oslot ogen principal fn2-core) :position 3 :rows nil)
+(make-event
+ (value
+  `(progn
+     ,(fn2-issue-core-effect-event 'fn2-issue-compress-start '(cap-index cap-nonce slot gen off len okind oslot ogen principal fn2-core))
+     ,(fn2-issue-core-issued-event 'fn2-issue-compress-start '(cap-index cap-nonce slot gen off len okind oslot ogen principal fn2-core))
+     (in-theory (disable fn2-issue-compress-start))
+     ,@(fn2-arms-op-face-events 'fn2-tls-arm-timer 'fn2-sched-arm-delay-ms (w state))
+     ,@(fn2-arms-op-face-events 'fn2-tls-clear-timer 'fn2-sched-clear-deadline (w state))
+     ,@(fn2-arms-op-face-events 'fn2-tls-expired-p 'fn2-sched-timer-expired-p (w state)))))
 
 (defconst *fn2-upload-word-framing* (fn2-upload-word-code :framing))
 (defconst *fn2-upload-word-unaffordable* (fn2-upload-word-code :unaffordable))
@@ -49,7 +67,36 @@
 
 (defmachine-arms fn2-conn :declare
  :subarms
- ((tls-timeout
+ ((draining-finish
+   (:let qry row-query)
+   (:let qgen row-query-gen)
+   (:let upl row-upload)
+   (:do (tcode) (fn2-core-release row-tx-slot row-tx-gen)
+        :effects ((:release (:tx-range)))
+        :accept (:ok :retired) :why "a retired range is a completed release (the pool retires the slot)"
+        :case ((:otherwise (:stop :pool-release :steps *fn2-work-state*))))
+   (:do (rcode) (fn2-conn-release-rx row-rx-slot row-rx-gen)
+        :accept (:ok :retired) :why "a retired range is a completed release (the pool retires the slot)"
+        :case ((:otherwise (:stop :pool-release :steps *fn2-work-state*))))
+   (:do (acode) (fn2-account-unbook-ref row-account-ref)
+        :case ((:otherwise (:stop :account :steps *fn2-work-state*))))
+   (:do () (fn2-conn-cursor-cancel qry qgen))
+   (:do () (fn2-conn-wake (if (equal upl *fn2-none*) qry upl)))
+   (:let next (fn2-machine-free-head *fn2-conn-admission-ordinal*))
+   (:let retire (>= row-generation (fn2-machine-gen-limit)))
+   (:set (generation (if retire row-generation (+ 1 row-generation)))
+         (rx-slot *fn2-none*) (rx-gen 0) (tx-slot *fn2-none*) (tx-gen 0)
+         (cap-index 0) (cap-nonce 0) (start 0) (pos 0) (overflow 0) (compacting 0)
+         (cursor 0) (tx-off 0) (ordinal 0) (auth-pending *fn2-conn-auth-none*) (refused 0)
+         (next-free next) (wait-reason *fn2-wait-none*) (account-ref *fn2-none*)
+         (upload *fn2-none*) (query *fn2-none*) (query-gen 0)
+         (tls-token *fn2-none*) (tls-token-gen 0) (tls-op *fn2-none*) (tls-op-gen 0)
+         (upgrade-target *fn2-conn-upgrade-target-none*)
+         (upgrade-stage *fn2-conn-upgrade-stage-none*) (tls-ok 0))
+   (:next (:if retire :retired :free))
+   (:do () (fn2-machine-reclaim-fn2-conn id retire))
+   (:charge :steps *fn2-work-release*))
+  (tls-timeout
    ;; Cancel the saved descriptor, then let Close/drain wait for both real
    ;; terminal observations. A deadline alone never releases a live loan.
    (:if (equal row-pending 0)
@@ -391,36 +438,9 @@
           (t (:if (equal row-upgrade-target *fn2-conn-upgrade-target-tls*)
                   ((:do (dcode) (fn2-tls-clear-timer id) :case ((:otherwise (:stop :machine-phase))))
                    (:do (tcode) (fn2-tls-release-token row-tls-token row-tls-token-gen id row-generation)
-                    :case ((:otherwise (:stop :machine-phase)))))
-                  ())
-             (:let qry row-query)
-             (:let qgen row-query-gen)
-             (:let upl row-upload)
-             (:do (tcode) (fn2-core-release row-tx-slot row-tx-gen)
-                  :effects ((:release (:tx-range)))
-                  :accept (:ok :retired) :why "a retired range is a completed release (the pool retires the slot)"
-                  :case ((:otherwise (:stop :pool-release :steps *fn2-work-state*))))
-             (:do (rcode) (fn2-conn-release-rx row-rx-slot row-rx-gen)
-                  :accept (:ok :retired) :why "a retired range is a completed release (the pool retires the slot)"
-                  :case ((:otherwise (:stop :pool-release :steps *fn2-work-state*))))
-             (:do (acode) (fn2-account-unbook-ref row-account-ref)
-                  :case ((:otherwise (:stop :account :steps *fn2-work-state*))))
-             (:do () (fn2-conn-cursor-cancel qry qgen))
-             (:do () (fn2-conn-wake (if (equal upl *fn2-none*) qry upl)))
-             (:let next (fn2-machine-free-head *fn2-conn-admission-ordinal*))
-             (:let retire (>= row-generation (fn2-machine-gen-limit)))
-             (:set (generation (if retire row-generation (+ 1 row-generation)))
-                   (rx-slot *fn2-none*) (rx-gen 0) (tx-slot *fn2-none*) (tx-gen 0)
-                   (cap-index 0) (cap-nonce 0) (start 0) (pos 0) (overflow 0) (compacting 0)
-                   (cursor 0) (tx-off 0) (ordinal 0) (auth-pending *fn2-conn-auth-none*) (refused 0)
-                   (next-free next) (wait-reason *fn2-wait-none*) (account-ref *fn2-none*)
-                   (upload *fn2-none*) (query *fn2-none*) (query-gen 0)
-                   (tls-token *fn2-none*) (tls-token-gen 0) (tls-op *fn2-none*) (tls-op-gen 0)
-                   (upgrade-target *fn2-conn-upgrade-target-none*)
-                   (upgrade-stage *fn2-conn-upgrade-stage-none*) (tls-ok 0))
-             (:next (:if retire :retired :free))
-             (:do () (fn2-machine-reclaim-fn2-conn id retire))
-             (:charge :steps *fn2-work-release*))))
+                    :case ((:otherwise (:stop :machine-phase))))
+                   (:goto draining-finish))
+                  ((:goto draining-finish))))))
   (:retired (:idle))
   ;; :query (section 15.3).
   (:query

@@ -41,7 +41,7 @@
                   (fn2-du-wrap-preserves (cdr x)))))))
 (defmacro fn2-du-fast-events (form)
   `(make-event
-    (mv-let (erp exp) (macroexpand1-cmp ',form 'assembly-callbacks-d-upload (w state) (default-defun-mode (w state)))
+    (mv-let (erp exp) (macroexpand1-cmp ',form 'assembly-callbacks-d-upload (w state) (default-state-vars nil))
       (if erp (er soft 'assembly-callbacks-d-upload "Expand failed: ~x0" ',form)
         (value (fn2-du-wrap-preserves exp))))))
 (fn2-du-fast-events (fn2-upload-stream-stage-events))

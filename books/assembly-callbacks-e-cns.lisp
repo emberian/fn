@@ -22,8 +22,6 @@
  (value `(local (in-theory (disable nth fn2-reads-rows fn2-fields-rows fn2-fc-rows
                                     fn2-digests-rows fn2-b3-rows fn2-pool-fill fn2-pool-base fn2-pool-data-length
                                     fn2-cns-sources-rows fn2-ctl-rows fn2-cns-rows fn2-succ-slots-rows)))))
-(fn2-auth-read-events)
-(fn2-authority-depend-events)
 (local
  (defun fn2-ecns-arm-fns (arms)
    (declare (xargs :mode :program))
@@ -100,9 +98,32 @@
          (t (cons (fn2-ecns-wrap-success-charge (car x) kind arm-fns)
                   (fn2-ecns-wrap-success-charge (cdr x) kind arm-fns))))))
 (local
- (defun fn2-ecns-patch-runs (x)
+ (defun fn2-ecns-patch-form (x wrld)
    (declare (xargs :mode :program))
    (cond ((atom x) x)
+         ((equal x '(fn2-append-outcome-read-events))
+          (mv-let (erp exp) (macroexpand1-cmp x 'assembly-callbacks-e-cns wrld (default-state-vars nil))
+            (if erp x (fn2-ecns-patch-form exp wrld))))
+         ((equal x '(in-theory (disable fn2-cns-append-read-contextp)))
+          '(progn
+             (in-theory (disable fn2-cns-append-read-contextp))
+             (local
+              (defthm fn2-cns-append-read-contextp-cns-row-guard
+                (implies (fn2-cns-append-read-contextp cns gen request op fn2-core)
+                         (and (equal (fn2-cns-snapshot-read-code cns fn2-core) :ok)
+                              (fn2-machine-idp cns fn2-core)
+                              (equal (fn2-machine-kind cns fn2-core) *fn2-cns-kind*)
+                              (< (fn2-machine-slot cns fn2-core)
+                                 (fn2-cns-rows (fn2-cns-table fn2-core)))))
+                :rule-classes (:rewrite :forward-chaining)
+                :hints (("Goal" :in-theory (enable fn2-cns-append-read-contextp
+                                                   fn2-cns-snapshot-read-code
+                                                   fn2-machine-phase-read-code)))))))
+         ((eq (car x) 'fn2-core-preserves)
+          `(encapsulate ()
+             (local (in-theory (disable nfix min posp floor mod
+                                        |(< x (if a b c))| |(< (if a b c) x)|)))
+             ,x))
          ((and (equal (car x) 'defmachine-run) (consp (cdr x)) (symbolp (cadr x)))
           (let ((k (cadr x)))
             `(make-event
@@ -112,8 +133,12 @@
                 (if (equal patched ev)
                     (er soft 'assembly-callbacks-e-cns "Could not patch ~x0." ',k)
                   (value patched))))))
-         (t (cons (fn2-ecns-patch-runs (car x)) (fn2-ecns-patch-runs (cdr x)))))))
-(make-event
- (mv-let (erp exp) (macroexpand1-cmp '(fn2-cns-events) 'assembly-callbacks-e-cns (w state) (default-defun-mode (w state)))
-   (if erp (er soft 'assembly-callbacks-e-cns "Expand failed.")
-     (value (fn2-ecns-patch-runs exp)))))
+         (t (cons (fn2-ecns-patch-form (car x) wrld) (fn2-ecns-patch-form (cdr x) wrld))))))
+(defmacro fn2-ecns-fast-events (form)
+  `(make-event
+    (mv-let (erp exp) (macroexpand1-cmp ',form 'assembly-callbacks-e-cns (w state) (default-state-vars nil))
+      (if erp (er soft 'assembly-callbacks-e-cns "Expand failed: ~x0" ',form)
+        (value (fn2-ecns-patch-form exp (w state)))))))
+(fn2-ecns-fast-events (fn2-auth-read-events))
+(fn2-ecns-fast-events (fn2-authority-depend-events))
+(fn2-ecns-fast-events (fn2-cns-events))

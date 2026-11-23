@@ -18,6 +18,7 @@
                   :rule-classes :forward-chaining))))
 (make-event
  (value `(local (in-theory (enable ,@(fn2-core-child-wfp-forward-runes *fn2-core-children*))))))
+(local (in-theory (e/d (fn2-commit-core-invariant) (fn2-core-wfp-commit-opaque))))
 (defcost ceiling :doc "Integer ceiling of byte total over unit bytes.")
 (local
  (defun fn2-cb-arm-fns (arms)
