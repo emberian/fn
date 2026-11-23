@@ -4,10 +4,8 @@
 (include-book "ribbon")
 (include-book "range-window-proof")
 (include-book "range-seek-step-proof")
-(include-book "runs-load-overview-proof")
 (include-book "runs-built-cache-proof")
-(include-book "runs-overview-cursor-proof")
-(include-book "runs-overview-emit-proof")
+(include-book "runs-overview-write-read-proof")
 
 (local
  (defthm fn2-range-value-after-set

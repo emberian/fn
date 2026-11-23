@@ -192,3 +192,16 @@
                             fn2-run-read-bytes fn2-run-load-bytes fn2-run-unload-values fn2-layout-octets
                             fn2-layout-copy fn2-run-overview-prefix-octets fn2-overview-entry-emit-group
                             fn2-overview-entry-size fn-b3-octet-listp binary-append true-list-fix))))
+
+(defthm fn2-run-overview-wire-size
+ (implies (and (natp base) (natp (fn2-fields-ref-len (+ base 4) f))
+               (natp (fn2-fields-value base f)) (natp (fn2-fields-value (+ base 1) f))
+               (natp (fn2-fields-value (+ base 2) f)) (natp (fn2-fields-value (+ base 3) f)))
+          (equal (len (fn2-layout-octets *fn2-overview-entry*
+                       (fn2-run-unload-values *fn2-overview-entry* base f pool)))
+                 (fn2-overview-entry-size base f)))
+ :rule-classes nil
+ :hints (("Goal" :use (fn2-run-overview-wire-and-size)
+          :in-theory (disable fn2-overview-entry-size fn2-run-overview-prefix-octets fn2-run-unload-values
+                              fn2-layout-octets fn2-run-read-bytes fn2-fields-value fn2-fields-ref-len
+                              fn2-fields-ref-slot fn2-fields-ref-gen fn2-fields-ref-off binary-append fn-b3-octet-listp))))

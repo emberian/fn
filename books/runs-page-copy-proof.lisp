@@ -1,6 +1,6 @@
 ; Copying a payload after a variable-length header writes the complete byte sequence.
 (in-package "ACL2")
-(include-book "runs-load-bytes-proof")
+(include-book "runs-load-frame-proof")
 
 (defthmd fn2-run-load-byte-segments
   (let ((head (fn2-run-load-bytes a slot gen off pk ps pg pool)))
@@ -65,29 +65,6 @@
                            (fn2-pool-write fn2-pool-read fn2-pool-base fn2-run-read-bytes unsigned-byte-p))))))
 
 (local
- (defthm fn2-run-other-readable-range-after-write
-  (implies (and (natp src) (natp dst) (not (equal src dst)) (natp (fn2-pool-base dst pool)))
-           (equal (fn2-layout-range-code src sg at end nil pk ps pg
-                                         (mv-nth 1 (fn2-pool-write dst dg off byte pk ps pg pool)))
-                  (fn2-layout-range-code src sg at end nil pk ps pg pool)))
-  :hints (("Goal" :in-theory
-           (e/d (fn2-layout-range-code fn2-pool-slot-fill fn2-pool-slot-base fn2-pool-capacity-bytes
-                 fn2-pool-write fn2-pool-readable-code fn2-pool-handle-code fn2-pool-ownerp
-                 fn2-pool-set-fill update-fn2-pool-fill$ai update-fn2-pool-datai nth-update-nth)
-                (nth update-nth fn2-pool-workspace-code unsigned-byte-p))))))
-
-(local
- (defthm fn2-run-load-source-range-and-bases
-  (let ((after (mv-nth 1 (fn2-run-load-bytes bytes dst dg off pk ps pg pool))))
-    (and (equal (fn2-pool-base i after) (fn2-pool-base i pool))
-         (implies (and (natp src) (natp dst) (not (equal src dst)) (natp (fn2-pool-base dst pool)))
-                  (equal (fn2-layout-range-code src sg at end nil pk ps pg after)
-                         (fn2-layout-range-code src sg at end nil pk ps pg pool)))))
-  :hints (("Goal" :induct (fn2-run-load-bytes bytes dst dg off pk ps pg pool)
-           :in-theory (e/d (fn2-run-load-bytes fn2-pool-write-keeps-extents)
-                           (fn2-pool-write fn2-pool-base fn2-layout-range-code))))))
-
-(local
  (defthm fn2-run-load-separate-from-source
   (let* ((source (+ (fn2-pool-base src pool) at)) (target (+ (fn2-pool-base dst pool) off))
          (after (mv-nth 1 (fn2-run-load-bytes bytes dst dg off pk ps pg pool))))
@@ -125,7 +102,7 @@
   :hints (("Goal" :use ((:instance fn2-run-load-bytes-roundtrip (bytes header) (slot dst)
                                    (gen dg) (cap (+ off (len header) n))))
            :in-theory (e/d (fn2-layout-copy fn2-run-copy-writes-source-octets fn2-run-load-byte-segments
-                            fn2-run-load-source-range-and-bases fn2-run-load-separate-from-source)
+                            fn2-run-load-preserves-other-range fn2-run-load-preserves-base fn2-run-load-separate-from-source)
                            (fn2-layout-copy-loop fn2-run-load-bytes fn2-run-read-bytes
                             fn2-pool-base fn2-layout-range-code fn-b3-octet-listp unsigned-byte-p)))))
 
