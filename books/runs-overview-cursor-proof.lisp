@@ -3,6 +3,7 @@
 (include-book "runs-seek-budget-proof")
 (include-book "runs-overview-decode-proof")
 (include-book "runs-page-scan-proof")
+(include-book "runs-page-row-budget-proof")
 
 (local
  (defthm fn2-run-readable-page-prefix
@@ -22,14 +23,15 @@
    (implies (and (fn2-run-values-layoutp layout row) (natp base)
                  (<= (+ base (len layout)) (fn2-fields-rows f))
                  (unsigned-byte-p 32 off) (unsigned-byte-p 32 end) (<= bound end)
-                 (<= (len bytes) *fn2-codec-decode-fuel*)
                  (fn2-poolp pool) (fn2-pool-wfp pool) (natp (fn2-pool-base slot pool))
                  (eq (fn2-layout-range-code slot gen off end nil pk ps pg pool) :ok)
                  (equal (fn2-run-read-bytes (len bytes) slot gen off pk ps pg pool) bytes))
             (and (equal (car read) :ok) (equal (mv-nth 1 read) bound))))
  :rule-classes nil
  :hints (("Goal" :cases ((and (integerp level) (< 0 level)))
-          :use (fn2-run-overview-page-decode-refines-layout
+          :use ((:instance fn2-run-overview-admission-fits-decoder
+                   (layout (if (and (integerp level) (< 0 level)) *fn2-overview-index* *fn2-overview-entry*)))
+                fn2-run-overview-page-decode-refines-layout
                 (:instance fn2-run-readable-page-prefix
                    (bound (+ off (len (fn2-layout-octets
                        (if (and (integerp level) (< 0 level)) *fn2-overview-index* *fn2-overview-entry*) row)))))
@@ -57,7 +59,6 @@
                 (unsigned-byte-p 60 unit) (unsigned-byte-p 60 counter)
                 (natp rb) (<= (+ base (len *fn2-overview-entry*)) (fn2-fields-rows f))
                 (posp off) (unsigned-byte-p 32 end) (<= bound end)
-                (<= (len bytes) *fn2-codec-decode-fuel*)
                 (fn2-poolp pool) (fn2-pool-wfp pool) (natp (fn2-pool-base slot pool))
                 (eq (fn2-layout-range-code slot gen off end nil pk ps pg pool) :ok)
                 (equal (fn2-run-read-bytes (len bytes) slot gen off pk ps pg pool) bytes))
