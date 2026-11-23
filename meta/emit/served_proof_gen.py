@@ -677,12 +677,30 @@ class TupleShapeAnalyzer:
 
     def _countdown_info(self, fn_name):
         formals, body, _, just = self.fn_defs[fn_name]
-        if just is None:
-            return None
-        # Check if LayerAWorld emitted a `(NFIX <formal>).nfix + 1` countdown on formal index 0
-        if not formals:
+        if just is None or not formals:
             return None
         v0 = formals[0]
+        expected_measure = f"(NFIX {v0})"
+        if isinstance(just, dict):
+            wfr = just.get("wfr") or {}
+            if (just.get("state") != "present"
+                    or wfr.get("subversive", True)
+                    or wfr.get("domain") not in ("O-P", "T")
+                    or wfr.get("relation") != "O<"
+                    or just.get("measure") != expected_measure):
+                return None
+        elif isinstance(just, List) and len(just) == 4 and str(just[0]) == "JUSTIFICATION":
+            wfr_part, m_part = just[2], just[3]
+            if (not isinstance(wfr_part, List) or len(wfr_part) != 4
+                    or str(wfr_part[0]) != "NIL"
+                    or str(wfr_part[1]) not in ("O-P", "T")
+                    or str(wfr_part[2]) != "."
+                    or str(wfr_part[3]) != "O<"
+                    or not isinstance(m_part, List) or not m_part
+                    or show(m_part[0]) != expected_measure):
+                return None
+        else:
+            return None
         # Verify recursive calls in body pass `(BINARY-+ '-1 <v0>)` or `(BINARY-+ '-1 (NFIX <v0>))`
         ok = [False]
         bad = [False]
@@ -1265,10 +1283,14 @@ def read_next_ast(n, kinfo, core_mode):
             read_next_ast(xs[3], kinfo, core_mode),
         )
     if head == ":CASE":
-        key = ("var", str(xs[1]))
+        if len(xs) < 2:
+            raise UnsupportedArmError(f"malformed :next {show(n)}")
+        key = read_expr_ast(xs[1], kinfo, core_mode)
         clauses = xs[2:]
 
         def go_next_case(cls):
+            if not cls:
+                raise UnsupportedArmError(f"a :next :case needs an :otherwise: {show(n)}")
             cl = list(as_list(cls[0]))
             cs, rhs = cl[0], cl[1]
             if isinstance(cs, Atom) and str(cs) == ":OTHERWISE":

@@ -117,5 +117,32 @@ class AdapterRefusalControls(unittest.TestCase):
         with self.assertRaisesRegex(UnsupportedArmError,'core result tuple shape'):
             b.prove_core_call({'op':'F'},None)
 
+    def test_countdown_shape_requires_verified_nfix_justification(self):
+        from served_proof_gen import TupleShapeAnalyzer
+        rec_body=term(['IF',['<',['QUOTE',0],'N'],
+                       ['LOOP',['BINARY-+',['QUOTE',-1],'N']],
+                       ['CONS',['QUOTE',1],['CONS',['QUOTE',2],['QUOTE','NIL']]]])
+        valid_just={
+            'state':'present',
+            'subset':['N'],
+            'wfr':{'domain':'O-P','relation':'O<','subversive':False},
+            'measure':'(NFIX N)',
+        }
+        widx={'mod_of':{'LOOP':'M'}}
+        good=TupleShapeAnalyzer({'LOOP':(['N'],rec_body,[],valid_just)},widx)
+        self.assertTrue(good.ensure('LOOP',2))
+
+        for bad_just in [
+            None,
+            A(':MISSING'),
+            dict(valid_just, measure='(ACL2-COUNT N)'),
+            dict(valid_just, measure='(NFIX M)'),
+            dict(valid_just, wfr={'domain':'O-P','relation':'O<','subversive':True}),
+            dict(valid_just, wfr={'domain':'O-P','relation':'CUSTOM-LT','subversive':False}),
+        ]:
+            with self.subTest(just=bad_just):
+                bad=TupleShapeAnalyzer({'LOOP':(['N'],rec_body,[],bad_just)},widx)
+                self.assertFalse(bad.ensure('LOOP',2))
+
 
 if __name__=='__main__': unittest.main()

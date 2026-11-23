@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from emit_certificate import *
 from emit_embed import alist_value
 from served_proof_gen import emit_served_proofs, is_nil
-from served_semantic_inventory import function_semantics, semantic_inventory
+from served_semantic_inventory import decode_justification, function_semantics, semantic_inventory
 
 BASE = Path(__file__).resolve().parents[2]
 
@@ -478,8 +478,14 @@ def generate(src):
                 lbody = proposal_body(name, lbody, fms, att)
                 sout_dec = decode(d[':STOBJS-OUT']) if ':STOBJS-OUT' in d else Atom('NIL')
                 sout = [] if is_nil(sout_dec) else [None if is_nil(x) else str(x) for x in as_list(sout_dec)]
-                just_dec = decode(d[':JUSTIFICATION']) if ':JUSTIFICATION' in d else Atom('NIL')
-                just = None if is_nil(just_dec) else just_dec
+                just = None
+                if ':JUSTIFICATION' in d:
+                    try:
+                        parsed_just = decode_justification(d[':JUSTIFICATION'], formals=fms)
+                        if parsed_just['state'] == 'present':
+                            just = parsed_just
+                    except (ValueError, TypeError):
+                        just = None
                 fn_defs[name] = (fms, lbody, sout, just)
                 extra_calls[name] = calls_of(lbody, set())
                 acl2.write('('+name+' . '+packed_text(row)+')\n')
