@@ -6,7 +6,9 @@
 (include-book "enqueue-trace")
 
 (defun fn2-core-query-heldp (slot gen fn2-core)
- (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                 :guard-hints (("Goal" :in-theory (e/d ((:forward-chaining fn2-pool-wfp-of-fn2-core-pool))
+                                                       (fn2-core-wfp fn2-pool-query-heldp))))))
  (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (held)
   (fn2-pool-query-heldp slot gen fn2-pool) held))
 (in-theory (disable fn2-core-query-heldp))
@@ -27,12 +29,27 @@
          (stopped (assoc-eq 'stopped (fn2-machine-property name :columns world))))
    (cons `((equal kind ,kind)
            (and (or ,@phases)
-                ,(if stopped `(equal (,(fn2-machine-row-reader name 'stopped) owner fn2-core) 0) t)))
+                ,(if stopped
+                     `(and (eq (,(fn2-columns-sym name "-SNAPSHOT-READ-CODE") owner fn2-core) :ok)
+                           (equal (,(fn2-machine-row-reader name 'stopped) owner fn2-core) 0))
+                   t)))
          (fn2-query-live-clauses (cdr names) world)))))
+(defun fn2-query-snapshot-codes (names)
+ (declare (xargs :verify-guards nil))
+ (if (atom names) nil
+  (cons (fn2-columns-sym (car names) "-SNAPSHOT-READ-CODE")
+        (fn2-query-snapshot-codes (cdr names)))))
 (make-event
  (value
   `(defun fn2-query-owner-livep (kind owner generation fn2-core)
-    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                    :guard-hints (("Goal" :in-theory (disable fn2-core-wfp
+                                                              fn2-machine-idp
+                                                              fn2-machine-kind
+                                                              fn2-machine-generation
+                                                              fn2-machine-phase
+                                                              ,@(fn2-query-snapshot-codes (fn2-machine-names (w state)))
+                                                              ,@(fn2-machine-row-readers (fn2-machine-names (w state))))))))
     (and (fn2-machine-idp owner fn2-core)
          (equal (fn2-machine-kind owner fn2-core) kind)
          (equal (fn2-machine-generation owner fn2-core) generation)
@@ -49,17 +66,24 @@
 ; Consume only a delivered or obsolete notification. A scheduler refusal
 ; leaves the bit retained in the stopped core; diagnostic loss never does.
 (defun fn2-query-ref-consume (tx fn2-core)
- (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                 :guard-hints (("Goal" :in-theory (e/d ((:forward-chaining fn2-id-decides-wfp-of-fn2-core-id-decides))
+                                                       (fn2-core-wfp fn2-id-decides-rows))))))
  (stobj-let ((fn2-id-decides (fn2-core-id-decides fn2-core))) (fn2-id-decides)
   (if (and (natp tx) (< tx (fn2-id-decides-rows fn2-id-decides)))
       (fn2-id-decides-set-qwake tx 0 fn2-id-decides) fn2-id-decides)
   fn2-core))
 (fn2-core-preserves fn2-query-ref-consume (tx fn2-core) :rows nil
- :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+ :hints (("Goal" :in-theory (e/d ((:forward-chaining fn2-id-decides-wfp-of-fn2-core-id-decides))
+                                 (fn2-id-decides-rows)))))
 (in-theory (disable fn2-query-ref-consume))
 
 (defun fn2-query-ref-flush (tx fn2-core)
- (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                 :guard-hints (("Goal" :in-theory (e/d ((:forward-chaining fn2-id-decides-wfp-of-fn2-core-id-decides))
+                                                       (fn2-core-wfp fn2-id-decides-rows
+                                                        fn2-id-decides-qwake fn2-id-decides-qk
+                                                        fn2-id-decides-qs fn2-id-decides-qg))))))
  (if (fn2-core-stopped-p fn2-core) fn2-core
   (stobj-let ((fn2-id-decides (fn2-core-id-decides fn2-core)))
    (pending kind owner generation)
@@ -77,5 +101,7 @@
              (let ((fn2-core (fn2-core-record-enqueue owner fn2-core)))
               (fn2-query-ref-consume tx fn2-core)))))))))
 (fn2-core-preserves fn2-query-ref-flush (tx fn2-core) :rows nil
- :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+ :hints (("Goal" :in-theory (e/d ((:forward-chaining fn2-id-decides-wfp-of-fn2-core-id-decides))
+                                 (fn2-id-decides-rows fn2-id-decides-qwake
+                                  fn2-id-decides-qk fn2-id-decides-qs fn2-id-decides-qg)))))
 (in-theory (disable fn2-query-ref-flush))
