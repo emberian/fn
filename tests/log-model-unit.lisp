@@ -61,6 +61,38 @@
         (not (fn2-lm-acknowledged-in-historyp '(2 1) recovered)))))
 (assert-event (equal (fn2-lm-ack-recovery-negative) t))
 
+; Hypothesis-removal tooth 4: :acknowledge 2 alone covers batch 1, so
+; :bad-tail 1 destroys acknowledged history that no acknowledgement names.
+; A membership test passes this state; broad recovery may then lose batch 2.
+(defconst *fn2-lm-test-ack2-tail1*
+  (list (list :submit-batch *fn2-lm-test-b1*) (list :submit-batch *fn2-lm-test-b2*)
+        '(:batch-writes-complete 1 (body-a manifest-a)) '(:batch-writes-complete 2 (body-b))
+        '(:fence-ok 1) '(:fence-ok 2) '(:acknowledge 2) '(:crash) '(:bad-tail 1)))
+(defun fn2-lm-ack-cumulative-tail-negative ()
+  (declare (xargs :verify-guards nil))
+ (let ((s (fn2-lm-trace-state *fn2-lm-test-ack2-tail1*)))
+   (and (equal (fn2-lm-state-acknowledged s) '(2))
+        (not (member-equal (fn2-lm-state-bad-tail s) (fn2-lm-state-acknowledged s)))
+        (fn2-cm-persistence-fence *fn2-lm-test-broad*)
+        (not (fn2-lm-no-destructionp s))
+        (fn2-lm-recovery-allowedp *fn2-lm-test-ack2-tail1* *fn2-lm-test-broad* :unknown nil)
+        (not (fn2-lm-acknowledged-in-historyp (fn2-lm-state-acknowledged s) nil)))))
+(assert-event (equal (fn2-lm-ack-cumulative-tail-negative) t))
+
+; The order test's other side: a dirty tail above every acknowledgement is a
+; crash tear, and the whole keystone antecedent and conclusion hold.
+(defconst *fn2-lm-test-ack1-tail2*
+  (list (list :submit-batch *fn2-lm-test-b1*)
+        '(:batch-writes-complete 1 (body-a manifest-a)) '(:fence-ok 1) '(:acknowledge 1)
+        (list :submit-batch *fn2-lm-test-b2*) '(:crash) '(:bad-tail 2)))
+(assert-event
+ (let ((s (fn2-lm-trace-state *fn2-lm-test-ack1-tail2*))
+       (recovered (list *fn2-lm-test-b1*)))
+   (and (fn2-lm-no-destructionp s)
+        (fn2-lm-durable-ack-hyps *fn2-lm-test-ack1-tail2* *fn2-lm-test-honest*
+                                 :torn-tail recovered)
+        (fn2-lm-acknowledged-in-historyp (fn2-lm-state-acknowledged s) recovered))))
+
 ; ROUND2 E.5 row 1: honest fence/no later destruction, including repeated death.
 (assert-event
  (and (fn2-lm-recovery-allowedp

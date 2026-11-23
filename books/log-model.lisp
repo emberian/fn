@@ -187,10 +187,21 @@
         (fn2-lm-conflicting-witness (cdr witnesses) recovered))
     nil))
 
+(defun fn2-lm-acks-below-p (acked bound)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp acked)
+      (and (< (nfix (car acked)) (nfix bound))
+           (fn2-lm-acks-below-p (cdr acked) bound))
+    t))
+
+; :acknowledge k covers batches 1..k, so a dirty tail at or below any
+; acknowledged number destroys acknowledged history, named or not: after
+; :acknowledge 2 alone, :bad-tail 1 destroys batch 1 underneath it.
 (defun fn2-lm-no-destructionp (s)
   (declare (xargs :guard t :verify-guards nil))
   (and (not (consp (fn2-lm-state-corrupt s))) (null (fn2-lm-state-rollback s))
-       (not (member-equal (fn2-lm-state-bad-tail s) (fn2-lm-state-acknowledged s)))))
+       (or (null (fn2-lm-state-bad-tail s))
+           (fn2-lm-acks-below-p (fn2-lm-state-acknowledged s) (fn2-lm-state-bad-tail s)))))
 
 ; Non-executable checksum premise for B5's refinement statement: the profile
 ; selection alone must never stand in for the named integrity assumption.
@@ -264,5 +275,6 @@
   (implies (fn2-lm-durable-ack-hyps trace profile classification recovered-history)
            (fn2-lm-acknowledged-in-historyp
             (fn2-lm-state-acknowledged (fn2-lm-trace-state trace)) recovered-history))
-  :teeth (fn2-lm-ack-positive fn2-lm-ack-fence-negative fn2-lm-ack-destruction-negative fn2-lm-ack-recovery-negative)
+  :teeth (fn2-lm-ack-positive fn2-lm-ack-fence-negative fn2-lm-ack-destruction-negative
+          fn2-lm-ack-recovery-negative fn2-lm-ack-cumulative-tail-negative)
   :schema :crash :doc "B1 specification obligation for HISTORY/RECOVERY; not a proof of B3 commit or B5 recovery.")
