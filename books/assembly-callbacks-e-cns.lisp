@@ -379,29 +379,29 @@
                               (equal (fn2-cns-row-xrow cns fn2-core) x)
                               (natp x) (integerp x) (<= 0 x)
                               (< x (fn2-reads-rows (fn2-core-reads fn2-core)))
-                              (< x (fn2-ranges-rows (fn2-core-ranges fn2-core)))
-                              (< x (fn2-seeks-rows (fn2-core-seeks fn2-core)))
-                              (< (+ (fn2-id-decides-rows (fn2-core-id-decides fn2-core)) x)
-                                 (fn2-succ-txns-rows (fn2-core-succ-txns fn2-core)))
+                              (< x (nth *fn2-ranges-rows* (fn2-core-ranges fn2-core)))
+                              (< x (nth *fn2-seeks-rows* (fn2-core-seeks fn2-core)))
+                              (< (+ (nth *fn2-id-decides-rows* (fn2-core-id-decides fn2-core)) x)
+                                 (nth *fn2-succ-txns-rows* (fn2-core-succ-txns fn2-core)))
                               (equal (fn2-seeks-phase x (fn2-core-seeks fn2-core))
                                      *fn2-seek-phase-idle*)))
                 :rule-classes :forward-chaining
-                :hints (("Goal" :in-theory (union-theories '(fn2-cns-read-contextp natp)
+                :hints (("Goal" :in-theory (union-theories '(fn2-cns-read-contextp natp
+                                                             fn2-ranges-rows fn2-seeks-rows
+                                                             fn2-id-decides-rows fn2-succ-txns-rows)
                                                            (theory 'minimal-theory))))))
              (local
               (defthm fn2-ecns-range-contextp-implies-read-contextp
                 (implies (fn2-cns-range-contextp cns gen x fn2-core)
                          (and (fn2-cns-read-contextp cns gen x fn2-core)
                               (equal (fn2-succ-txns-lphase
-                                      (+ (fn2-id-decides-rows (fn2-core-id-decides fn2-core)) x)
+                                      (+ (nth *fn2-id-decides-rows* (fn2-core-id-decides fn2-core)) x)
                                       (fn2-core-succ-txns fn2-core))
                                      *fn2-succ-lookup-idle*)))
                 :rule-classes :forward-chaining
-                :hints (("Goal" :in-theory (union-theories '(fn2-cns-range-contextp)
+                :hints (("Goal" :in-theory (union-theories '(fn2-cns-range-contextp fn2-id-decides-rows)
                                                            (theory 'minimal-theory))))))
-             (local (in-theory (disable fn2-cns-read-contextp fn2-cns-range-contextp
-                                        fn2-ranges-rows fn2-seeks-rows
-                                        fn2-id-decides-rows fn2-succ-txns-rows)))))
+             (local (in-theory (disable fn2-cns-read-contextp fn2-cns-range-contextp)))))
          ((and (eq (car x) 'defun) (eq (cadr x) 'fn2-cns-range-scalar-keyp))
           `(progn
              ,x
