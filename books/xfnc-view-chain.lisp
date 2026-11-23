@@ -2,7 +2,9 @@
 ; The caller supplies the bound history and version, never the request.
 (in-package "ACL2")
 (include-book "fnct-stream")
+(include-book "blake3-word-frames")
 (fn2-book-layer :e)
+(local (include-book "arithmetic-3/floor-mod/floor-mod" :dir :system))
 
 (defconst *fn2-xfnc-chain-genesis-tag* "fn2-xfnc-chain-v1/genesis")
 (defconst *fn2-xfnc-chain-item-tag* "fn2-xfnc-chain-v1/item")
@@ -12,24 +14,31 @@
 (defconst *fn2-xfnc-chain-region* 129)
 (defconst *fn2-xfnc-evidence-interpretation* 1)
 
+(local (in-theory (disable floor mod fn2-digestsp fn2-digests-wfp fn2-digests-rows
+                           fn2-b3p fn2-b3-wfp fn2-b3-rows)))
+
 (defun fn2-xfnc-chain-feed-be (row value width fn2-digests fn2-b3)
  (declare (xargs :stobjs (fn2-digests fn2-b3) :measure (nfix width)
                  :guard (and (fn2-b3-ready row fn2-b3 fn2-digests) (natp value)
                              (natp width) (<= width 8))))
- (if (or (zp width) (> width 8)) (mv fn2-digests fn2-b3)
+ (if (or (not (mbt (fn2-b3-ready row fn2-b3 fn2-digests))) (zp width) (> width 8)) (mv fn2-digests fn2-b3)
    (mv-let (fn2-digests fn2-b3)
-    (fn2-b3-byte row (mod (ash (nfix value) (- (* 8 (- width 1)))) 256) fn2-digests fn2-b3)
+    (fn2-b3-byte row (fn2-fc-word-byte (nfix value) (- width 1)) fn2-digests fn2-b3)
     (fn2-xfnc-chain-feed-be row value (- width 1) fn2-digests fn2-b3))))
 (fn2-digests-preserves fn2-xfnc-chain-feed-be
  (row value width fn2-digests fn2-b3)
  :carriers ((fn2-digests 0 :prefix "-DIGESTS") (fn2-b3 1 :prefix "-HASHER")))
+(fn2-hash-row-frames fn2-xfnc-chain-feed-be fn2-digests fn2-b3)
+(fn2-b3-word-frame fn2-xfnc-chain-feed-be :stripe)
 (in-theory (disable fn2-xfnc-chain-feed-be))
 
 (defun fn2-xfnc-chain-feed-digest (row previous i fn2-digests fn2-b3)
  (declare (xargs :stobjs (fn2-digests fn2-b3) :measure (nfix (- 32 (nfix i)))
                  :guard (and (fn2-b3-ready row fn2-b3 fn2-digests)
                              (fn2-digest-rowp previous fn2-digests) (natp i) (<= i 32))))
- (if (or (not (natp i)) (>= i 32)) (mv fn2-digests fn2-b3)
+ (if (or (not (mbt (and (fn2-b3-ready row fn2-b3 fn2-digests)
+                        (fn2-digest-rowp previous fn2-digests))))
+         (not (natp i)) (>= i 32)) (mv fn2-digests fn2-b3)
    (mv-let (fn2-digests fn2-b3)
     (fn2-b3-byte row (fn2-fc-word-byte (fn2-digest-word previous (floor i 4) fn2-digests) (mod i 4))
                 fn2-digests fn2-b3)
@@ -37,6 +46,8 @@
 (fn2-digests-preserves fn2-xfnc-chain-feed-digest
  (row previous i fn2-digests fn2-b3)
  :carriers ((fn2-digests 0 :prefix "-DIGESTS") (fn2-b3 1 :prefix "-HASHER")))
+(fn2-hash-row-frames fn2-xfnc-chain-feed-digest fn2-digests fn2-b3)
+(fn2-b3-word-frame fn2-xfnc-chain-feed-digest :stripe)
 (in-theory (disable fn2-xfnc-chain-feed-digest))
 
 (defun fn2-xfnc-chain-genesis (row history incarnation revision principal stream view interpretation fn2-digests fn2-b3)
