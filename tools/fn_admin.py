@@ -11,6 +11,7 @@ distinct at every boundary.
 from __future__ import annotations
 
 import argparse
+import ctypes
 from collections.abc import Callable
 from contextlib import suppress
 import hashlib
@@ -29,7 +30,7 @@ EXIT_REFUSED = 1
 EXIT_ERROR = 2
 EXIT_UNCERTAIN = 3
 
-# --- Pure BLAKE3-256 (for FNCT frame sealing & verification) ---
+# --- BLAKE3-256 for FNCT frame sealing & verification: native fn_b3_hash when built, pure Python otherwise ---
 _IV = (
     0x6A09E667, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A,
     0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19,
@@ -73,7 +74,7 @@ def _chunk_output(data: bytes, counter: int):
     return cv, last.ljust(64, b"\0"), len(last), flags, counter
 
 
-def blake3(data: bytes) -> bytes:
+def _blake3_py(data: bytes) -> bytes:
     data = bytes(data)
     chunks = [data[i:i + 1024] for i in range(0, len(data), 1024)] or [b""]
     outs = [_chunk_output(c, n) for n, c in enumerate(chunks)]
@@ -89,6 +90,59 @@ def blake3(data: bytes) -> bytes:
     cv, block, ln, fl, ctr = outs[0]
     words = _compress(cv, block, ctr, ln, fl | _ROOT)
     return b"".join(w.to_bytes(4, "little") for w in words)
+
+
+_NATIVE_LIB_NAMES = ("libfn-blake3.dylib", "libfn-blake3.so")  # host/build-blake3.sh output names
+_SELFCHECK_INPUTS = (b"", b"fn2-blake3-selfcheck-" * 60)
+_native_b3 = None
+_native_b3_probed = False
+
+
+def _native_candidates() -> list[Path]:
+    env = os.environ.get("FN2_BLAKE3_LIBRARY")
+    if env:
+        return [Path(env)]
+    lib = Path(__file__).resolve().parents[1] / "build" / "lib"
+    return [lib / n for n in _NATIVE_LIB_NAMES]
+
+
+def _load_native_blake3():
+    """The native `fn_b3_hash` from host/fn2-blake3.c, or None when no library is built.
+
+    FN2_BLAKE3_LIBRARY, when set, is the only candidate and must load. A loaded library
+    must agree with `_blake3_py` on the self-check inputs or this raises RuntimeError."""
+    global _native_b3, _native_b3_probed
+    if _native_b3_probed:
+        return _native_b3
+    env_set = bool(os.environ.get("FN2_BLAKE3_LIBRARY"))
+    fn = None
+    for path in _native_candidates():
+        if not path.is_file():
+            if env_set:
+                raise RuntimeError(f"FN2_BLAKE3_LIBRARY={path} does not exist")
+            continue
+        lib = ctypes.CDLL(str(path))
+        fn = lib.fn_b3_hash
+        fn.argtypes = (ctypes.c_char_p, ctypes.c_size_t, ctypes.c_char_p)
+        fn.restype = None
+        for probe in _SELFCHECK_INPUTS:
+            if _native_digest(fn, probe) != _blake3_py(probe):
+                raise RuntimeError(f"native fn_b3_hash in {path} disagrees with BLAKE3 on a {len(probe)}-octet input")
+        break
+    _native_b3, _native_b3_probed = fn, True
+    return fn
+
+
+def _native_digest(fn, data: bytes) -> bytes:
+    out = ctypes.create_string_buffer(32)
+    fn(data, len(data), out)
+    return out.raw
+
+
+def blake3(data: bytes) -> bytes:
+    fn = _load_native_blake3()
+    data = bytes(data)
+    return _native_digest(fn, data) if fn is not None else _blake3_py(data)
 
 
 # --- FNCT framing & layout codecs (books/layout.lisp, authority-codec.lisp, consumer-codec.lisp) ---
