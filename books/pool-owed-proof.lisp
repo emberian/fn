@@ -1,6 +1,5 @@
-; Discharges fn2-pool-byte-fill, fn2-pool-no-reuse and fn2-pool-generation.
-; fn2-pool-stale is FALSE as stated and stays owed: on :release it holds exactly
-; when the slot is not credit-held and release is admitted (see the end).
+; Discharges fn2-pool-byte-fill, fn2-pool-no-reuse, fn2-pool-generation and
+; fn2-pool-stale.
 (in-package "ACL2")
 (include-book "pool")
 (include-book "owed-discharge")
@@ -268,60 +267,16 @@
   :hints (("Goal" :in-theory '(fn2-pool-no-reuse$owed) :use fn2-pool-no-reuse-holds)))
 (fn2-owed-discharge fn2-pool-no-reuse fn2-pool-no-reuse-proved)
 
-;; ---------------------------------------------------------------------------
-;; FN2-POOL-STALE is FALSE as stated; it is NOT discharged and stays (:owed).
-;;
-;; fn2-pool-release decides two things before the generation: the credit-group
-;; test (:credit), and release-body's mbt on fn2-pool-release-countp (:ok, pool
-;; unchanged). fn2-pool-stale-hyps asks only fn2-pool-wfp, so neither is
-;; excluded. Every other handle operation tests the generation first.
-;;
-;; Counterexample 1 (a semantic pool, inside every guard; evaluated below):
-;;   p  = (fn2-pool-set-credit-group 0 0 (fn2-pool-init '((1 . 4)) 0 5 fn2-pool))
-;;   op = :release   a = '(0 7 0 0 0)
-;;   (fn2-pool-stale-hyps op a p) = T: wfp, slot 0 < 1 row, gen 7 /= stored 0.
-;;   (fn2-pool-semanticp p) = T and (fn2-pool-release-countp 0 p) = T.
-;;   (fn2-pool-release 0 7 0 0 0 p) = (mv :CREDIT p), so the code is not :STALE.
-;;   A credit-held row arises in service: fn2-pool-reserve-credit (pool-credit.lisp)
-;;   writes credit-group on the row it reserves.
-;;
-;; Counterexample 2 (wfp and fn2-poolp but not semantic; outside release's guard,
-;; unreachable-in-composition; evaluated with guard checking off, not in this book):
-;;   p  = (update-fn2-pool-retired-count 1 p1), p1 = the pool after
-;;        (fn2-pool-reserve 0 1 2 3 (fn2-pool-init '((1 . 4)) 0 5 fn2-pool))
-;;   op = :release   a = '(0 7 1 2 3)
-;;   hyps = T, (fn2-pool-release-countp 0 p) = NIL (retired-count 1 = rows 1),
-;;   (fn2-pool-release 0 7 1 2 3 p) = (mv :OK p), so the code is not :STALE.
-;;   So adding only "not credit-held" to the hypotheses leaves the row false.
-;;
-;; The two theorems below fix the boundary exactly and are not a discharge.
-(defthm fn2-pool-stale-off-release
-  (implies (and (fn2-pool-stale-hyps op a p) (not (eq op :release)))
-           (fn2-pool-stale-conclusion op a p))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn2-pool-owed-ops fn2-pool-logical-slotp
-                                     fn2-pool-nslots))))
-(defthm fn2-pool-stale-on-release
-  (implies (fn2-pool-stale-hyps :release a p)
-           (iff (fn2-pool-stale$owed :release a p)
-                (and (equal (fn2-pool-credit-group (nth 0 a) p) *fn2-none*)
-                     (fn2-pool-release-countp (nth 0 a) p))))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn2-pool-owed-ops fn2-pool-stale$owed
-                                   fn2-pool-logical-slotp fn2-pool-nslots)
-                                  (fn2-pool-owed-release-admitted)))))
-; Counterexample 1, evaluated: (hyps semanticp release-countp code).
+; Every handle-taking export, release included, answers a mismatched
+; generation from fn2-pool-handle-code before any other decision.
 (local
- (defun fn2-pool-owed-stale-witness ()
-   (declare (xargs :verify-guards nil))
-   (with-local-stobj fn2-pool
-     (mv-let (r fn2-pool)
-       (let* ((fn2-pool (fn2-pool-init '((1 . 4)) 0 5 fn2-pool))
-              (fn2-pool (fn2-pool-set-credit-group 0 0 fn2-pool))
-              (hyps (fn2-pool-stale-hyps :release '(0 7 0 0 0) fn2-pool))
-              (semantic (fn2-pool-semanticp fn2-pool))
-              (admitted (fn2-pool-release-countp 0 fn2-pool)))
-         (mv-let (code fn2-pool) (fn2-pool-release 0 7 0 0 0 fn2-pool)
-           (mv (list hyps semantic admitted code) fn2-pool)))
-       r))))
-(local (assert-event (equal (fn2-pool-owed-stale-witness) '(t t t :credit))))
+ (defthm fn2-pool-stale-holds
+   (implies (fn2-pool-stale-hyps op a p)
+            (fn2-pool-stale-conclusion op a p))
+   :hints (("Goal" :in-theory (enable fn2-pool-owed-ops fn2-pool-logical-slotp
+                                      fn2-pool-nslots)))))
+(defthm fn2-pool-stale-proved
+  (fn2-pool-stale$owed op a p)
+  :rule-classes nil
+  :hints (("Goal" :in-theory '(fn2-pool-stale$owed) :use fn2-pool-stale-holds)))
+(fn2-owed-discharge fn2-pool-stale fn2-pool-stale-proved)

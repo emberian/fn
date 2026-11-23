@@ -272,10 +272,13 @@
 (defun fn2-pool-release (slot gen okind oslot ogen fn2-pool)
  (declare (xargs :stobjs fn2-pool
   :guard (and (fn2-pool-wfp fn2-pool) (fn2-pool-release-countp slot fn2-pool))))
- (if (and (natp slot) (< slot (fn2-pool-rows fn2-pool))
-          (not (equal (fn2-pool-credit-group slot fn2-pool) *fn2-none*)))
-     (mv :credit fn2-pool)
-   (fn2-pool-release-body slot gen okind oslot ogen fn2-pool)))
+ ; The handle is checked before the credit test: a stale handle to a row
+ ; since reserved under credit learns nothing about that row.
+ (let ((code (fn2-pool-handle-code slot gen fn2-pool)))
+   (cond ((not (eq code :ok)) (mv code fn2-pool))
+         ((not (equal (fn2-pool-credit-group slot fn2-pool) *fn2-none*))
+          (mv :credit fn2-pool))
+         (t (fn2-pool-release-body slot gen okind oslot ogen fn2-pool)))))
 
 (defun fn2-pool-lease-in (slot gen len opslot opgen okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))

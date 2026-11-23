@@ -902,6 +902,32 @@
        (conclusion (fn2-pool-stale-resultp code before (fn2-pool-test-snapshot fn2-pool))))
     (mv (and (equal (if hyp t nil) stalep)
              (equal (if conclusion t nil) stalep)) fn2-pool)))
+;; Release refuses a stale handle before its credit test: on a credit-held row
+;; a stale generation answers :stale with the pool unchanged, and only the
+;; current generation reaches the :credit refusal.
+(defun fn2-pool-test-stale-credit-teeth-run (stalep fn2-pool)
+  (declare (xargs :stobjs fn2-pool :verify-guards nil))
+  (b* ((fn2-pool (fn2-pool-init '((1 . 64)) 5 20 fn2-pool))
+       ((mv ?code ?slot ?gen fn2-pool) (fn2-pool-reserve 0 1 10 3 fn2-pool))
+       (fn2-pool (fn2-pool-set-credit-group 0 0 fn2-pool))
+       (g (if stalep 7 5))
+       (a (list 0 g 1 10 3))
+       (hyp (fn2-pool-stale-hyps :release a fn2-pool))
+       (before (fn2-pool-test-snapshot fn2-pool))
+       ((mv code fn2-pool) (fn2-pool-release 0 g 1 10 3 fn2-pool))
+       (conclusion (fn2-pool-stale-resultp code before (fn2-pool-test-snapshot fn2-pool))))
+    (mv (and (equal (if hyp t nil) stalep)
+             (equal (if conclusion t nil) stalep)
+             (eq code (if stalep :stale :credit))) fn2-pool)))
+(defun fn2-pool-test-stale-credit-teeth (stalep)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-pool
+    (mv-let (result fn2-pool)
+      (fn2-pool-test-stale-credit-teeth-run stalep fn2-pool)
+      result)))
+(assert-event (fn2-pool-test-stale-credit-teeth t))
+(assert-event (fn2-pool-test-stale-credit-teeth nil))
+
 (defun fn2-pool-test-stale-teeth (stalep)
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn2-pool
@@ -923,7 +949,8 @@
 ; Registry teeth run the existing full positive and negative fixtures.
 (defun fn2-pool-stale-teeth ()
   (declare (xargs :verify-guards nil))
-  (and (fn2-pool-test-stale) (fn2-pool-test-stale-teeth t) (fn2-pool-test-stale-teeth nil)))
+  (and (fn2-pool-test-stale) (fn2-pool-test-stale-teeth t) (fn2-pool-test-stale-teeth nil)
+       (fn2-pool-test-stale-credit-teeth t) (fn2-pool-test-stale-credit-teeth nil)))
 (defun fn2-pool-byte-teeth ()
   (declare (xargs :verify-guards nil))
   (and (fn2-pool-test-byte-teeth :complete-in 2 t) (fn2-pool-test-byte-teeth :complete-in 4 nil) (fn2-pool-test-byte-teeth :adapter-write 1 t) (fn2-pool-test-byte-teeth :adapter-write 2 nil)))
