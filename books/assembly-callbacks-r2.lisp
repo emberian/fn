@@ -263,7 +263,7 @@
                          ,@(fn2-columns-getter-runes
                              '(fn2-retirement-control fn2-fields fn2-extents)
                              (w state)))))))
-              ,full-install))))
+              ,full-install)))
         (body2 (and pos (append (take pos body) (cons replacement (nthcdr (+ 1 pos) body)))))
         (rpos (and body2 (position-equal '(defmachine-run fn2-commit) body2)))
         (run-patched
@@ -272,10 +272,10 @@
                   (patched (fn2-r2-wrap-success-charge ev)))
              (if (equal patched ev)
                  (er soft 'assembly-callbacks-r2 "Could not locate fn2-machine-success-charge-event in fn2-machine-run-event.")
-               (value patched))))))
+               (value patched)))))))
    (cond ((not pos)
           (er soft 'assembly-callbacks-r2 "Could not locate (fn2-checkpoint-retirement-install-events) in fn2-commit-event-forms-2b."))
          ((not rpos)
           (er soft 'assembly-callbacks-r2 "Could not locate (defmachine-run fn2-commit) in fn2-commit-event-forms-2b."))
          (t
-          (value (append (take rpos body2) (cons run-patched (nthcdr (+ 1 rpos) body2))))))))
+          (value (append (take rpos body2) (cons run-patched (nthcdr (+ 1 rpos) body2)))))))
