@@ -31,17 +31,17 @@
                            (fn2-run-header-value fn2-run-directory fn2-run-layout-compare
                             fn2-run-layout-decode fn2-run-restart-offset floor mv-nth)))))
 
-(local
- (defthm fn2-run-save-page-search
-  (let* ((saved (fn2-run-cursor-save c *fn2-run-cursor-phase-seek* level slot gen lo hi idx off
+(defthmd fn2-run-saved-cursor-position
+  (let* ((saved (fn2-run-cursor-save c phase level slot gen lo hi idx off
                                      unit counter curs)) (after (mv-nth 1 saved)))
     (implies (and (natp c) (< c (fn2-run-cursors-rows curs))
+                  (natp phase) (< phase *fn2-run-cursor-phase-count*)
                   (unsigned-byte-p 8 level) (unsigned-byte-p 32 slot) (unsigned-byte-p 60 gen)
                   (unsigned-byte-p 60 unit) (unsigned-byte-p 60 counter)
                   (unsigned-byte-p 32 lo) (unsigned-byte-p 32 hi)
                   (unsigned-byte-p 32 idx) (unsigned-byte-p 32 off))
              (and (equal (car saved) :ok)
-                  (equal (fn2-run-cursors-phase c after) *fn2-run-cursor-phase-seek*)
+                  (equal (fn2-run-cursors-phase c after) phase)
                   (equal (fn2-run-cursors-lo c after) lo)
                   (equal (fn2-run-cursors-hi c after) hi)
                   (equal (fn2-run-cursors-idx c after) idx)
@@ -70,7 +70,7 @@
                  update-fn2-run-cursors-off$ai
                  update-fn2-run-cursors-unit$ai
                  update-fn2-run-cursors-counter$ai)
-                (fn2-run-cursors-rows nth update-nth unsigned-byte-p))))))
+                (fn2-run-cursors-rows nth update-nth unsigned-byte-p)))))
 
 (defthm fn2-run-yielded-cursor-preserves-page-search
   (let* ((first (fn2-run-seek sid level steps lo hi idx off qbase rb slot gen
@@ -95,7 +95,7 @@
                          full))))
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn2-run-seek-resumes-with-remaining-budget (lv level)))
-           :in-theory (e/d (fn2-run-step-seek)
+           :in-theory (e/d (fn2-run-step-seek fn2-run-saved-cursor-position)
                            (fn2-run-seek fn2-run-cursor-save fn2-run-cursors-phase
                             fn2-run-cursors-lo fn2-run-cursors-hi fn2-run-cursors-idx
                             fn2-run-cursors-off fn2-run-cursors-rows unsigned-byte-p)))))
