@@ -287,7 +287,7 @@
               (natp (mv-nth ,(car idxs) (,name ,@args)))
               :rule-classes (:rewrite :type-prescription)
               :hints (("Goal" :do-not '(preprocess)
-                              :in-theory (union-theories '(,name ,@extra-runes natp)
+                              :in-theory (union-theories '(,name ,@extra-runes)
                                            (union-theories (executable-counterpart-theory :here)
                                                            (theory 'minimal-theory))))))
            (fn2-ecns-fast-natp-outputs name args (cdr idxs) extra-runes)))))
@@ -455,7 +455,7 @@
           `(defthm fn2-cns-decode-port-types
              ,(caddr x)
              :hints (("Goal" :do-not '(preprocess)
-                             :in-theory (union-theories '(fn2-cns-decode-port fn2-cns-decode-port-at-types natp)
+                             :in-theory (union-theories '(fn2-cns-decode-port fn2-cns-decode-port-at-types)
                                           (union-theories (executable-counterpart-theory :here)
                                                           (theory 'minimal-theory)))))))
          ((and (eq (car x) 'fn2-core-preserves)
