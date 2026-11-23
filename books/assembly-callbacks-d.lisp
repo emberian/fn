@@ -9,8 +9,15 @@
 (include-book "upload")
 (include-book "tls")
 (include-book "compress")
-(fn2-tls-op-events)
-(fn2-compress-op-events)
+(encapsulate ()
+  (make-event
+   (value `(local (in-theory (e/d ((:forward-chaining fn2-tls-config-wfp-of-fn2-core-tls-config)
+                                   (:forward-chaining fn2-compress-config-wfp-of-fn2-core-compress-config))
+                                  (nth ,@(fn2-columns-getter-runes
+                                           '(fn2-tls-config fn2-compress-config)
+                                           (w state))))))))
+  (fn2-tls-op-events)
+  (fn2-compress-op-events))
 (fn2-upload-op-events)
 (fn2-book-layer :d)
 ;; The effective durable principal of consumer request CNS of generation
