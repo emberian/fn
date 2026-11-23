@@ -6,8 +6,7 @@
 (include-book "range-seek-step-proof")
 (include-book "runs-load-overview-proof")
 (include-book "runs-built-cache-proof")
-(include-book "runs-seek-budget-proof")
-(include-book "runs-overview-decode-proof")
+(include-book "runs-overview-cursor-proof")
 (include-book "runs-overview-emit-proof")
 
 (local
