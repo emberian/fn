@@ -344,8 +344,7 @@
          ((and (eq (car x) 'fn2-core-preserves)
                (consp (cdr x)))
           `(encapsulate ()
-             (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p)
-                                        nfix min posp floor mod
+             (local (in-theory (disable nfix min posp floor mod
                                         fn2-cns-snapshot-read-code fn2-ctl-snapshot-read-code
                                         fn2-machine-phase-read-code
                                         |(< x (if a b c))| |(< (if a b c) x)|)))
