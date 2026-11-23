@@ -18,7 +18,41 @@
                                            (w state))))))))
   (fn2-tls-op-events)
   (fn2-compress-op-events))
-(fn2-upload-op-events)
+(local
+ (in-theory (enable (:forward-chaining fn2-pool-wfp-of-fn2-core-pool)
+                    (:forward-chaining fn2-input-config-wfp-of-fn2-core-input-config)
+                    (:forward-chaining fn2-extents-wfp-of-fn2-core-extents)
+                    (:forward-chaining fn2-fields-wfp-of-fn2-core-fields)
+                    (:forward-chaining fn2-b3-wfp-of-fn2-core-b3)
+                    (:forward-chaining fn2-digests-wfp-of-fn2-core-digests)
+                    (:forward-chaining fn2-ops-wfp-of-fn2-core-ops))))
+(make-event
+ (value `(local (in-theory (disable nth
+                                    ,@(fn2-columns-getter-runes
+                                        '(fn2-input-config fn2-extents fn2-fields)
+                                        (w state)))))))
+(local
+ (defun fn2-subst-tree (new old x)
+   (declare (xargs :mode :program))
+   (cond ((equal x old) new)
+         ((atom x) x)
+         (t (cons (fn2-subst-tree new old (car x))
+                  (fn2-subst-tree new old (cdr x)))))))
+(make-event
+ (mv-let (erp exp state)
+   (macroexpand1-cmp '(fn2-upload-op-events) 'assembly-callbacks-d (w state) (default-state-vars nil))
+   (if erp
+       (er soft 'assembly-callbacks-d "macroexpand1-cmp failed on fn2-upload-op-events")
+     (let ((patched (fn2-subst-tree
+                     '(if (and (natp slot) (< slot (fn2-pool-rows fn2-pool)))
+                          (fn2-pool-slot-fill slot fn2-pool)
+                        0)
+                     '(fn2-pool-slot-fill slot fn2-pool)
+                     exp)))
+       (if (equal patched exp)
+           (er soft 'assembly-callbacks-d "Could not patch fn2-pool-slot-fill in fn2-upload-op-events")
+         (value `(progn ,patched
+                        (in-theory (disable fn2-upload-chunk-fill)))))))))
 (fn2-book-layer :d)
 ;; The effective durable principal of consumer request CNS of generation
 ;; GEN (section 1): its control connection's, the owner's or the one it
