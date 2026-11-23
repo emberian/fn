@@ -7,8 +7,41 @@
 
 (defmacro fn2-upload-stream-settle-op-events ()
  '(progn
+   (local
+    (defthm fn2-ussn-pool-code-ok-slot-bound
+      (and (implies (equal (fn2-pool-workspace-code slot gen okind oslot ogen fn2-pool) :ok)
+                    (< slot (fn2-pool-rows fn2-pool)))
+           (implies (equal (fn2-pool-readable-code slot gen okind oslot ogen fn2-pool) :ok)
+                    (< slot (fn2-pool-rows fn2-pool))))
+      :rule-classes (:rewrite
+                     (:linear :corollary
+                      (implies (equal (fn2-pool-workspace-code slot gen okind oslot ogen fn2-pool) :ok)
+                               (< slot (fn2-pool-rows fn2-pool))))
+                     (:linear :corollary
+                      (implies (equal (fn2-pool-readable-code slot gen okind oslot ogen fn2-pool) :ok)
+                               (< slot (fn2-pool-rows fn2-pool)))))
+      :hints (("Goal" :in-theory (e/d (fn2-pool-workspace-code fn2-pool-readable-code fn2-pool-handle-code)
+                                      (fn2-pool-rows))))))
+   (local
+    (defthm fn2-ussn-pool-query-ref-count-numberp
+      (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool)
+                    (natp i) (< i (fn2-pool-rows fn2-pool)))
+               (and (integerp (fn2-pool-query-ref-count i fn2-pool))
+                    (rationalp (fn2-pool-query-ref-count i fn2-pool))
+                    (acl2-numberp (fn2-pool-query-ref-count i fn2-pool))))
+      :hints (("Goal" :in-theory (disable fn2-pool-query-ref-count fn2-poolp fn2-pool-wfp fn2-pool-rows)))))
+   (local
+    (defthm fn2-ussn-am-get-entry-unit-rationalp
+      (implies (natp (mv-nth 4 (fn2-am-get-entry base ls lg at end okind oslot ogen fn2-fields fn2-pool)))
+               (and (integerp (mv-nth 4 (fn2-am-get-entry base ls lg at end okind oslot ogen fn2-fields fn2-pool)))
+                    (rationalp (mv-nth 4 (fn2-am-get-entry base ls lg at end okind oslot ogen fn2-fields fn2-pool)))
+                    (acl2-numberp (mv-nth 4 (fn2-am-get-entry base ls lg at end okind oslot ogen fn2-fields fn2-pool)))))))
    (defun fn2-upload-stream-settle-next (id gen fn2-core)
-    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                    :guard-hints (("Goal" :do-not '(preprocess)
+                                          :in-theory (disable fn2-pool-workspace-code fn2-pool-readable-code
+                                                              fn2-pool-query-ref-count
+                                                              fn2-layout-range-code floor mod min nfix)))))
     (b* (((unless (and (eq (fn2-upload-snapshot-read-code id fn2-core) :ok)
                        (posp gen) (unsigned-byte-p 60 gen)
                        (equal (fn2-machine-generation id fn2-core) gen)
@@ -58,9 +91,13 @@
               (fn2-upload-payload-settle (floor unit *fn2-storage-extent-units*) epoch allocation fn2-core)
             (mv :ok fn2-core)))
          ((unless (eq settled :ok)) (mv :fault fn2-core))
-         (fn2-core (fn2-machine-write-stream-repack id (- next *fn2-upload-page-provisional*) fn2-core)))
+         (fn2-core (fn2-upload-put-core id (stream-repack (- next *fn2-upload-page-provisional*)))))
      (mv :ok fn2-core)))
-   (fn2-core-preserves fn2-upload-stream-settle-next (id gen fn2-core) :position 1 :rows nil)
+   (fn2-core-preserves fn2-upload-stream-settle-next (id gen fn2-core) :position 1 :rows nil
+    :hints (("Goal" :do-not '(preprocess)
+                    :in-theory (disable fn2-pool-workspace-code fn2-pool-readable-code
+                                        fn2-pool-query-ref-count
+                                        fn2-layout-range-code floor mod min nfix unsigned-byte-p))))
    (defcost fn2-upload-stream-settle-next
     :answers (:ok :end :fault) :faults (:fault) :bytes *fn2-upload-entry-bytes*
     :tables (fn2-core-fields fn2-core-extents fn2-upload-table fn2-core-machines)

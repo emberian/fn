@@ -7,7 +7,7 @@ import unittest
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / 'books/columns-observation-frames.lisp'
+SOURCE = ROOT / 'books/columns.lisp'
 sys.path.insert(0, str(ROOT / 'tools'))
 import lisp_rewrite as lr
 

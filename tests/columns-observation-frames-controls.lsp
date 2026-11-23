@@ -12,9 +12,13 @@
 (defun fn2-columns-col-name (table field) (fn2-columns-sym table (concatenate 'string "-" (symbol-name field))))
 (defmacro er (mode context message &rest args)
  (declare (ignore mode)) `(error "~S ~S ~S" ',context ,message (list ,@args)))
-(with-open-file (in (or (sb-ext:posix-getenv "FRAME_SOURCE") "books/columns-observation-frames.lisp"))
+(with-open-file (in (or (sb-ext:posix-getenv "FRAME_SOURCE") "books/columns.lisp"))
  (loop for form = (read in nil :eof) until (eq form :eof) do
-  (when (member (car form) '(defun defmacro)) (eval form))))
+  (when (and (consp form)
+             (member (car form) '(defun defmacro))
+             (member (cadr form) '(fn2-columns-observation-frame-event
+                                   defcolumns-observation-frame)))
+   (eval form))))
 (defun fixture-world ()
  (list :rows '(((:columns sources) :columns ((hash-offset :u64) (unit-hashed :u32))))
        :properties

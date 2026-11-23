@@ -1599,6 +1599,11 @@
 
 ;; Once per world: the base theory, each child's update facts, the readers'
 ;; congruences, and the stop's contracts.
+(defun fn2-arm-frame-child-accessors (children)
+  (declare (xargs :verify-guards nil))
+  (if (atom children) nil
+    (list* (caar children) (fn2-columns-pre "UPDATE-" (caar children))
+           (fn2-arm-frame-child-accessors (cdr children)))))
 (defun fn2-arm-frame-child-events (children k m pidx)
   ; M the directory's index, PIDX the children the phase reads
   (declare (xargs :verify-guards nil))
@@ -1608,37 +1613,32 @@
        (and (not (equal k m))
             `((defthm ,(fn2-columns-pre "FN2-ARM-SLOT-OF-" update)
                 (equal (fn2-machine-slot fn2-arm-id (,update v c)) (fn2-machine-slot fn2-arm-id c))
-                :hints (("Goal" :in-theory (union-theories '(,update) (theory 'fn2-arm-frame-base))
-                         :use ((:instance fn2-arm-slot-congruence (id fn2-arm-id) (a (,update v c)) (b c))))))))
+                :hints (("Goal" :use ((:instance fn2-arm-slot-congruence (id fn2-arm-id) (a (,update v c)) (b c))))))))
        (and (not (member k pidx))
             `((defthm ,(fn2-columns-pre "FN2-ARM-PHASE-OF-" update)
                 (equal (fn2-machine-phase fn2-arm-id (,update v c)) (fn2-machine-phase fn2-arm-id c))
-                :hints (("Goal" :in-theory (union-theories '(,update) (theory 'fn2-arm-frame-base))
-                         :use ((:instance fn2-arm-phase-congruence (id fn2-arm-id) (a (,update v c)) (b c))))))))
+                :hints (("Goal" :use ((:instance fn2-arm-phase-congruence (id fn2-arm-id) (a (,update v c)) (b c))))))))
       (list*
        ; a declared child, or a write-back of the child as read
        `(defthm ,(fn2-columns-pre "FN2-ARM-KIDS-OF-" update)
           (implies (and (fn2-arm-kids 0 fn2-arm-free fn2-arm-c0 c) (or (member-equal ,k fn2-arm-free) (equal v (,field c))))
                    (fn2-arm-kids 0 fn2-arm-free fn2-arm-c0 (,update v c)))
-          :hints (("Goal" :in-theory (union-theories '(,update ,field) (theory 'fn2-arm-frame-base))
-                   :use ((:instance fn2-arm-kids-update (i 0) (a fn2-arm-c0) (b c) (k ,k) (free fn2-arm-free))
-                         (:instance fn2-arm-kids-update-same (i 0) (a fn2-arm-c0) (b c) (k ,k) (free fn2-arm-free))))))
+          :hints (("Goal" :use ((:instance fn2-arm-kids-update (i 0) (a fn2-arm-c0) (b c) (k ,k) (free fn2-arm-free))
+                                (:instance fn2-arm-kids-update-same (i 0) (a fn2-arm-c0) (b c) (k ,k) (free fn2-arm-free))))))
        ; the written child against its current value (an inline put of the
        ; row builds V from it by setters; a write-back of it is V = it)
        `(defthm ,(fn2-columns-pre "FN2-ARM-ROW-FRAME-OF-" update)
           (implies (and (fn2-arm-row-frame fn2-arm-tb fn2-arm-row fn2-arm-cs fn2-arm-ch fn2-arm-c0 c) (natp fn2-arm-tb)
                         (or (member-equal ,k fn2-arm-ch) (and (equal fn2-arm-tb ,k) (fn2-arm-cols 0 fn2-arm-row fn2-arm-cs (,field c) v))))
                    (fn2-arm-row-frame fn2-arm-tb fn2-arm-row fn2-arm-cs fn2-arm-ch fn2-arm-c0 (,update v c)))
-          :hints (("Goal" :in-theory (union-theories '(,update ,field) (theory 'fn2-arm-frame-base))
-                   :use ((:instance fn2-arm-row-frame-child (table fn2-arm-tb) (columns fn2-arm-cs) (children fn2-arm-ch) (a fn2-arm-c0) (b c) (k ,k) (row fn2-arm-row))
-                         (:instance fn2-arm-row-frame-table (table fn2-arm-tb) (columns fn2-arm-cs) (children fn2-arm-ch) (a fn2-arm-c0) (b c) (row fn2-arm-row))
-                         (:instance fn2-arm-row-frame-cols (table fn2-arm-tb) (columns fn2-arm-cs) (children fn2-arm-ch) (a fn2-arm-c0) (b c) (row fn2-arm-row))
-                         (:instance fn2-arm-cols-trans (k 0) (row fn2-arm-row) (columns fn2-arm-cs) (a (nth fn2-arm-tb fn2-arm-c0)) (b (nth fn2-arm-tb c)) (c v))))))
+          :hints (("Goal" :use ((:instance fn2-arm-row-frame-child (table fn2-arm-tb) (columns fn2-arm-cs) (children fn2-arm-ch) (a fn2-arm-c0) (b c) (k ,k) (row fn2-arm-row))
+                                (:instance fn2-arm-row-frame-table (table fn2-arm-tb) (columns fn2-arm-cs) (children fn2-arm-ch) (a fn2-arm-c0) (b c) (row fn2-arm-row))
+                                (:instance fn2-arm-row-frame-cols (table fn2-arm-tb) (columns fn2-arm-cs) (children fn2-arm-ch) (a fn2-arm-c0) (b c) (row fn2-arm-row))
+                                (:instance fn2-arm-cols-trans (k 0) (row fn2-arm-row) (columns fn2-arm-cs) (a (nth fn2-arm-tb fn2-arm-c0)) (b (nth fn2-arm-tb c)) (c v))))))
        `(defthm ,(fn2-columns-pre "FN2-ARM-COLS-OF-" field)
           (implies (and (fn2-arm-row-frame fn2-arm-tb fn2-arm-row fn2-arm-cs fn2-arm-ch fn2-arm-c0 c) (equal fn2-arm-tb ,k) (not (member-equal ,k fn2-arm-ch)))
                    (fn2-arm-cols 0 fn2-arm-row fn2-arm-cs (nth fn2-arm-tb fn2-arm-c0) (,field c)))
-          :hints (("Goal" :in-theory (union-theories '(,field) (theory 'fn2-arm-frame-base))
-                   :use ((:instance fn2-arm-row-frame-cols (table fn2-arm-tb) (columns fn2-arm-cs) (children fn2-arm-ch) (a fn2-arm-c0) (b c) (row fn2-arm-row))))))
+          :hints (("Goal" :use ((:instance fn2-arm-row-frame-cols (table fn2-arm-tb) (columns fn2-arm-cs) (children fn2-arm-ch) (a fn2-arm-c0) (b c) (row fn2-arm-row))))))
        (fn2-arm-frame-child-events (cdr children) (+ 1 k) m pidx))))))
 (defun fn2-arm-frame-child-runes (children k m pidx)
   (declare (xargs :verify-guards nil))
@@ -1717,7 +1717,10 @@
         :hints (("Goal" :in-theory (enable fn2-machine-phase fn2-machine-phase-read-code fn2-machine-idp fn2-core-machines
                                            ,@(fn2-machine-machine-tables world))
                  :use ((:instance fn2-arm-slot-congruence) (:instance fn2-arm-kind-congruence)))))
-      ,@(fn2-arm-frame-child-events children 0 m (fn2-arm-frame-phase-indices world))
+      (encapsulate ()
+        (local (in-theory (union-theories '(,@(fn2-arm-frame-child-accessors children))
+                                          (theory 'fn2-arm-frame-base))))
+        ,@(fn2-arm-frame-child-events children 0 m (fn2-arm-frame-phase-indices world)))
       (in-theory (disable ,@(fn2-arm-frame-child-runes children 0 m (fn2-arm-frame-phase-indices world))))
       ,@(fn2-arm-frame-directory-events (strip-cars *fn2-machine-directory-fields*))
       (in-theory (disable ,@(fn2-arm-frame-directory-runes (strip-cars *fn2-machine-directory-fields*))))
@@ -4164,19 +4167,22 @@
   (declare (xargs :verify-guards nil))
   (let* ((code (fn2-columns-sym get "-READ-CODE"))
          (read (fn2-columns-sym get "-READ"))
-         (call `(,@args fn2-core)) (owner '(:columns fn2-machines))
+         (call `(,@args fn2-core))
+         (formals `(,@args fn2-core))
          (guard '(fn2-core-wfp fn2-core)))
     (list
-     (fn2-operation-events owner code 'fn2-core args :infer nil :access
-       `(declare (xargs :stobjs fn2-core :guard ,guard)) (list code-body) nil nil)
-     (fn2-operation-events owner get 'fn2-core args :infer nil :access
-       `(declare (xargs :stobjs fn2-core :guard (and ,guard (eq (,code ,@call) :ok))))
-       `((if (eq (,code ,@call) :ok) ,value-body
-           (prog2$ (hard-error ',get "Invalid internal machine read." nil) 0))) nil nil)
-     (fn2-operation-events owner read 'fn2-core args :infer nil :access
-       `(declare (xargs :stobjs fn2-core :guard ,guard))
-       `((let ((code (,code ,@call)))
-           (if (eq code :ok) (mv :ok (,get ,@call)) (mv code nil)))) nil nil))))
+     `(defun ,code ,formals
+        (declare (xargs :stobjs fn2-core :guard ,guard))
+        ,code-body)
+     `(defun ,get ,formals
+        (declare (xargs :stobjs fn2-core :guard (and ,guard (eq (,code ,@call) :ok))))
+        (if (eq (,code ,@call) :ok) ,value-body
+          (prog2$ (hard-error ',get "Invalid internal machine read." nil) 0)))
+     `(defun ,read ,formals
+        (declare (xargs :stobjs fn2-core :guard ,guard
+                        :guard-hints (("Goal" :in-theory (disable ,code ,get fn2-core-wfp)))))
+        (let ((code (,code ,@call)))
+          (if (eq code :ok) (mv :ok (,get ,@call)) (mv code nil)))))))
 
 (defun fn2-machine-field-cases (field names world tag writep)
   (declare (xargs :verify-guards nil))
@@ -4196,12 +4202,6 @@
                                      (,writer slot value ,name) ,name)))
                      ,(if (eq writep t) 'fn2-core 'answer)))) nil)
        (fn2-machine-field-cases field (cdr names) world (+ 1 (nfix tag)) writep)))))
-(defun fn2-machine-field-readers (field names world)
-  (declare (xargs :verify-guards nil))
-  (if (atom names) nil
-    (append (and (assoc-eq field (fn2-machine-property (car names) :columns world))
-                 (list (fn2-columns-col-name (car names) field)))
-            (fn2-machine-field-readers field (cdr names) world))))
 (defun fn2-machine-field-kinds (field names world tag)
   (declare (xargs :verify-guards nil))
   (if (atom names) nil
@@ -4214,19 +4214,62 @@
     (let ((entry (assoc-eq field (fn2-machine-property (car names) :columns world))))
       (append (and entry (list (list tag (fn2-columns-fit (cadr entry) 'value))))
               (fn2-machine-field-fits field (cdr names) world (+ 1 (nfix tag)))))))
+; Cross-kind / durable-proof / test-referenced machine column dispatchers.
+; Private single-kind columns use their own table's <KIND>-ROW-<F> reader and
+; <KIND>-PUT-CORE writer instead of materializing an all-kinds case dispatcher.
+(defconst *fn2-machine-dispatched-fields*
+  (append '(phase)
+          (strip-cars *fn2-machine-common-fields*)
+          '(stopped pending next-free pool-slot pool-gen outcome borrows
+            cap-index cap-nonce cursor event-ready mode
+            off length completed verified checksum
+            batch-no first-key member-count rec-bytes partner
+            cb-acks cb-bytes cb-cursor cb-deps-ok cb-done cb-failed
+            cb-fence-live cb-fence-ok cb-issued cb-life-member cb-life-off
+            cb-log-ok cb-mode cb-open cb-published cb-reason cb-seal-len
+            cb-stage cb-wrote
+            rc-ambiguous rc-assume rc-chain rc-class rc-dirty
+            rc-witness rc-witness-outcome)))
+(defconst *fn2-machine-writable-fields*
+  '(phase generation pending cursor checksum next-free stopped))
+(defun fn2-machine-kind-readers (name cols seen)
+  (declare (xargs :verify-guards nil))
+  (if (atom cols) nil
+    (append (and (not (member-eq (caar cols) seen))
+                 (list (fn2-columns-col-name name (caar cols))))
+            (fn2-machine-kind-readers name (cdr cols) seen))))
+(defun fn2-machine-all-column-readers (names seen world)
+  (declare (xargs :verify-guards nil))
+  (if (atom names) nil
+    (append (fn2-machine-kind-readers (car names) (fn2-machine-property (car names) :columns world) seen)
+            (fn2-machine-all-column-readers (cdr names) seen world))))
+(defun fn2-machine-readonly-getters (fields)
+  (declare (xargs :verify-guards nil))
+  (if (atom fields) nil
+    (append (and (not (member-eq (car fields) *fn2-machine-writable-fields*))
+                 (list (fn2-columns-col-name 'fn2-machine (car fields))))
+            (fn2-machine-readonly-getters (cdr fields)))))
+(defun fn2-machine-all-readonly-getters (names seen world)
+  (declare (xargs :verify-guards nil))
+  (if (atom names) nil
+    (let* ((cols (fn2-machine-property (car names) :columns world))
+           (raw (set-difference-eq (strip-cars cols) seen))
+           (new (intersection-eq raw *fn2-machine-dispatched-fields*)))
+      (append (fn2-machine-readonly-getters new)
+              (fn2-machine-all-readonly-getters (cdr names) (append raw seen) world)))))
 (defun fn2-machine-field-events (field kind names world)
   (declare (xargs :verify-guards nil))
   (let* ((get (fn2-columns-col-name 'fn2-machine field))
          (put (fn2-columns-col-name 'fn2-machine (fn2-columns-pre "SET-" field)))
          (write (fn2-columns-col-name 'fn2-machine (fn2-columns-pre "WRITE-" field)))
          (width (fn2-columns-width kind))
+         (writablep (member-eq field *fn2-machine-writable-fields*))
          (supported (fn2-machine-field-kinds field names world 0))
          (valid `(and (unsigned-byte-p ,width value) (fn2-machine-idp id fn2-core)
                       (member-equal (fn2-machine-kind id fn2-core) ',supported)
                       (case (fn2-machine-kind id fn2-core)
                         ,@(fn2-machine-field-fits field names world 0) (otherwise nil)))))
-    `((in-theory (disable ,@(fn2-machine-field-readers field names world)))
-      ,@(fn2-machine-checked-reader-events get '(id)
+    `(,@(fn2-machine-checked-reader-events get '(id)
           `(if (not (fn2-machine-idp id fn2-core)) :bounds
              (let ((slot (fn2-machine-slot id fn2-core)))
                (case (fn2-machine-kind id fn2-core)
@@ -4236,33 +4279,52 @@
                ,@(fn2-machine-field-cases field names world 0 :value) (otherwise 0))))
       (defthm ,(fn2-columns-sym get "-NATP")
         (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)) (natp (,get id fn2-core)))
-        :rule-classes :type-prescription)
+        :rule-classes :type-prescription
+        :hints (("Goal" :in-theory (disable fn2-corep fn2-core-wfp fn2-machine-idp
+                                            fn2-machine-kind fn2-machine-slot))))
       (defthm ,(fn2-columns-sym get "-BOUND")
         (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-                 (< (,get id fn2-core) ,(expt 2 width))) :rule-classes :linear)
-      (defun ,put (id value fn2-core)
-        (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) ,valid)))
-        (if (not ,valid) fn2-core
-          (let ((slot (if (fn2-machine-idp id fn2-core) (fn2-machine-slot id fn2-core) *fn2-none*)))
-            (case (fn2-machine-kind id fn2-core)
-              ,@(fn2-machine-field-cases field names world 0 t) (otherwise fn2-core)))))
-      (defthm ,(fn2-columns-sym put "-TYPE")
-        (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)) (fn2-corep (,put id value fn2-core))))
-      ; Through core.lisp's per-child facts: each case sees only its own table.
-      (defthm ,(fn2-columns-sym put "-WFP")
-        (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-                 (fn2-core-wfp (,put id value fn2-core))))
-      (in-theory (disable ,get ,put))
-      (defun ,write (id value fn2-core)
-        (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-        (if ,valid (,put id value fn2-core) (fn2-machine-refuse-write fn2-core)))
-      (defthm ,(fn2-columns-sym write "-TYPE")
-        (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-                 (fn2-corep (,write id value fn2-core))))
-      (defthm ,(fn2-columns-sym write "-WFP")
-        (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-                 (fn2-core-wfp (,write id value fn2-core))))
-      (in-theory (disable ,write)))))
+                 (< (,get id fn2-core) ,(expt 2 width)))
+        :rule-classes :linear
+        :hints (("Goal" :in-theory (disable fn2-corep fn2-core-wfp fn2-machine-idp
+                                            fn2-machine-kind fn2-machine-slot))))
+      ,@(and writablep
+             `((defun ,put (id value fn2-core)
+                 (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) ,valid)))
+                 (if (not ,valid) fn2-core
+                   (let ((slot (if (fn2-machine-idp id fn2-core) (fn2-machine-slot id fn2-core) *fn2-none*)))
+                     (case (fn2-machine-kind id fn2-core)
+                       ,@(fn2-machine-field-cases field names world 0 t) (otherwise fn2-core)))))
+               (defthm ,(fn2-columns-sym put "-TYPE")
+                 (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)) (fn2-corep (,put id value fn2-core)))
+                 :hints (("Goal" :in-theory (disable fn2-corep fn2-core-wfp fn2-machine-idp
+                                                     fn2-machine-kind fn2-machine-slot unsigned-byte-p))))
+               ; Through core.lisp's per-child meta rule: each case sees only its own table.
+               (defthm ,(fn2-columns-sym put "-WFP")
+                 (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+                          (fn2-core-wfp (,put id value fn2-core)))
+                 :hints (("Goal" :in-theory (disable fn2-corep fn2-core-wfp fn2-machine-idp
+                                                     fn2-machine-kind fn2-machine-slot unsigned-byte-p))))
+               (in-theory (disable ,get ,put))
+               (defun ,write (id value fn2-core)
+                 (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                                 :guard-hints (("Goal" :in-theory (disable ,put fn2-machine-refuse-write
+                                                                           fn2-core-wfp fn2-machine-idp fn2-machine-kind
+                                                                           unsigned-byte-p member-equal)))))
+                 (if ,valid (,put id value fn2-core) (fn2-machine-refuse-write fn2-core)))
+               (defthm ,(fn2-columns-sym write "-TYPE")
+                 (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+                          (fn2-corep (,write id value fn2-core)))
+                 :hints (("Goal" :in-theory (e/d (,write)
+                                                 (fn2-corep fn2-core-wfp fn2-machine-idp fn2-machine-kind
+                                                  unsigned-byte-p member-equal ,put fn2-machine-refuse-write)))))
+               (defthm ,(fn2-columns-sym write "-WFP")
+                 (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+                          (fn2-core-wfp (,write id value fn2-core)))
+                 :hints (("Goal" :in-theory (e/d (,write)
+                                                 (fn2-corep fn2-core-wfp fn2-machine-idp fn2-machine-kind
+                                                  unsigned-byte-p member-equal ,put fn2-machine-refuse-write)))))
+               (in-theory (disable ,write)))))))
 (defun fn2-machine-fields-events (fields cols names world)
   (declare (xargs :verify-guards nil))
   (if (atom fields) nil
@@ -4324,13 +4386,21 @@
                     (fn2-core-wfp (,write id value fn2-core))))
          (in-theory (disable ,write)))
        (fn2-machine-directory-field-events (cdr fields))))))
-(defun fn2-machine-all-field-events (names all world seen)
+(defun fn2-machine-all-field-events-1 (names all world seen)
   (declare (xargs :verify-guards nil))
   (if (atom names) nil
     (let* ((cols (fn2-machine-property (car names) :columns world))
-           (new (set-difference-eq (strip-cars cols) seen)))
+           (raw (set-difference-eq (strip-cars cols) seen))
+           (new (intersection-eq raw *fn2-machine-dispatched-fields*)))
       (append (fn2-machine-fields-events new cols all world)
-              (fn2-machine-all-field-events (cdr names) all world (append new seen))))))
+              (fn2-machine-all-field-events-1 (cdr names) all world (append raw seen))))))
+(defun fn2-machine-all-field-events (names all world seen)
+  (declare (xargs :verify-guards nil))
+  (let ((ro-gets (fn2-machine-all-readonly-getters names seen world))
+        (col-readers (remove-duplicates-eq (fn2-machine-all-column-readers all seen world))))
+    (append (and col-readers `((in-theory (disable ,@col-readers))))
+            (fn2-machine-all-field-events-1 names all world seen)
+            (and ro-gets `((in-theory (disable ,@ro-gets)))))))
 (defmacro fn2-machine-put (id &rest fields)
   (if (assoc-eq 'phase fields)
       (er hard 'defmachine "Phase writes require the kind's PUT-CORE macro.")

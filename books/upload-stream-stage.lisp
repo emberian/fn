@@ -27,11 +27,24 @@
 
 (defmacro fn2-upload-stream-stage-events ()
  '(progn
+(local
+ (defthm fn2-uss-pool-workspace-code-ok-slot-bound
+   (implies (equal (fn2-pool-workspace-code slot gen okind oslot ogen fn2-pool) :ok)
+            (< slot (fn2-pool-rows fn2-pool)))
+   :rule-classes (:rewrite
+                  (:linear :trigger-terms
+                   ((fn2-pool-workspace-code slot gen okind oslot ogen fn2-pool))))
+   :hints (("Goal" :in-theory (e/d (fn2-pool-workspace-code fn2-pool-handle-code)
+                                   (fn2-pool-rows))))))
 ;; No work can be borrowed from a future C1 window.  C0's actual filled
 ;; delimiter is the fixed header boundary; C1 holds only the resident tail
 ;; of STREAM-END.  Thus SOURCE-CURSOR must be in C0 or the current C1 range.
 (defun fn2-upload-stream-stage (id gen fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                  :guard-hints (("Goal" :do-not '(preprocess)
+                                        :in-theory (disable fn2-pool-workspace-code fn2-pool-range-in
+                                                            fn2-feed-header-complete-p fn2-gram-fill
+                                                            fn2-upload-stored-hasher min nfix)))))
   (b* (((unless (and (eq (fn2-upload-snapshot-read-code id fn2-core) :ok)
                      (equal (fn2-machine-generation id fn2-core) gen)
                      (equal (fn2-upload-row-lease id fn2-core) *fn2-upload-lease-held*)
@@ -86,7 +99,7 @@
              ((mv code fn2-core)
               (fn2-upload-digest-store hrow ls lg *fn2-upload-page-stored-source* id gen fn2-core)))
           (let ((fn2-core (if (eq code :ok)
-                              (fn2-machine-write-stream-stored-finalized id 1 fn2-core) fn2-core)))
+                              (fn2-upload-put-core id (stream-stored-finalized 1)) fn2-core)))
             (mv (if (eq code :ok) :ok :fault) 0 fn2-core))))
        ((when (equal used *fn2-commit-unit-bytes*)) (mv :idle 0 fn2-core))
        (prefix (< cursor ilen))
@@ -126,9 +139,16 @@
         (fn2-core-copy-range src src-gen off ls lg stage-off length
                              *fn2-upload-kind* id gen fn2-core))
        ((unless (eq ccode :ok)) (mv :fault 0 fn2-core))
-       (fn2-core (if last (fn2-machine-write-stream-stored-finalized id 1 fn2-core) fn2-core))
-       (fn2-core (fn2-machine-write-stored-hashed id (+ cursor length) fn2-core))
-       (fn2-core (fn2-machine-write-stream-stage-used id (+ used length) fn2-core)))
+       (fn2-core (if last
+                     (fn2-upload-put-core id (stream-stored-finalized 1)
+                                          (stored-hashed (+ cursor length))
+                                          (stream-stage-used (+ used length)))
+                   (fn2-upload-put-core id (stored-hashed (+ cursor length))
+                                        (stream-stage-used (+ used length))))))
     (mv :ok length fn2-core)))
-(fn2-core-preserves fn2-upload-stream-stage (id gen fn2-core) :position 2 :rows nil)
+(fn2-core-preserves fn2-upload-stream-stage (id gen fn2-core) :position 2 :rows nil
+  :hints (("Goal" :do-not '(preprocess)
+                  :in-theory (disable fn2-pool-workspace-code fn2-pool-range-in
+                                      fn2-feed-header-complete-p fn2-gram-fill
+                                      fn2-upload-stored-hasher min nfix unsigned-byte-p))))
 (in-theory (disable fn2-upload-stream-stage))))

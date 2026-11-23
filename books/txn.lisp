@@ -776,8 +776,7 @@
                   (mv copy fn2-core)))
             (mv :ok fn2-core)))
          ((unless (eq copy :ok)) (mv :fault fn2-core))
-         (fn2-core (fn2-machine-write-append-numbers-len owner (if accepted numbers-len 0) fn2-core))
-         (fn2-core (fn2-machine-write-name-len owner len fn2-core)))
+         (fn2-core (fn2-cns-put-core owner (append-numbers-len (if accepted numbers-len 0)) (name-len len))))
      (fn2-cns-post-outcome owner ogen request word position posted fn2-core)))))
 (fn2-core-preserves fn2-txn-post-article-result (claim upload ugen owner ogen request word numbers-off numbers-len position posted fn2-core)
   :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp fn2-claim-rowp))))
@@ -896,8 +895,7 @@
        (word (if (equal outcome *fn2-txn-outcome-accepted*)
                  *fn2-upload-word-accepted*
                *fn2-upload-word-conflict*))
-       (fn2-core (fn2-machine-write-name-len owner midlen fn2-core))
-       (fn2-core (fn2-machine-write-append-numbers-len owner numbers-len fn2-core))
+       (fn2-core (fn2-cns-put-core owner (name-len midlen) (append-numbers-len numbers-len)))
        ((mv posted fn2-core) (fn2-cns-post-outcome owner ogen request word event *fn2-cns-posted-accepted* fn2-core)))
     (mv (if (eq posted :ok) :found :dropped) fn2-core)))
 (fn2-core-preserves fn2-txn-retry-append (tx upload ugen owner ogen request fn2-core)
@@ -1297,7 +1295,7 @@
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (b* (((mv pick id &) (fn2-commit-pick fn2-core))
        ((when (and (eq pick :join) (fn2-commit-idp id fn2-core)))
-        (+ (nfix (fn2-machine-first-key id fn2-core)) (nfix (fn2-machine-member-count id fn2-core))))
+        (+ (nfix (fn2-commit-row-first-key id fn2-core)) (nfix (fn2-commit-row-member-count id fn2-core))))
        ((mv & key & &) (fn2-commit-frontier fn2-core)))
     (nfix key)))
 (defthm fn2-txn-prospective-event-natp

@@ -14,10 +14,10 @@
 (defun fn2-columns-getter-runes (tables world)
  (declare (ignore world))
  (loop for table in tables append (list (fn2-columns-sym table "-VALUE") (fn2-columns-sym table "-ROWS"))))
-(dolist (path '("books/columns-guard-hints.lisp" "books/columns-call-guards.lisp"))
+(dolist (path '("books/columns.lisp"))
  (with-open-file (in path)
  (loop for form = (read in nil :eof) until (eq form :eof) do
-  (when (and (eq (car form) 'defun)
+  (when (and (consp form) (eq (car form) 'defun)
              (member (cadr form) '(fn2-columns-guard-tablesp fn2-columns-guard-hint
                                   fn2-columns-input-tables fn2-columns-framed-callees
                                   fn2-columns-call-guard-hint))) (eval form)))))

@@ -28,10 +28,10 @@
  (if (fn2-commit-idp peer fn2-core) (nfix (fn2-machine-phase peer fn2-core)) *fn2-commit-state-free*))
 (defun fn2-commit-peer-batch-no (peer fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
- (if (fn2-commit-idp peer fn2-core) (nfix (fn2-machine-batch-no peer fn2-core)) 0))
+ (if (fn2-commit-idp peer fn2-core) (nfix (fn2-commit-row-batch-no peer fn2-core)) 0))
 (defun fn2-commit-peer-fence-live (peer fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
- (if (fn2-commit-idp peer fn2-core) (nfix (fn2-machine-cb-fence-live peer fn2-core)) 0))
+ (if (fn2-commit-idp peer fn2-core) (nfix (fn2-commit-row-cb-fence-live peer fn2-core)) 0))
 (defthm fn2-commit-peer-reads-natp
  (and (natp (fn2-commit-peer-phase peer fn2-core))
       (natp (fn2-commit-peer-batch-no peer fn2-core))
@@ -177,7 +177,10 @@
                         :accept ()
                         :case (((:ok) (:set (cb-issued (+ 1 row-cb-issued)) (pending (+ 1 row-pending)) (cb-wrote 1))
                                       (:charge :bytes 4096 :steps *fn2-work-stage* :descriptors 1 :runnable t))
-                               (:otherwise (:stop :commit-io)))))
+                               (:otherwise
+                                ,@(fn2-commit-arm-uncertain (fn2-commit-arm-reason :issue)
+                                    '((cb-issued (+ 1 row-cb-issued)) (pending (+ 1 row-pending)) (cb-wrote 1))
+                                    '(:charge :bytes 4096 :steps *fn2-work-stage* :descriptors 1 :runnable t))))))
                       ((:exhausted) (:yield))
                       (:otherwise ,@(fn2-commit-arm-fail-in (not dep) :issue *fn2-commit-arm-mailbox-run* *fn2-commit-arm-mailbox*)))))))))))
 

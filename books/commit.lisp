@@ -50,16 +50,18 @@
 ; R5e2 (A9): a machine field read needs its read code :ok in the guard. A commit
 ; row id is valid exactly when the kind's generated snapshot check accepts it,
 ; and then every commit field read is in bounds: one lemma per declared column.
-(defun fn2-commit-idp-lemmas (fields)
+(defun fn2-commit-idp-lemmas (fields world)
  (declare (xargs :verify-guards nil))
  (if (atom fields) nil
   (let ((code (fn2-columns-sym (fn2-columns-col-name 'fn2-machine (car fields)) "-READ-CODE")))
-   (cons `(defthm ,(fn2-columns-sym 'fn2-commit-idp (concatenate 'string "-" (symbol-name (car fields))))
-           (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (fn2-commit-idp id fn2-core))
-                    (equal (,code id fn2-core) :ok))
-           :hints (("Goal" :in-theory (enable fn2-commit-idp fn2-commit-snapshot-read-code
-                                              fn2-machine-phase-read-code ,code))))
-         (fn2-commit-idp-lemmas (cdr fields))))))
+   (if (not (function-symbolp code world))
+       (fn2-commit-idp-lemmas (cdr fields) world)
+    (cons `(defthm ,(fn2-columns-sym 'fn2-commit-idp (concatenate 'string "-" (symbol-name (car fields))))
+            (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (fn2-commit-idp id fn2-core))
+                     (equal (,code id fn2-core) :ok))
+            :hints (("Goal" :in-theory (enable fn2-commit-idp fn2-commit-snapshot-read-code
+                                               fn2-machine-phase-read-code ,code))))
+          (fn2-commit-idp-lemmas (cdr fields) world))))))
 ; An internal helper given an invalid row stops the core (assert, never absorb).
 (defmacro fn2-commit-checked (id refusal body)
  `(if (fn2-commit-idp ,id fn2-core) ,body
@@ -198,7 +200,9 @@
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (eq (fn2-commit-snapshot-read-code id fn2-core) :ok))
 (make-event (value (cons 'progn (fn2-commit-idp-lemmas
-  (list* 'slot 'kind (strip-cars (fn2-machine-property 'fn2-commit :columns (w state))))))))
+  (list* 'slot 'kind (strip-cars (fn2-machine-property 'fn2-commit :columns (w state)))) (w state)))))
+(defthm fn2-commit-idp-snapshot
+ (implies (fn2-commit-idp id fn2-core) (equal (fn2-commit-snapshot-read-code id fn2-core) :ok)))
 (defthm fn2-commit-idp-from-snapshot
  (implies (equal (fn2-commit-snapshot-read-code id fn2-core) :ok) (fn2-commit-idp id fn2-core)))
 (defthm fn2-commit-idp-kind-value
@@ -244,15 +248,15 @@
   ; starts after the members already acknowledged; cb-acks stays the
   ; acknowledgement count.
   (let ((cursor (if (equal (fn2-machine-phase id fn2-core) *fn2-commit-state-uncertain*)
-                    (fn2-machine-cb-cursor id fn2-core) (fn2-machine-cb-acks id fn2-core))))
+                    (fn2-commit-row-cb-cursor id fn2-core) (fn2-commit-row-cb-acks id fn2-core))))
    (fn2-commit-put-core id (phase *fn2-commit-state-uncertain*) (cb-cursor cursor)
-    (cb-failed 1) (cb-reason (if (equal (fn2-machine-cb-failed id fn2-core) 0) reason
-                             (fn2-machine-cb-reason id fn2-core)))))))
+    (cb-failed 1) (cb-reason (if (equal (fn2-commit-row-cb-failed id fn2-core) 0) reason
+                             (fn2-commit-row-cb-reason id fn2-core)))))))
 (fn2-core-preserves fn2-commit-uncertain (id reason fn2-core) :rows nil :prefix "")
 (defun fn2-commit-timeout (id fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (fn2-commit-checked id fn2-core
-  (if (equal (fn2-machine-cb-fence-live id fn2-core) 1)
+  (if (equal (fn2-commit-row-cb-fence-live id fn2-core) 1)
       (fn2-commit-uncertain id *fn2-commit-reason-timeout* fn2-core) fn2-core)))
 (fn2-core-preserves fn2-commit-timeout (id fn2-core) :rows nil :prefix "")
 ; The arm-language barrier uses *fn2-commit-fence-timeout-us* (commit-arms).
@@ -801,7 +805,7 @@
        (let ((fn2-core (fn2-core-stop *fn2-stop-reason-commit-settle* fn2-core))) (mv :admission 0 0 fn2-core)))
       ((unless (fn2-commit-idp id fn2-core))
        (let ((fn2-core (fn2-core-stop *fn2-stop-reason-machine-phase* fn2-core))) (mv :admission 0 0 fn2-core)))
-      (batch (fn2-machine-batch-no id fn2-core))
+      (batch (fn2-commit-row-batch-no id fn2-core))
       (fn2-core (fn2-commit-put-core id (cb-open 1) (rec-bytes need))))
   (mv :ok batch (nfix key) fn2-core))))
 (fn2-core-preserves fn2-commit-txn-open (id partner slot gen len okind oslot ogen need fn2-core) :position 3 :rows nil)
@@ -810,12 +814,12 @@
 (defun fn2-commit-txn-join (id slot gen len okind oslot ogen need fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (fn2-commit-checked id (mv :admission 0 0 fn2-core)
- (b* ((m (fn2-machine-member-count id fn2-core))
-      (used (fn2-machine-rec-bytes id fn2-core))
+ (b* ((m (fn2-commit-row-member-count id fn2-core))
+      (used (fn2-commit-row-rec-bytes id fn2-core))
       ((unless (and (< m *fn2-commit-members-per-batch*) (<= (+ used (nfix need)) *fn2-commit-records-room*)))
        (mv :exhausted 0 0 fn2-core))
-      (batch (fn2-machine-batch-no id fn2-core))
-      (event (+ (fn2-machine-first-key id fn2-core) m))
+      (batch (fn2-commit-row-batch-no id fn2-core))
+      (event (+ (fn2-commit-row-first-key id fn2-core) m))
       ((mv code fn2-core) (fn2-commit-put-txn-member (fn2-commit-row id fn2-core) m slot gen len okind oslot ogen event fn2-core))
       ((unless (eq code :ok))
        (let ((fn2-core (fn2-core-stop *fn2-stop-reason-commit-settle* fn2-core))) (mv :admission 0 0 fn2-core)))
@@ -1096,7 +1100,7 @@
 (defun fn2-commit-refuse (id fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (fn2-commit-checked id fn2-core
-  (b* ((batch (fn2-machine-batch-no id fn2-core)) (first (fn2-machine-first-key id fn2-core))
+  (b* ((batch (fn2-commit-row-batch-no id fn2-core)) (first (fn2-commit-row-first-key id fn2-core))
        ; The prepared-successor edge exists once :collect has run.
        (edge (if (equal (fn2-machine-phase id fn2-core) *fn2-commit-state-collect*) 0 1))
        (fn2-core (fn2-commit-mark-abort batch first fn2-core)))
@@ -1105,17 +1109,17 @@
 (defun fn2-commit-fail (id reason fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (fn2-commit-checked id fn2-core
-  (if (equal (fn2-machine-cb-wrote id fn2-core) 0) (fn2-commit-refuse id fn2-core)
+  (if (equal (fn2-commit-row-cb-wrote id fn2-core) 0) (fn2-commit-refuse id fn2-core)
    (fn2-commit-uncertain id reason fn2-core))))
 (fn2-core-preserves fn2-commit-fail (id reason fn2-core) :rows nil :prefix "")
 (defun fn2-commit-stop-follower (id fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (fn2-commit-checked id (mv 0 *fn2-work-empty* 0 nil fn2-core)
-  (if (equal (fn2-machine-cb-wrote id fn2-core) 0)
+  (if (equal (fn2-commit-row-cb-wrote id fn2-core) 0)
    (let ((fn2-core (fn2-commit-refuse id fn2-core))) (fn2-machine-result 0 *fn2-work-mailbox* 0 t fn2-core))
   ; UNCERTAIN writes only phase and failure fields: read quiescence first.
   (let* ((quiet (and (= (fn2-machine-pending id fn2-core) 0)
-                     (= (fn2-machine-cb-fence-live id fn2-core) 0)))
+                     (= (fn2-commit-row-cb-fence-live id fn2-core) 0)))
          (fn2-core (fn2-commit-uncertain id *fn2-commit-reason-predecessor* fn2-core))
          (fn2-core (if quiet (fn2-commit-put-core id (stopped 1)) fn2-core)))
    (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core)))))
@@ -1126,11 +1130,11 @@
 (defun fn2-commit-stop-written-follower (id fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (fn2-commit-checked id (mv 0 *fn2-work-empty* 0 nil fn2-core)
-  (if (equal (fn2-machine-cb-wrote id fn2-core) 0)
+  (if (equal (fn2-commit-row-cb-wrote id fn2-core) 0)
    (let ((fn2-core (fn2-core-stop *fn2-stop-reason-commit-follower* fn2-core)))
     (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core))
   (let* ((quiet (and (= (fn2-machine-pending id fn2-core) 0)
-                     (= (fn2-machine-cb-fence-live id fn2-core) 0)))
+                     (= (fn2-commit-row-cb-fence-live id fn2-core) 0)))
          (fn2-core (fn2-commit-uncertain id *fn2-commit-reason-predecessor* fn2-core))
          (fn2-core (if quiet (fn2-commit-put-core id (stopped 1)) fn2-core)))
    (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core)))))
@@ -1160,8 +1164,8 @@
  (b* (((mv e epoch counter slot gen) (fn2-commit-resource id role fn2-core))
       (base (* 128 (fn2-commit-row id fn2-core)))
       (scratch (fn2-machine-pool-slot id fn2-core)) (sg (fn2-machine-pool-gen id fn2-core))
-      (batch (fn2-machine-batch-no id fn2-core)) (first (fn2-machine-first-key id fn2-core))
-      (members (fn2-machine-member-count id fn2-core)) (ogen (fn2-machine-generation id fn2-core)))
+      (batch (fn2-commit-row-batch-no id fn2-core)) (first (fn2-commit-row-first-key id fn2-core))
+      (members (fn2-commit-row-member-count id fn2-core)) (ogen (fn2-machine-generation id fn2-core)))
  (stobj-let ((fn2-origin (fn2-core-origin fn2-core)) (fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
   (code end fn2-fields fn2-pool)
   (fn2-commit-pack kind index base slot gen off scratch sg e epoch counter batch first members
@@ -1173,7 +1177,7 @@
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (fn2-commit-checked id fn2-core
  (b* (((mv e epoch counter & &) (fn2-commit-resource id role fn2-core))
-      (row (fn2-commit-row id fn2-core)) (batch (fn2-machine-batch-no id fn2-core)))
+      (row (fn2-commit-row id fn2-core)) (batch (fn2-commit-row-batch-no id fn2-core)))
  (stobj-let ((fn2-origin (fn2-core-origin fn2-core)) (fn2-fc-context (fn2-core-fc-context fn2-core))) (ok fn2-fc-context)
   (if (and (natp row) (< row (fn2-fc-context-rows fn2-fc-context))
            (unsigned-byte-p 32 e) (natp role) (< role 3)
@@ -1241,7 +1245,7 @@
 (defun fn2-commit-seal-context (id previous fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (fn2-commit-checked id (mv :bounds fn2-core)
- (let ((row (fn2-commit-row id fn2-core)) (batch (fn2-machine-batch-no id fn2-core))
+ (let ((row (fn2-commit-row id fn2-core)) (batch (fn2-commit-row-batch-no id fn2-core))
        (slot (fn2-machine-pool-slot id fn2-core)) (gen (fn2-machine-pool-gen id fn2-core))
        (ogen (fn2-machine-generation id fn2-core)))
  (stobj-let ((fn2-fc (fn2-core-fc fn2-core)) (fn2-fc-context (fn2-core-fc-context fn2-core))
@@ -1335,7 +1339,7 @@
        ((mv code end fn2-core)
         (if (equal mkind *fn2-commit-member-kind-txn*)
             (fn2-commit-seal-txn *fn2-commit-txn-records-max* id (* 128 (fn2-commit-row id fn2-core)) wslot wgen 0 (nfix wlen)
-                                 okind oslot wogen (+ (fn2-machine-first-key id fn2-core) (nfix index)) slot gen cursor fn2-core)
+                                 okind oslot wogen (+ (fn2-commit-row-first-key id fn2-core) (nfix index)) slot gen cursor fn2-core)
          (b* (((mv code end fn2-core) (fn2-commit-pack-core id :record-header 1 index cursor fn2-core))
               ((unless (eq code :ok)) (mv code end fn2-core)))
           (fn2-commit-pack-core id :record 1 index end fn2-core)))))
@@ -1349,9 +1353,9 @@
 (defun fn2-commit-seal-records (id slot gen fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (fn2-commit-checked id (mv :bounds fn2-core)
-  (b* ((index (fn2-machine-cb-issued id fn2-core))
-        (members (fn2-machine-member-count id fn2-core))
-        (cursor (fn2-machine-cb-cursor id fn2-core))
+  (b* ((index (fn2-commit-row-cb-issued id fn2-core))
+        (members (fn2-commit-row-member-count id fn2-core))
+        (cursor (fn2-commit-row-cb-cursor id fn2-core))
         ((mv code end fn2-core) (fn2-commit-seal-member id index cursor slot gen fn2-core))
         ((unless (eq code :ok)) (mv code fn2-core))
         ((unless (fn2-commit-idp id fn2-core)) (mv :state fn2-core))
@@ -1462,10 +1466,10 @@
 (defun fn2-commit-follower-waits (id peer fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (and (fn2-commit-idp id fn2-core) (fn2-commit-idp peer fn2-core)
-      (equal (fn2-machine-cb-wrote id fn2-core) 0)
-      (< (fn2-machine-batch-no peer fn2-core) (fn2-machine-batch-no id fn2-core))
+      (equal (fn2-commit-row-cb-wrote id fn2-core) 0)
+      (< (fn2-commit-row-batch-no peer fn2-core) (fn2-commit-row-batch-no id fn2-core))
       (not (equal (fn2-machine-phase peer fn2-core) *fn2-commit-state-free*))
-      (equal (fn2-machine-cb-wrote peer fn2-core) 0)))
+      (equal (fn2-commit-row-cb-wrote peer fn2-core) 0)))
 (in-theory (disable fn2-commit-follower-waits))
 
 
@@ -1545,7 +1549,7 @@
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (fn2-commit-checked id fn2-core
  (b* ((r (+ (* *fn2-commit-members-per-batch* (fn2-commit-row id fn2-core)) (nfix m)))
-      (batch (fn2-machine-batch-no id fn2-core)) (phase (fn2-machine-phase id fn2-core))
+      (batch (fn2-commit-row-batch-no id fn2-core)) (phase (fn2-machine-phase id fn2-core))
       ((mv ok okind oslot ogen settled event) (fn2-commit-member-owner r fn2-core))
       ((unless ok) (fn2-core-stop *fn2-stop-reason-commit-settle* fn2-core))
       ((when (equal okind 0)) fn2-core)

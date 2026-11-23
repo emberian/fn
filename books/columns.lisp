@@ -1229,3 +1229,306 @@
 (make-event
  (let ((world (w state)))
    (value `(deftheory fn2-columns-proof-theory ',(current-theory :here)))))
+
+; ----------------------------------------------------------------------
+; Opt-in guard hints, call-derived guard boundaries, carrier contracts, and
+; observation frames over public column interfaces.
+(defun fn2-columns-extra-getters (fields)
+ (declare (xargs :verify-guards nil))
+ (if (atom fields) nil
+  (append (if (fn2-columns-arrayp (car fields))
+              (list (fn2-columns-sym (caar fields) "I")
+                    (fn2-columns-sym (caar fields) "-LENGTH"))
+            (list (caar fields)))
+          (fn2-columns-extra-getters (cdr fields)))))
+(defun fn2-columns-getter-runes (tables world)
+ (declare (xargs :verify-guards nil))
+ (if (atom tables) nil
+  (let* ((table (car tables))
+         (row (fn2-decl-row (list :columns table) world)))
+   (append (fn2-columns-projection-readers table (fn2-decl-get :columns row))
+           (list (fn2-columns-sym table "-ROWS"))
+           (fn2-columns-extra-getters (fn2-decl-get :extra-fields row))
+           (fn2-columns-getter-runes (cdr tables) world)))))
+(defun fn2-columns-guard-tablesp (tables world)
+ (declare (xargs :verify-guards nil))
+ (if (atom tables) (null tables)
+  (and (fn2-decl-row (list :columns (car tables)) world)
+       (fn2-columns-guard-tablesp (cdr tables) world))))
+(defun fn2-columns-guard-hint (tables opaque enables world)
+ (declare (xargs :verify-guards nil))
+ (if (not (fn2-columns-guard-tablesp tables world))
+     (er hard 'fn2-columns-guard-hint "No column metadata for ~x0." tables)
+  (let ((closed (set-difference-equal
+                 (remove-duplicates-equal
+                  (append '(nth) opaque (fn2-columns-getter-runes tables world)))
+                 enables)))
+   ; This changes only the current proof theory. Original guards, public
+   ; NATP/BOUND/frame theorems, and explicit reader opt-ins stay intact.
+   `(:in-theory (e/d ,enables ,closed)))))
+
+; A guard proof knows its actual admitted signature and translated body. Use
+; that boundary rather than maintaining a reader list at every call site.
+(defun fn2-columns-input-tables (inputs world)
+ (declare (xargs :verify-guards nil))
+ (if (atom inputs) nil
+  (append (and (car inputs)
+               (fn2-decl-row (list :columns (car inputs)) world)
+               (list (car inputs)))
+          (fn2-columns-input-tables (cdr inputs) world))))
+(defun fn2-columns-framed-callees (callees tables world)
+ (declare (xargs :verify-guards nil))
+ (if (atom callees) nil
+  (let ((fn (car callees)))
+   (append
+    (and (intersectp-eq tables (getpropc fn 'stobjs-out nil world))
+         (getpropc (fn2-columns-sym fn "-PRESERVES-TYPE") 'theorem nil world)
+         (getpropc (fn2-columns-sym fn "-PRESERVES-WFP") 'theorem nil world)
+         (list fn))
+    (fn2-columns-framed-callees (cdr callees) tables world)))))
+(defun fn2-columns-call-guard-hint (name opaque enables world)
+ (declare (xargs :verify-guards nil))
+ (let* ((args (getpropc name 'formals :missing world))
+        (tables (remove-duplicates-equal
+                  (fn2-columns-input-tables
+                   (getpropc name 'stobjs-in nil world) world))))
+  (if (or (eq args :missing) (not tables)
+          (eq (getpropc name 'symbol-class nil world) :program))
+      (er hard 'fn2-columns-call-guard-hint
+          "No logical column-input signature for ~x0." name)
+   (fn2-columns-guard-hint tables
+    (append opaque
+     (remove-eq name
+      (fn2-columns-framed-callees
+       (all-fnnames (getpropc name 'unnormalized-body nil world)) tables world)))
+    enables world))))
+
+; Opt-in carrier facets over the actual function's typed readonly inputs.
+(defun fn2-columns-readonly-type-hyps (args inputs outputs world)
+ (declare (xargs :verify-guards nil))
+ (if (atom args) nil
+  (append
+   (if (and (car inputs) (not (member-eq (car inputs) outputs)))
+       (if (fn2-decl-row (list :columns (car inputs)) world)
+           (list (list (fn2-columns-sym (car inputs) "P") (car args)))
+         (er hard 'defcolumns-carrier-contracts
+             "Readonly input ~x0 has no column metadata." (car inputs)))
+     nil)
+   (fn2-columns-readonly-type-hyps (cdr args) (cdr inputs) outputs world))))
+
+(defun fn2-columns-contract-carriersp (carriers args inputs outputs world)
+ (declare (xargs :verify-guards nil))
+ (if (atom carriers) (null carriers)
+  (let* ((table (caar carriers)) (position (cadar carriers))
+         (at (if position position 0)))
+   (and (consp (car carriers)) (natp at)
+        (if position (< at (len outputs)) (equal (len outputs) 1))
+        (eq table (nth at outputs))
+        (member-eq table inputs) (member-eq table args)
+        (fn2-decl-row (list :columns table) world)
+        (not (member-eq table (strip-cars (cdr carriers))))
+        (fn2-columns-contract-carriersp (cdr carriers) args inputs outputs world)))))
+
+(defun fn2-columns-inherit-carrier-hints (carriers hints)
+ (declare (xargs :verify-guards nil))
+ (if (atom carriers) nil
+  (cons (if (or (not hints) (member-eq :hints (cddar carriers)))
+            (car carriers)
+          (append (car carriers) (list :hints hints)))
+        (fn2-columns-inherit-carrier-hints (cdr carriers) hints))))
+
+(defun fn2-columns-type-predicates (tables)
+ (declare (xargs :verify-guards nil))
+ (if (atom tables) nil
+  (cons (fn2-columns-sym (car tables) "P")
+        (fn2-columns-type-predicates (cdr tables)))))
+
+(defun fn2-columns-readonly-type-specs (specs predicates hyps)
+ (declare (xargs :verify-guards nil))
+ (if (atom specs) nil
+  (cons
+   (if (member-eq (cadar specs) predicates)
+       (append (list (concatenate 'string (caar specs) "-UNDER-READONLY-TYPES")
+                     (cadar specs) (caddar specs))
+               (cdddar specs) (list :hyps hyps))
+     (car specs))
+   (fn2-columns-readonly-type-specs (cdr specs) predicates hyps))))
+
+(defun fn2-columns-carrier-contract-events (name carriers typed-readonly hints world)
+ (declare (xargs :verify-guards nil))
+ (let* ((args (getpropc name 'formals :missing world))
+        (inputs (getpropc name 'stobjs-in nil world))
+        (outputs (getpropc name 'stobjs-out nil world)))
+  (if (or (eq args :missing)
+          (eq (getpropc name 'symbol-class nil world) :program)
+          (not carriers)
+          (not (fn2-columns-contract-carriersp carriers args inputs outputs world))
+          (not (subsetp-eq typed-readonly (strip-cars carriers))))
+      (er hard 'defcolumns-carrier-contracts
+          "Carrier projections do not match actual function ~x0." name)
+   (let* ((readonly (fn2-columns-readonly-type-hyps args inputs outputs world))
+          (hyps (fn2-columns-carrier-hyps carriers))
+          (specs (fn2-columns-carrier-specs
+                  (fn2-columns-inherit-carrier-hints carriers hints)))
+          (typed (fn2-columns-type-predicates typed-readonly)))
+    (if (and typed (not readonly))
+        (er hard 'defcolumns-carrier-contracts
+            "Function ~x0 has no readonly input type domain." name)
+     (fn2-columns-preserves
+      (caar carriers) name args nil hyps
+      (fn2-columns-readonly-type-specs specs typed (append hyps readonly))
+      "-PRESERVES" t t hints t nil nil nil nil))))))
+
+(defmacro defcolumns-carrier-contracts
+ (name &key carriers typed-readonly hints)
+ `(make-event
+   (value (fn2-columns-carrier-contract-events
+           ',name ',carriers ',typed-readonly ',hints (w state)))))
+
+; Guarded producer interfaces use the stored logical guard (including its
+; implicit input stobj predicates). Every emitted fact still requires proof.
+; Optional row frames are unconditional, as in the underlying constructor.
+(defun fn2-columns-guard-domain-specs (specs)
+ (declare (xargs :verify-guards nil))
+ (if (atom specs) nil
+  (cons (cons (concatenate 'string (caar specs) "-UNDER-GUARD")
+              (cdar specs))
+        (fn2-columns-guard-domain-specs (cdr specs)))))
+(defun fn2-columns-carrier-row-specs (carriers)
+ (declare (xargs :verify-guards nil))
+ (if (atom carriers) nil
+  (cons (list (concatenate 'string
+                (or (fn2-decl-get :prefix (cddar carriers)) "") "-ROWS")
+              (fn2-columns-sym (caar carriers) "-ROWS") (cadar carriers)
+              :frame (caar carriers))
+        (fn2-columns-carrier-row-specs (cdr carriers)))))
+(defun fn2-columns-guarded-contract-events (name carriers hints rows world)
+ (declare (xargs :verify-guards nil))
+ (let* ((args (getpropc name 'formals :missing world))
+        (inputs (getpropc name 'stobjs-in nil world))
+        (outputs (getpropc name 'stobjs-out nil world))
+        (guard (getpropc name 'guard :missing world)))
+  (if (or (eq args :missing) (eq guard :missing)
+          (eq (getpropc name 'symbol-class nil world) :program)
+          (not carriers)
+          (not (fn2-columns-contract-carriersp carriers args inputs outputs world)))
+      (er hard 'defcolumns-guarded-contracts
+          "No logical guarded carrier projection for ~x0." name)
+   (let* ((hyps (remove-duplicates-equal
+                  (append (fn2-columns-carrier-hyps carriers)
+                    (fn2-columns-readonly-type-hyps args inputs nil world)
+                    (list guard))))
+          (specs (fn2-columns-guard-domain-specs
+                   (fn2-columns-carrier-specs
+                    (fn2-columns-inherit-carrier-hints carriers hints)))))
+    (fn2-columns-preserves
+     (caar carriers) name args nil hyps
+     (append specs (and rows (fn2-columns-carrier-row-specs carriers)))
+     "-PRESERVES" t t hints t nil nil nil nil)))))
+(defmacro defcolumns-guarded-contracts (name &key carriers hints rows)
+ `(make-event
+   (value (fn2-columns-guarded-contract-events
+           ',name ',carriers ',hints ',rows (w state)))))
+
+; Scalar metadata observations must see existing raw NTH frame rules, while
+; scalar updaters stay named so their public TYPE/WFP/ROWS rules can fire.
+(defun fn2-columns-scalar-extra-runes (fields writers)
+ (declare (xargs :verify-guards nil))
+ (if (atom fields) nil
+  (append
+   (and (not (fn2-columns-arrayp (car fields)))
+        (fn2-columns-numeric-fieldp (car fields))
+        (list (if writers (fn2-columns-pre "UPDATE-" (caar fields))
+                (caar fields))))
+   (fn2-columns-scalar-extra-runes (cdr fields) writers))))
+(defun fn2-columns-table-scalar-runes (tables writers world)
+ (declare (xargs :verify-guards nil))
+ (if (atom tables) nil
+  (append
+   (fn2-columns-scalar-extra-runes
+    (fn2-decl-get :extra-fields (fn2-decl-row (list :columns (car tables)) world))
+    writers)
+   (fn2-columns-table-scalar-runes (cdr tables) writers world))))
+(defun fn2-columns-scalar-frame-hint (tables producers opaque world)
+ (declare (xargs :verify-guards nil))
+ (fn2-columns-guard-hint tables
+  (append opaque (fn2-columns-type-predicates tables)
+          (fn2-columns-table-scalar-runes tables t world))
+  (append producers (fn2-columns-table-scalar-runes tables nil world)) world))
+
+; Requested public getter/setter frames, without a quadratic field matrix.
+(defun fn2-columns-observation-frame-event (name table read-field write-field world)
+ (declare (xargs :verify-guards nil))
+ (let* ((columns (fn2-decl-get :columns
+                  (fn2-decl-row (list :columns table) world)))
+        (reader (fn2-columns-col-name table read-field))
+        (raw (fn2-columns-sym reader "$AI"))
+        (writer (fn2-columns-col-name table (fn2-columns-pre "SET-" write-field)))
+        (frame (fn2-columns-sym writer "-NTH")))
+  (if (not (and (symbolp name) name
+                (assoc-eq read-field columns) (assoc-eq write-field columns)
+                (not (eq read-field write-field))
+                (getpropc reader 'unnormalized-body nil world)
+                (getpropc writer 'unnormalized-body nil world)
+                (not (eq (getpropc reader 'symbol-class nil world) :program))
+                (not (eq (getpropc writer 'symbol-class nil world) :program))
+                (equal (getpropc reader 'stobjs-in :missing world) (list nil table))
+                (equal (getpropc reader 'stobjs-out :missing world) '(nil))
+                (equal (getpropc writer 'stobjs-in :missing world) (list nil nil table))
+                (equal (getpropc writer 'stobjs-out :missing world) (list table))
+                (getpropc frame 'theorem nil world)))
+      (er hard 'fn2-columns-observation-frame-event
+          "No distinct logical column observation interface for ~x0 / ~x1 in ~x2."
+          read-field write-field table)
+   ; Different outer fields are unchanged even for malformed tables and
+   ; out-of-range row indices. No row, type or enum-cardinality premise.
+   `(defthm ,name
+      (equal (,reader i (,writer j v ,table)) (,reader i ,table))
+      :hints (("Goal" :in-theory (e/d (,reader ,raw ,frame) (,writer nth))))))))
+
+(defmacro defcolumns-observation-frame (name table read-field write-field)
+ `(make-event
+   (value (fn2-columns-observation-frame-event
+           ',name ',table ',read-field ',write-field (w state)))))
+
+; A requested extra-array LENGTH observer across this table's column setters.
+; This is one linear family for the requested observer, not a field matrix.
+(defun fn2-columns-array-length-column-frames (table observer columns world)
+ (declare (xargs :verify-guards nil))
+ (if (atom columns) nil
+  (let* ((writer (fn2-columns-col-name table (fn2-columns-pre "SET-" (caar columns))))
+         (frame (fn2-columns-sym writer "-NTH"))
+         (name (fn2-columns-sym observer
+                 (concatenate 'string "-AFTER-" (symbol-name writer)))))
+   (if (not (and (getpropc writer 'unnormalized-body nil world)
+                 (not (eq (getpropc writer 'symbol-class nil world) :program))
+                 (equal (getpropc writer 'stobjs-in :missing world) (list nil nil table))
+                 (equal (getpropc writer 'stobjs-out :missing world) (list table))
+                 (getpropc frame 'theorem nil world)))
+       (er hard 'fn2-columns-array-length-column-frames
+           "Missing actual setter-NTH interface for ~x0." writer)
+    (cons
+     `(defthm ,name
+       (equal (,observer (,writer i v ,table)) (,observer ,table))
+       :hints (("Goal" :in-theory (e/d (,observer ,frame) (,writer nth)))))
+     (fn2-columns-array-length-column-frames table observer (cdr columns) world))))))
+
+(defun fn2-columns-array-length-frame-events (table field world)
+ (declare (xargs :verify-guards nil))
+ (let* ((row (fn2-decl-row (list :columns table) world))
+        (extra (assoc-eq field (fn2-decl-get :extra-fields row)))
+        (observer (fn2-columns-sym field "-LENGTH")))
+  (if (not (and extra (fn2-columns-arrayp extra)
+                (not (assoc-eq field (fn2-decl-get :columns row)))
+                (getpropc observer 'unnormalized-body nil world)
+                (not (eq (getpropc observer 'symbol-class nil world) :program))
+                (equal (getpropc observer 'stobjs-in :missing world) (list table))
+                (equal (getpropc observer 'stobjs-out :missing world) '(nil))))
+      (er hard 'fn2-columns-array-length-frame-events
+          "No actual extra-array LENGTH observer for ~x0 in ~x1." field table)
+   `(progn ,@(fn2-columns-array-length-column-frames
+               table observer (fn2-decl-get :columns row) world)))))
+
+(defmacro defcolumns-array-length-frames (table field)
+ `(make-event
+   (value (fn2-columns-array-length-frame-events ',table ',field (w state)))))

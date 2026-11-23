@@ -254,6 +254,15 @@
     (:line-length *fn2-upload-head-line-length*) (:header-fields *fn2-upload-head-header-fields*)
     (:header-lines *fn2-upload-head-header-lines*) (:header-octets *fn2-upload-head-header-octets*)
     (otherwise *fn2-upload-head-scanning*)))
+(defthm fn2-upload-head-code-range
+  (and (integerp (fn2-upload-head-code st))
+       (<= 0 (fn2-upload-head-code st))
+       (< (fn2-upload-head-code st) 7)
+       (unsigned-byte-p 8 (fn2-upload-head-code st)))
+  :rule-classes (:rewrite
+                 (:type-prescription :typed-term (fn2-upload-head-code st)
+                  :corollary (natp (fn2-upload-head-code st)))
+                 (:linear :corollary (< (fn2-upload-head-code st) 7))))
 ;; Cross-row: an upload posts its word to its connection. The connection may
 ;; have moved on (closed, reused): the word is then dropped, the one place a
 ;; word is legitimately not delivered (section 14.4).
@@ -264,8 +273,7 @@
                 (equal (fn2-conn-row-request conn fn2-core) request)
                 (equal (fn2-conn-row-phase conn fn2-core) *fn2-conn-state-article-input*)))
       (mv :dropped fn2-core)
-    (let* ((fn2-core (fn2-machine-write-word conn word fn2-core))
-           (fn2-core (fn2-machine-write-outcome-ready conn 1 fn2-core))
+    (let* ((fn2-core (fn2-conn-put-core conn (word word) (outcome-ready 1)))
            (fn2-core (fn2-machine-set-wake-id conn fn2-core)))
       (mv :ok fn2-core))))
 (fn2-core-preserves fn2-conn-post-word (conn conn-gen request word fn2-core) :position 1 :rows nil)
@@ -283,9 +291,7 @@
                 (equal (fn2-cns-row-phase cns fn2-core) *fn2-cns-state-append*)
                 (equal (fn2-cns-row-posted cns fn2-core) *fn2-cns-posted-none*)))
       (mv :dropped fn2-core)
-    (let* ((fn2-core (fn2-machine-write-posted cns posted fn2-core))
-           (fn2-core (fn2-machine-write-posted-word cns word fn2-core))
-           (fn2-core (fn2-machine-write-cpos cns position fn2-core))
+    (let* ((fn2-core (fn2-cns-put-core cns (posted posted) (posted-word word) (cpos position)))
            (fn2-core (fn2-machine-set-wake-id cns fn2-core)))
       (mv :ok fn2-core))))
 (fn2-core-preserves fn2-cns-post-outcome (cns cns-gen request word position posted fn2-core) :position 1 :rows nil)
@@ -334,7 +340,9 @@
 (fn2-core-preserves fn2-upload-hash-run (id gen row c0 g0 c1 g1 cap0 hashed filled fn2-core) :position 2 :rows nil)
 ;; Advance the header scan over chunk 0 and store its state: (mv status hs fn2-core).
 (defun fn2-upload-scan-run (id gen c0 g0 fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                  :guard-hints (("Goal" :do-not '(preprocess)
+                                        :in-theory (disable fn2-upload-head-code unsigned-byte-p nfix)))))
   (b* (((unless (eq (fn2-upload-snapshot-read-code id fn2-core) :ok)) (mv :fault 0 fn2-core))
        (hs (fn2-upload-row-head-status id fn2-core))
        ((unless (equal hs *fn2-upload-head-scanning*)) (mv :skip hs fn2-core))
@@ -350,22 +358,13 @@
                      (unsigned-byte-p 16 lines) (unsigned-byte-p 32 seen) (unsigned-byte-p 32 mo) (unsigned-byte-p 32 ml)
                      (unsigned-byte-p 32 no) (unsigned-byte-p 32 nl) (unsigned-byte-p 32 po) (unsigned-byte-p 32 pl)))
         (mv :fault hs fn2-core))
-       (fn2-core (fn2-machine-write-scan-off id off fn2-core))
-       (fn2-core (fn2-machine-write-ofield id field fn2-core))
-       (fn2-core (fn2-machine-write-visible id (if visible 1 0) fn2-core))
-       (fn2-core (fn2-machine-write-nfields id fields fn2-core))
-       (fn2-core (fn2-machine-write-nlines id lines fn2-core))
-       (fn2-core (fn2-machine-write-seen id seen fn2-core))
-       (fn2-core (fn2-machine-write-mo id mo fn2-core))
-       (fn2-core (fn2-machine-write-ml id ml fn2-core))
-       (fn2-core (fn2-machine-write-no id no fn2-core))
-       (fn2-core (fn2-machine-write-nl id nl fn2-core))
-       (fn2-core (fn2-machine-write-po id po fn2-core))
-       (fn2-core (fn2-machine-write-pl id pl fn2-core))
-       (fn2-core (fn2-machine-write-head-status id hs fn2-core)))
+       (fn2-core (fn2-upload-put-core id
+                   (scan-off off) (ofield field) (visible (if visible 1 0)) (nfields fields) (nlines lines) (seen seen)
+                   (mo mo) (ml ml) (no no) (nl nl) (po po) (pl pl) (head-status hs))))
     (mv st hs fn2-core)))
 (fn2-core-preserves fn2-upload-scan-run (id gen c0 g0 fn2-core) :position 2 :rows nil
-  :hints (("Goal" :in-theory (disable fn2-upload-snapshot-read-code fn2-upload-head-code nfix unsigned-byte-p))))
+  :hints (("Goal" :do-not '(preprocess)
+                  :in-theory (disable fn2-upload-snapshot-read-code fn2-upload-head-code nfix unsigned-byte-p))))
 ;; The block is complete and hashed: the digest, the verdict, the word
 ;; written to the row and posted to the connection, in three steps each with
 ;; its own preservation facts (inline they cost two minutes to prove).
@@ -428,14 +427,13 @@
 ;; INJ on this row, the digest stored, the transaction woken.
 (defun fn2-upload-hand-over (id w inj txn fn2-core)
   (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (unsigned-byte-p 8 w) (unsigned-byte-p 8 inj))))
-  (b* ((fn2-core (fn2-machine-write-word id w fn2-core))
-       (fn2-core (fn2-machine-write-inj id inj fn2-core)))
+  (b* ((fn2-core (fn2-upload-put-core id (word w) (inj inj))))
     (fn2-upload-wake txn fn2-core)))
 (fn2-core-preserves fn2-upload-hand-over (id w inj txn fn2-core) :rows nil)
 ;; The word recorded on the row and posted to the connection.
 (defun fn2-upload-deliver-word (id code conn conn-gen request fn2-core)
   (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (unsigned-byte-p 8 code))))
-  (b* ((fn2-core (fn2-machine-write-word id code fn2-core))
+  (b* ((fn2-core (fn2-upload-put-core id (word code)))
        ((mv & fn2-core) (fn2-upload-post-owner conn conn-gen request code 0 fn2-core)))
     fn2-core))
 (fn2-core-preserves fn2-upload-deliver-word (id code conn conn-gen request fn2-core) :rows nil)
@@ -889,7 +887,7 @@
       ((unless live) (mv :fault fn2-core))
       ;; Reason 4 retains the checked upload verdict while framing drains;
       ;; issued ambiguity never reaches these preissue/receiving phases.
-      (fn2-core (fn2-machine-write-feed-discard owner 4 fn2-core)))
+      (fn2-core (if (eq (fn2-conn-snapshot-read-code owner fn2-core) :ok) (fn2-conn-put-core owner (feed-discard 4)) (fn2-cns-put-core owner (feed-discard 4)))))
    (mv :ok fn2-core)))
 (fn2-core-preserves fn2-upload-start-discard (id gen fn2-core) :position 1 :rows nil)
 
@@ -924,7 +922,7 @@
           (mv :draining fn2-core)))
        ((mv hcode hashed fn2-core) (fn2-upload-hash-run id gen row c0 g0 c1 g1 cap0 hashed filled fn2-core))
        ((unless (and (eq hcode :ok) (unsigned-byte-p 60 hashed))) (mv :stop fn2-core))
-       (fn2-core (fn2-machine-write-hashed id hashed fn2-core))
+       (fn2-core (fn2-upload-put-core id (hashed hashed)))
        ((mv st hs fn2-core) (fn2-upload-scan-run id gen c0 g0 fn2-core))
        ((when (eq st :fault)) (mv :stop fn2-core))
        ;; Definite header refusal drains framing without occupying C1. It
@@ -932,8 +930,7 @@
        ((when (not (member-equal hs (list *fn2-upload-head-scanning* *fn2-upload-head-done*))))
         (b* (((mv ok word inj) (fn2-upload-word-now id gen c0 g0 cap0 cap1 filled fn2-core))
              ((unless (and ok (not (equal word 0)))) (mv :stop fn2-core))
-             (fn2-core (fn2-machine-write-word id word fn2-core))
-             (fn2-core (fn2-machine-write-inj id inj fn2-core))
+             (fn2-core (fn2-upload-put-core id (word word) (inj inj)))
              ((mv code fn2-core) (fn2-upload-start-discard id gen fn2-core)))
           (mv (if (eq code :ok) :discard :stop) fn2-core)))
        ;; the header is complete: the transaction first (its claim serializes

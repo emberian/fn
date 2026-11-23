@@ -47,6 +47,18 @@
            (mv-let (rc fn2-core) (fn2-read-release x fn2-core)
              (mv (if (and (eq rc :ok) (eq lc :absent)) :absent :state) fn2-core))))))
    (fn2-core-preserves fn2-outcome-lookup-step (x principal op budget fn2-core) :position 1 :rows nil)
+   (local
+    (defthm fn2-outcome-lookup-step-preserves-cns-snapshot
+      (equal (fn2-cns-snapshot-read-code cns
+               (mv-nth 1 (fn2-outcome-lookup-step x principal op budget fn2-core)))
+             (fn2-cns-snapshot-read-code cns fn2-core))
+      :hints (("Goal" :in-theory (union-theories
+                                  '(fn2-outcome-lookup-step fn2-read-key fn2-read-lookup fn2-read-release
+                                    fn2-cns-snapshot-read-code fn2-machine-phase-read-code
+                                    fn2-machine-idp fn2-machine-kind fn2-machine-kind-read
+                                    fn2-machine-kind-read-code fn2-machine-slot fn2-machine-slot-read
+                                    fn2-machine-slot-read-code fn2-core-child-meta-correct)
+                                  (theory 'minimal-theory))))))
    (in-theory (disable fn2-outcome-lookup-step))
 
    (defun fn2-cns-append-read-contextp (cns gen request op fn2-core)
@@ -58,6 +70,14 @@
           (equal (fn2-cns-row-op cns fn2-core) op)
           (mv-let (code x) (fn2-cns-read-row cns fn2-core)
             (and (eq code :ok) (equal x (fn2-cns-row-xrow cns fn2-core))))))
+   (local
+    (defthm fn2-cns-append-read-contextp-snapshot
+      (implies (fn2-cns-append-read-contextp cns gen request op fn2-core)
+               (and (equal (fn2-cns-snapshot-read-code cns fn2-core) :ok)
+                    (fn2-machine-idp cns fn2-core)))
+      :hints (("Goal" :in-theory (enable fn2-cns-append-read-contextp
+                                         fn2-cns-snapshot-read-code
+                                         fn2-machine-phase-read-code)))))
    (in-theory (disable fn2-cns-append-read-contextp))
 
    (defun fn2-cns-append-ctl-live-p (cns gen request fn2-core)

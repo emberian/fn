@@ -8,16 +8,18 @@
 
 ; R5e2: a recovery row id is valid exactly when the kind's generated snapshot
 ; check accepts it; then every declared field read is in bounds.
-(defun fn2-recovery-idp-lemmas (fields)
+(defun fn2-recovery-idp-lemmas (fields world)
  (declare (xargs :verify-guards nil))
  (if (atom fields) nil
   (let ((code (fn2-columns-sym (fn2-columns-col-name 'fn2-machine (car fields)) "-READ-CODE")))
-   (cons `(defthm ,(fn2-columns-sym 'fn2-recovery-idp (concatenate 'string "-" (symbol-name (car fields))))
-           (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (fn2-recovery-idp id fn2-core))
-                    (equal (,code id fn2-core) :ok))
-           :hints (("Goal" :in-theory (enable fn2-recovery-idp fn2-recovery-machine-snapshot-read-code
-                                              fn2-machine-phase-read-code ,code))))
-         (fn2-recovery-idp-lemmas (cdr fields))))))
+   (if (not (function-symbolp code world))
+       (fn2-recovery-idp-lemmas (cdr fields) world)
+    (cons `(defthm ,(fn2-columns-sym 'fn2-recovery-idp (concatenate 'string "-" (symbol-name (car fields))))
+            (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (fn2-recovery-idp id fn2-core))
+                     (equal (,code id fn2-core) :ok))
+            :hints (("Goal" :in-theory (enable fn2-recovery-idp fn2-recovery-machine-snapshot-read-code
+                                               fn2-machine-phase-read-code ,code))))
+          (fn2-recovery-idp-lemmas (cdr fields) world))))))
 
 (defun fn2-recovery-local-theory ()
  '(progn
@@ -40,7 +42,9 @@
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (eq (fn2-recovery-machine-snapshot-read-code id fn2-core) :ok))
 (make-event (value (cons 'progn (fn2-recovery-idp-lemmas
-  (list* 'slot 'kind (strip-cars (fn2-machine-property 'fn2-recovery-machine :columns (w state))))))))
+  (list* 'slot 'kind (strip-cars (fn2-machine-property 'fn2-recovery-machine :columns (w state)))) (w state)))))
+(defthm fn2-recovery-idp-snapshot
+ (implies (fn2-recovery-idp id fn2-core) (equal (fn2-recovery-machine-snapshot-read-code id fn2-core) :ok)))
 (defthm fn2-recovery-idp-kind-value
  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (fn2-recovery-idp id fn2-core))
           (equal (fn2-machine-kind id fn2-core) *fn2-recovery-machine-kind*))
@@ -595,7 +599,8 @@
 ; Preparation is shared by host startup and the boot arm. It takes the
 ; recovery bundle without touching either scheduler; the caller owns wakeup.
 (defun fn2-recovery-prepare (id assume witness fn2-core)
- (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                 :guard-hints (("Goal" :do-not '(preprocess)))))
  (b* (((unless (fn2-recovery-idp id fn2-core)) (mv :admission fn2-core))
       ((mv arena base fits) (fn2-recovery-geometry fn2-core))
       ((unless (and fits (equal (fn2-machine-phase id fn2-core) *fn2-recovery-machine-state-free*)
@@ -624,7 +629,8 @@
         (rc-munits 0) (rc-mtotal 0) (rc-mevent 0) (principal-slot 0)
         (rc-wslot wslot) (rc-wgen wgen) (rc-wlen 0) (rc-wevent 0) (rc-wmembers 0) (rc-replayed 0))))
   (mv :ok fn2-core)))
-(fn2-core-preserves fn2-recovery-prepare (id assume witness fn2-core) :position 1 :rows nil)
+(fn2-core-preserves fn2-recovery-prepare (id assume witness fn2-core) :position 1 :rows nil
+  :hints (("Goal" :do-not '(preprocess))))
 
 ; Host startup is outside the transition, so it queues the prepared row
 ; directly. An arm instead uses :wake-row, interpreted by each scheduler.

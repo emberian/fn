@@ -33,9 +33,11 @@
           (equal (fn2-conn-row-feed-discard owner fn2-core) 0)
           (equal (fn2-conn-row-fed owner fn2-core) end)))
         (t nil)))))
+   (in-theory (disable fn2-upload-stream-reset-owner-p))
 
    (defun fn2-upload-stream-reset (id gen fn2-core)
-    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                    :guard-hints (("Goal" :do-not '(preprocess)))))
     (b* (((unless (and (eq (fn2-upload-snapshot-read-code id fn2-core) :ok)
                        (posp gen) (unsigned-byte-p 60 gen)
                        (equal (fn2-machine-generation id fn2-core) gen)))
@@ -80,12 +82,12 @@
             (mv :workspace fn2-pool))
            (mv code fn2-core)))
          ((unless (eq code :ok)) (mv code fn2-core))
-         (fn2-core (fn2-machine-write-stream-resets id (+ 1 resets) fn2-core))
-         (fn2-core (fn2-machine-write-sready id 0 fn2-core)))
+         (fn2-core (fn2-upload-put-core id (stream-resets (+ 1 resets)) (sready 0))))
      (mv :ok fn2-core)))
 
    (fn2-core-preserves fn2-upload-stream-reset (id gen fn2-core)
-    :position 1 :rows nil)
+    :position 1 :rows nil
+    :hints (("Goal" :do-not '(preprocess))))
    (defcost fn2-upload-stream-reset
     :answers (:ok :owner :state :bounds :workspace)
     :tables (fn2-upload-table fn2-core-pool)

@@ -23,6 +23,38 @@
  (value `(local (in-theory (enable ,@(fn2-core-child-wfp-forward-runes *fn2-core-children*))))))
 (local (in-theory (disable fn2-digests-rows fn2-b3-rows fn2-pool-fill fn2-pool-base fn2-pool-data-length
                            fn2-control-path-identityi fn2-control-path-identity-length)))
+(local (defun fn2-d-mentions-scan-put-p (x)
+         (declare (xargs :guard t))
+         (if (atom x)
+             (or (eq x 'fn2-upload-set-scan-off)
+                 (eq x 'fn2-upload-set-mo))
+           (or (fn2-d-mentions-scan-put-p (car x))
+               (fn2-d-mentions-scan-put-p (cdr x))))))
+(local (set-default-hints '((and (consp id)
+                                 (null (cadr id))
+                                 (eql (cddr id) 0)
+                                 (<= (len (car id)) 2)
+                                 (fn2-d-mentions-scan-put-p clause)
+                                 '(:do-not '(preprocess))))))
+(local
+ (defun fn2-d-child-rows-natp-rewrites (children world)
+   (declare (xargs :verify-guards nil))
+   (if (atom children) nil
+     (let* ((type (cadar children))
+            (pred (fn2-columns-sym type "P"))
+            (rows (fn2-columns-sym type "-ROWS")))
+       (if (and (fn2-decl-row (list :columns type) world)
+                (function-symbolp rows world))
+           (cons `(defthm ,(fn2-columns-sym rows "-NATP-REWRITE-D")
+                    (implies (,pred x)
+                             (and (integerp (,rows x))
+                                  (rationalp (,rows x))
+                                  (acl2-numberp (,rows x))
+                                  (<= 0 (,rows x)))))
+                 (fn2-d-child-rows-natp-rewrites (cdr children) world))
+         (fn2-d-child-rows-natp-rewrites (cdr children) world))))))
+(make-event
+ (value `(progn ,@(fn2-d-child-rows-natp-rewrites *fn2-core-children* (w state)))))
 (local
  (defthm fn2-block-hash-into-ok-digests-rows-linear
    (implies (and (equal (mv-nth 0 (fn2-block-hash-into
@@ -142,7 +174,8 @@
       (fn2-answer (nfix s) (nfix e) mask (fn2-conn-auth-keyword pending) (equal posting 1) reading seen flags real
                        rslot rgen tslot tgen *fn2-conn-kind* oslot ogen fn2-pool)
       (mv code (fn2-conn-after-code after) (fn2-conn-auth-code next) (fn2-conn-rule-code after) fn2-core))))
-(fn2-core-preserves fn2-conn-run-answer (s e mask pending posting reading rslot rgen tslot tgen oslot ogen fn2-core) :position 4 :rows nil)
+(fn2-core-preserves fn2-conn-run-answer (s e mask pending posting reading rslot rgen tslot tgen oslot ogen fn2-core) :position 4 :rows nil
+  :hints (("Goal" :in-theory (disable nfix))))
 
 (defun fn2-conn-greet-op (refused posting mask tslot tgen oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -208,7 +241,7 @@
                      slot sgen *fn2-upload-kind* u ugen fn2-pool)
     (mv status start2 mode2 discard2 copied fn2-core)))
 (fn2-core-preserves fn2-conn-feed-pool (left start mode discard rslot rgen oslot ogen slot sgen u ugen fn2-core)
-  :position 5 :rows nil)
+  :position 5 :rows nil :hints (("Goal" :in-theory (disable nfix max))))
 (in-theory (disable fn2-conn-feed-pool))
 (local (in-theory (disable fn2-upload-feed-counted)))
 (defun fn2-upload-feed-pool (left start end mode discard raw rslot rgen rk rs rg slot sgen limit stop-header u ugen fn2-core)
@@ -220,7 +253,7 @@
                              (nfix limit) stop-header fn2-pool)
     (mv status start2 mode2 discard2 copied lines fn2-core)))
 (fn2-core-preserves fn2-upload-feed-pool (left start end mode discard raw rslot rgen rk rs rg slot sgen limit stop-header u ugen fn2-core)
-  :position 6 :rows nil)
+  :position 6 :rows nil :hints (("Goal" :in-theory (disable nfix max))))
 (local
  (defthm fn2-upload-feed-pool-preserves-upload-snapshot
    (equal (fn2-upload-snapshot-read-code x
@@ -265,7 +298,7 @@
 (defun fn2-upload-feed-run (start end mode why fed raw rslot rgen rk rs rg u ugen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
                   :guard-hints (("Goal" :do-not '(preprocess)
-                                        :in-theory (disable member-equal min)))))
+                                        :in-theory (disable member-equal min nfix)))))
   (b* (((unless (and (eq (fn2-upload-snapshot-read-code u fn2-core) :ok)
                      (equal (fn2-machine-generation u fn2-core) ugen)
                      (natp start) (natp mode) (natp fed) (natp why)))
@@ -318,7 +351,7 @@
        (source-lines (+ (fn2-upload-row-source-lines u fn2-core) (nfix lines)))
        ((unless (unsigned-byte-p 32 source-lines))
         (mv :fault start2 mode2 why (nfix copied) fn2-core))
-       (fn2-core (fn2-machine-write-source-lines u source-lines fn2-core))
+       (fn2-core (fn2-upload-put-core u (source-lines source-lines)))
        (fed2 (+ fed (nfix copied)))
        (too-large (and (not discard2) (< bound fed2)))
        (why2 (cond (discard why) (too-large 2) (discard2 1)
