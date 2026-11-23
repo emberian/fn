@@ -19,6 +19,32 @@
 (make-event
  (value `(local (in-theory (enable ,@(fn2-core-child-wfp-forward-runes *fn2-core-children*))))))
 (local (in-theory (e/d (fn2-commit-core-invariant) (fn2-core-wfp-commit-opaque))))
+(local
+ (defmacro fn2-cb-wfp-bridge (fn pos)
+   `(local
+     (make-event
+      (let* ((fms (formals ',fn (w state)))
+             (call (cons ',fn fms))
+             (out (if (zp ,pos) call `(mv-nth ,,pos ,call)))
+             (pwfp (fn2-columns-sym ',fn "-PRESERVES-WFP"))
+             (bname (fn2-columns-sym ',fn "-CORE-WFP-BRIDGE")))
+        (value
+         `(defthm ,bname
+            (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+                     (fn2-core-wfp ,out))
+            :hints (("Goal" :use ,pwfp
+                            :in-theory (e/d (fn2-commit-core-invariant)
+                                            (,pwfp ,',fn fn2-corep fn2-core-wfp fn2-core-wfp-commit-opaque)))))))))))
+(fn2-cb-wfp-bridge fn2-rp-header 4)
+(fn2-cb-wfp-bridge fn2-rp-body 2)
+(fn2-cb-wfp-bridge fn2-recovery-retain-location 1)
+(fn2-cb-wfp-bridge fn2-recovery-manifest-check 1)
+(fn2-cb-wfp-bridge fn2-recovery-record-next 7)
+(fn2-cb-wfp-bridge fn2-recovery-claim-article 2)
+(fn2-cb-wfp-bridge fn2-rp-entries 3)
+(fn2-cb-wfp-bridge fn2-recovery-manifest-unit 3)
+(fn2-cb-wfp-bridge fn2-rp-frame-copy 2)
+(fn2-cb-wfp-bridge fn2-recovery-replay-record 4)
 (defcost ceiling :doc "Integer ceiling of byte total over unit bytes.")
 (local
  (defun fn2-cb-arm-fns (arms)
@@ -115,18 +141,32 @@
                     (make-event
                      (let ((guard (getpropc ',fn 'guard t (w state)))
                            (iss (fn2-columns-sym ',fn "-ISSUED-EFFECT"))
+                           (qnt (fn2-columns-sym ',fn "-QUANTITIES"))
+                           (nums (fn2-columns-sym ',fn "-RESULT-NUMBERS"))
                            (gen (fn2-columns-sym ',fn "-ISSUED-EFFECT-GENERAL-N")))
                        (value
-                        `(defthm ,gen
-                           (implies (and (equal n (fn2-ops-rows (fn2-core-ops fn2-core)))
-                                         (fn2-corep fn2-core)
-                                         ,guard)
-                                    (equal (fn2-ops-issued-count n (fn2-core-ops (mv-nth 4 (,',fn id budget fn2-core))))
-                                           (+ (fn2-ops-issued-count n (fn2-core-ops fn2-core))
-                                              (mv-nth 2 (,',fn id budget fn2-core)))))
-                           :hints (("Goal" :use ,iss
-                                           :in-theory (disable ,iss ,',fn fn2-core-ops fn2-corep fn2-core-wfp
-                                                               fn2-ops-issued-count fn2-ops-rows))))))))
+                        `(progn
+                           (defthm ,nums
+                             (implies (and (fn2-corep fn2-core) ,guard)
+                                      (and (natp (car (,',fn id budget fn2-core)))
+                                           (acl2-numberp (car (,',fn id budget fn2-core)))
+                                           (natp (mv-nth 1 (,',fn id budget fn2-core)))
+                                           (acl2-numberp (mv-nth 1 (,',fn id budget fn2-core)))
+                                           (natp (mv-nth 2 (,',fn id budget fn2-core)))
+                                           (acl2-numberp (mv-nth 2 (,',fn id budget fn2-core)))))
+                             :hints (("Goal" :use ,qnt
+                                             :in-theory (e/d (fn2-run-quantitiesp)
+                                                             (,qnt ,',fn fn2-corep fn2-core-wfp)))))
+                           (defthm ,gen
+                             (implies (and (equal n (fn2-ops-rows (fn2-core-ops fn2-core)))
+                                           (fn2-corep fn2-core)
+                                           ,guard)
+                                      (equal (fn2-ops-issued-count n (fn2-core-ops (mv-nth 4 (,',fn id budget fn2-core))))
+                                             (+ (fn2-ops-issued-count n (fn2-core-ops fn2-core))
+                                                (mv-nth 2 (,',fn id budget fn2-core)))))
+                             :hints (("Goal" :use ,iss
+                                             :in-theory (disable ,iss ,',fn fn2-core-ops fn2-corep fn2-core-wfp
+                                                                 fn2-ops-issued-count fn2-ops-rows)))))))))
                   (fn2-cb-augment-arms-list (cdr xs)))
          (cons (car xs) (fn2-cb-augment-arms-list (cdr xs))))))))
 (local

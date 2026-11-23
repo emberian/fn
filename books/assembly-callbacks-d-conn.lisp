@@ -399,6 +399,7 @@
                     (:set (tls-token token) (tls-token-gen token-gen) (upgrade-stage *fn2-conn-upgrade-stage-admitted*)
                           (tls-ok 0) (tx-off 0) (after *fn2-conn-after-upgrading*))
                     (:next :reply) (:charge :bytes 512 :steps *fn2-work-transition* :runnable t))
+                   ((:none) (:stop :machine-phase))
                    (:otherwise
                     (:do (rcode) (fn2-tls-render-handoff nil row-mask row-tx-slot row-tx-gen)
                      :case ((:otherwise (:stop :machine-phase))))

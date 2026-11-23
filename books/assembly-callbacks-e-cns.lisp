@@ -145,8 +145,25 @@
                 (and (equal (fn2-core-machines (mv-nth 1 (fn2-outcome-lookup-step x principal op budget fn2-core)))
                             (fn2-core-machines fn2-core))
                      (equal (fn2-cns-table (mv-nth 1 (fn2-outcome-lookup-step x principal op budget fn2-core)))
-                            (fn2-cns-table fn2-core)))
-                :hints (("Goal" :in-theory (enable fn2-outcome-lookup-step fn2-read-key fn2-read-lookup fn2-read-release)))))
+                            (fn2-cns-table fn2-core))
+                     (equal (fn2-machine-idp cns (mv-nth 1 (fn2-outcome-lookup-step x principal op budget fn2-core)))
+                            (fn2-machine-idp cns fn2-core))
+                     (equal (fn2-machine-kind cns (mv-nth 1 (fn2-outcome-lookup-step x principal op budget fn2-core)))
+                            (fn2-machine-kind cns fn2-core))
+                     (equal (fn2-machine-slot cns (mv-nth 1 (fn2-outcome-lookup-step x principal op budget fn2-core)))
+                            (fn2-machine-slot cns fn2-core))
+                     (equal (fn2-cns-row-ws-slot cns (mv-nth 1 (fn2-outcome-lookup-step x principal op budget fn2-core)))
+                            (fn2-cns-row-ws-slot cns fn2-core))
+                     (equal (fn2-cns-row-ws-gen cns (mv-nth 1 (fn2-outcome-lookup-step x principal op budget fn2-core)))
+                            (fn2-cns-row-ws-gen cns fn2-core))
+                     (equal (fn2-cns-row-ns-slot cns (mv-nth 1 (fn2-outcome-lookup-step x principal op budget fn2-core)))
+                            (fn2-cns-row-ns-slot cns fn2-core))
+                     (equal (fn2-cns-row-ns-gen cns (mv-nth 1 (fn2-outcome-lookup-step x principal op budget fn2-core)))
+                            (fn2-cns-row-ns-gen cns fn2-core)))
+                :hints (("Goal" :in-theory (enable fn2-outcome-lookup-step fn2-read-key fn2-read-lookup fn2-read-release
+                                                   fn2-machine-idp fn2-machine-kind fn2-machine-slot
+                                                   fn2-cns-row-ws-slot fn2-cns-row-ws-gen
+                                                   fn2-cns-row-ns-slot fn2-cns-row-ns-gen)))))
              (in-theory (disable fn2-outcome-lookup-step))))
          ((equal x '(in-theory (disable fn2-cns-append-read-contextp)))
           '(progn
