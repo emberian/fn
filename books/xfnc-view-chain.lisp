@@ -1,7 +1,7 @@
 ; Scoped history chain over the canonical byte sequence of exported pairs.
 ; The caller supplies the bound history and version, never the request.
 (in-package "ACL2")
-(include-book "fnct-stream")
+(include-book "format-check")
 (include-book "blake3-word-frames")
 (fn2-book-layer :e)
 (local (include-book "arithmetic-3/floor-mod/floor-mod" :dir :system))
