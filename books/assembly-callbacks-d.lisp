@@ -24,6 +24,9 @@
 (make-event
  (value `(local (in-theory (disable nth fn2-digests-rows fn2-b3-rows fn2-pool-fill fn2-pool-base fn2-pool-data-length
                                     fn2-control-path-identityi fn2-control-path-identity-length
+                                    fn2-upload-snapshot-read-code fn2-conn-snapshot-read-code
+                                    fn2-cns-snapshot-read-code fn2-ctl-snapshot-read-code
+                                    fn2-cursor-snapshot-read-code fn2-txn-snapshot-read-code
                                     ,@(fn2-columns-getter-runes
                                         '(fn2-tls-config fn2-compress-config fn2-input-config fn2-extents fn2-fields)
                                         (w state)))))))
@@ -286,7 +289,9 @@
 ;; dot-stuffed block. (mv status start mode why copied fn2-core), WHY 1 a
 ;; framing error, 2 article too large, 3 header limit reached.
 (defun fn2-upload-feed-run (start end mode why fed raw rslot rgen rk rs rg u ugen fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                  :guard-hints (("Goal" :in-theory (disable fn2-core-wfp fn2-feed-header-complete-p
+                                                            nfix min max unsigned-byte-p)))))
   (b* (((unless (and (eq (fn2-upload-snapshot-read-code u fn2-core) :ok)
                      (equal (fn2-machine-generation u fn2-core) ugen)
                      (natp start) (natp mode) (natp fed) (natp why)))
