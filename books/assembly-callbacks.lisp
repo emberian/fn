@@ -152,27 +152,27 @@
          (t (cons (fn2-cb-patch-result-tree (car x) extra-dis)
                   (fn2-cb-patch-result-tree (cdr x) extra-dis))))))
 (local
- (defun fn2-cb-rewrite-core-ev (x kind runp)
+ (defun fn2-cb-rewrite-core-ev (x kind runp arm-fns)
    (declare (xargs :mode :program))
    (cond ((atom x) x)
          ((eq (car x) 'fn2-machine-core-result-events)
           `(fn2-cb-patch-result-tree
             ,x
-            ',(append (and runp (list (fn2-columns-sym kind "-ARM-OK-P")))
+            ',(append (and runp (cons (fn2-columns-sym kind "-ARM-OK-P") arm-fns))
                       (list (fn2-columns-sym kind "-SNAPSHOT-READ-CODE")
                             'fn2-machine-phase-read-code
                             '(:definition unsigned-byte-p)
                             '(:definition integer-range-p)
-                            'ceiling 'floor 'mod 'min))))
+                            'ceiling 'floor 'mod))))
          ((eq (car x) 'fn2-core-preserves)
           `(encapsulate ()
              (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p)
                                         nfix min floor mod ceiling fn2-machine-phase-read-code
                                         ,(fn2-columns-sym kind "-SNAPSHOT-READ-CODE")
-                                        ,@(and runp (list (fn2-columns-sym kind "-ARM-OK-P"))))))
+                                        ,@(and runp (cons (fn2-columns-sym kind "-ARM-OK-P") arm-fns)))))
              ,x))
-         (t (cons (fn2-cb-rewrite-core-ev (car x) kind runp)
-                  (fn2-cb-rewrite-core-ev (cdr x) kind runp))))))
+         (t (cons (fn2-cb-rewrite-core-ev (car x) kind runp arm-fns)
+                  (fn2-cb-rewrite-core-ev (cdr x) kind runp arm-fns))))))
 (local
  (defun fn2-cb-find-result-fn (x)
    (declare (xargs :mode :program))
@@ -190,8 +190,8 @@
        (cond
         (fn
          (list* `(encapsulate ()
-                   (local (in-theory (disable ceiling floor mod min (:definition unsigned-byte-p) (:definition integer-range-p))))
-                   ,(fn2-cb-rewrite-core-ev (car xs) kind nil))
+                   (local (in-theory (disable ceiling floor mod (:definition unsigned-byte-p) (:definition integer-range-p))))
+                   ,(fn2-cb-rewrite-core-ev (car xs) kind nil nil))
                 `(local
                   (make-event
                    (let ((guard (getpropc ',fn 'guard t (w state)))
@@ -244,7 +244,7 @@
                (upd-tbl (fn2-columns-pre "UPDATE-" (fn2-columns-sym kind "-TABLE"))))
            (list* `(encapsulate ()
                      (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p))))
-                     ,(car xs))
+                     ,(fn2-cb-rewrite-core-ev (car xs) kind nil nil))
                   `(local
                     (make-event
                      (value
@@ -265,7 +265,7 @@
         ((and (consp (car xs)) (member-eq (caar xs) '(defun progn)))
          (cons `(encapsulate ()
                   (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p))))
-                  ,(fn2-cb-rewrite-core-ev (car xs) kind nil))
+                  ,(fn2-cb-rewrite-core-ev (car xs) kind nil nil))
                (fn2-cb-augment-arms-list (cdr xs) kind)))
         (t (cons (car xs) (fn2-cb-augment-arms-list (cdr xs) kind))))))))
 (local
@@ -286,8 +286,8 @@
          ((and (equal (car x) 'defmachine-run) (consp (cdr x)) (symbolp (cadr x)))
           (let ((k (cadr x)))
             `(make-event
-              (let* ((ev (fn2-cb-rewrite-core-ev (fn2-machine-run-event ',k (w state)) ',k t))
-                     (arm-fns (fn2-cb-arm-fns (fn2-machine-property ',k :continuations (w state))))
+              (let* ((arm-fns (fn2-cb-arm-fns (fn2-machine-property ',k :continuations (w state))))
+                     (ev (fn2-cb-rewrite-core-ev (fn2-machine-run-event ',k (w state)) ',k t arm-fns))
                      (patched (fn2-cb-wrap-success-charge ev ',k arm-fns)))
                 (if (equal patched ev)
                     (er soft 'assembly-callbacks "Could not patch ~x0." ',k)
