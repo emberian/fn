@@ -78,13 +78,19 @@
                           0)
                        '(fn2-pool-slot-fill slot fn2-pool)
                        exp))
-            (patched2 (fn2-patch-block-hash-hint patched1)))
+            (patched2 (fn2-patch-block-hash-hint patched1))
+            (patched3 (fn2-subst-tree
+                       '(fn2-pool-range-in ls *fn2-upload-page-stage* *fn2-commit-unit-bytes* fn2-pool)
+                       '(<= (+ *fn2-upload-page-stage* *fn2-commit-unit-bytes*) (fn2-pool-fill ls fn2-pool))
+                       patched2)))
        (cond ((equal patched1 exp)
               (er soft 'assembly-callbacks-d "Could not patch fn2-pool-slot-fill in fn2-upload-op-events"))
              ((equal patched2 patched1)
               (er soft 'assembly-callbacks-d "Could not patch fn2-upload-block-hash in fn2-upload-op-events"))
+             ((equal patched3 patched2)
+              (er soft 'assembly-callbacks-d "Could not patch fn2-upload-block-cv in fn2-upload-op-events"))
              (t
-              (value `(progn ,patched2
+              (value `(progn ,patched3
                              (in-theory (disable fn2-upload-chunk-fill))))))))))
 (fn2-book-layer :d)
 ;; The effective durable principal of consumer request CNS of generation
