@@ -32,6 +32,7 @@
    (implies (equal (fn2-cns-snapshot-read-code cns fn2-core) :ok)
             (and (fn2-machine-idp cns fn2-core)
                  (equal (fn2-machine-kind cns fn2-core) *fn2-cns-kind*)
+                 (equal (fn2-machine-phase-read-code cns fn2-core) :ok)
                  (equal (fn2-machine-generation-read-code cns fn2-core) :ok)
                  (< (fn2-machine-slot cns fn2-core) (fn2-cns-rows (fn2-cns-table fn2-core)))
                  (natp cns) (integerp cns) (<= 0 cns)
@@ -44,6 +45,7 @@
    (implies (equal (fn2-ctl-snapshot-read-code ctl fn2-core) :ok)
             (and (fn2-machine-idp ctl fn2-core)
                  (equal (fn2-machine-kind ctl fn2-core) *fn2-ctl-kind*)
+                 (equal (fn2-machine-phase-read-code ctl fn2-core) :ok)
                  (equal (fn2-machine-generation-read-code ctl fn2-core) :ok)
                  (< (fn2-machine-slot ctl fn2-core) (fn2-ctl-rows (fn2-ctl-table fn2-core)))
                  (natp ctl) (integerp ctl) (<= 0 ctl)
@@ -55,6 +57,8 @@
  (value `(local (in-theory (disable nth fn2-reads-rows fn2-fields-rows fn2-fc-rows
                                     fn2-digests-rows fn2-b3-rows fn2-pool-fill fn2-pool-base fn2-pool-data-length
                                     fn2-cns-sources-rows fn2-ctl-rows fn2-cns-rows fn2-succ-slots-rows
+                                    fn2-cns-snapshot-read-code fn2-ctl-snapshot-read-code
+                                    fn2-machine-phase-read-code fn2-machine-generation-read-code
                                     fn2-cns-item-binding-answer fn2-cns-item-fits fn2-cns-put-answer)))))
 (local
  (defun fn2-ecns-arm-fns (arms)
@@ -277,7 +281,13 @@
          (t (cons (fn2-ecns-subst-sym new old (car x))
                   (fn2-ecns-subst-sym new old (cdr x)))))))
 (local
- (defun fn2-ecns-fast-natp-outputs (name args idxs extra-runes)
+ (defun fn2-ecns-natp-conjuncts (call idxs)
+   (declare (xargs :mode :program))
+   (if (atom idxs) nil
+     (cons `(natp (mv-nth ,(car idxs) ,call))
+           (fn2-ecns-natp-conjuncts call (cdr idxs))))))
+(local
+ (defun fn2-ecns-fast-natp-corollaries (name args idxs all-thm)
    (declare (xargs :mode :program))
    (if (atom idxs) nil
      (cons `(defthm ,(intern-in-package-of-symbol
@@ -286,13 +296,26 @@
                       name)
               (natp (mv-nth ,(car idxs) (,name ,@args)))
               :rule-classes (:rewrite :type-prescription)
-              :hints (("Goal" :do-not '(preprocess)
-                              :in-theory (union-theories '(,name ,@extra-runes)
-                                           (union-theories
-                                            (set-difference-theories (executable-counterpart-theory :here)
-                                                                     '((:executable-counterpart bubble-down)))
-                                            (theory 'minimal-theory))))))
-           (fn2-ecns-fast-natp-outputs name args (cdr idxs) extra-runes)))))
+              :hints (("Goal" :use ,all-thm
+                              :in-theory (theory 'minimal-theory))))
+           (fn2-ecns-fast-natp-corollaries name args (cdr idxs) all-thm)))))
+(local
+ (defun fn2-ecns-fast-natp-outputs (name args idxs extra-runes)
+   (declare (xargs :mode :program))
+   (let ((all-thm (intern-in-package-of-symbol
+                   (concatenate 'string (symbol-name name) "-NATP-ALL")
+                   name)))
+     (cons `(local
+             (defthm ,all-thm
+               (and ,@(fn2-ecns-natp-conjuncts (cons name args) idxs))
+               :rule-classes nil
+               :hints (("Goal" :do-not '(preprocess)
+                               :in-theory (union-theories '(,name ,@extra-runes)
+                                            (union-theories
+                                             (set-difference-theories (executable-counterpart-theory :here)
+                                                                      '((:executable-counterpart bubble-down)))
+                                             (theory 'minimal-theory)))))))
+           (fn2-ecns-fast-natp-corollaries name args idxs all-thm)))))
 (local
  (defun fn2-ecns-patch-form (x wrld)
    (declare (xargs :mode :program))
@@ -433,6 +456,24 @@
              (local (in-theory (disable nfix min posp floor mod
                                         fn2-cns-read-row fn2-read-stripe)))
              ,(cons (car x) (cons (cadr x) (cons (caddr x) (cons (cadddr x) (fn2-ecns-patch-form (nthcdr 4 x) wrld)))))))
+         ((and (eq (car x) 'defun) (eq (cadr x) 'fn2-cns-post-reply))
+          `(encapsulate ()
+             (local (in-theory (disable nfix min posp floor mod
+                                        (:definition unsigned-byte-p) (:definition integer-range-p))))
+             (defun ,(cadr x) ,(caddr x)
+               (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                               :guard-hints (("Goal" :do-not '(preprocess)
+                                                     :in-theory (enable fn2-core-wfp)))))
+               ,@(fn2-ecns-patch-form (nthcdr 4 x) wrld))))
+         ((and (eq (car x) 'fn2-core-preserves)
+               (consp (cdr x))
+               (eq (cadr x) 'fn2-cns-post-reply))
+          `(encapsulate ()
+             (local (in-theory (disable nfix min posp floor mod
+                                        (:definition unsigned-byte-p) (:definition integer-range-p)
+                                        |(< x (if a b c))| |(< (if a b c) x)|)))
+             (fn2-core-preserves ,(cadr x) ,(caddr x)
+               :position 1 :rows nil :hints (("Goal" :do-not '(preprocess) :in-theory (enable fn2-core-wfp))))))
          ((and (eq (car x) 'fn2-cns-natp-outputs)
                (consp (cdr x))
                (eq (cadr x) 'fn2-cns-article-next))
