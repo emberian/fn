@@ -9,7 +9,26 @@
 (include-book "executor-loop-events")
 
 (fn2-executor-loop-events)
-(fn2-checkpoint-working-credit-init-events)
+(local
+ (defthm fn2-exec-working-credit-configure-shape
+   (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
+            (and (fn2-poolp (mv-nth 1 (fn2-checkpoint-working-credit-configure profile commitrows commit-io-rows paths uploads fn2-pool)))
+                 (fn2-pool-wfp (mv-nth 1 (fn2-checkpoint-working-credit-configure profile commitrows commit-io-rows paths uploads fn2-pool)))))
+   :hints (("Goal" :in-theory (e/d (fn2-checkpoint-working-credit-configure)
+                                   (fn2-checkpoint-admission-roomp fn2-checkpoint-service-demand-vector
+                                    fn2-checkpoint-service-vector-loop fn2-checkpoint-working-profile-fitp
+                                    fn2-pool-credit-demandsp fn2-pool-credit-configure fn2-pool-class-for
+                                    fn2-checkpoint-working-credit-vector fn2-checkpoint-drain-credit-vector
+                                    fn2-checkpoint-drain-credit-groups fn2-allocation-release-credit-vector
+                                    fn2-pool-wfp fn2-poolp floor nfix (:definition unsigned-byte-p)))))))
+(encapsulate ()
+  (local (in-theory (e/d (fn2-commit-core-invariant)
+                         (fn2-core-wfp-commit-opaque
+                          fn2-checkpoint-working-credit-configure fn2-idc-scratch
+                          fn2-checkpoint-service-protocol-classes fn2-checkpoint-service-upload-classes
+                          nfix floor (:definition unsigned-byte-p)))))
+  (make-event (value `(local (in-theory (enable ,@(fn2-core-child-wfp-forward-runes *fn2-core-children*))))))
+  (fn2-checkpoint-working-credit-init-events))
 
 ;; Genesis (MACHINE-FORM G3, C gap 5): each kind's :genesis arm runs once on
 ;; each of its rows at init, from the row's initial phase, so a row's first
