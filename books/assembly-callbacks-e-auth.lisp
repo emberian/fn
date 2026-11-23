@@ -122,27 +122,27 @@
          (t (cons (fn2-ea-patch-result-tree (car x) extra-dis)
                   (fn2-ea-patch-result-tree (cdr x) extra-dis))))))
 (local
- (defun fn2-ea-rewrite-core-ev (x kind)
+ (defun fn2-ea-rewrite-core-ev (x kind runp)
    (declare (xargs :mode :program))
    (cond ((atom x) x)
          ((eq (car x) 'fn2-machine-core-result-events)
           `(fn2-ea-patch-result-tree
             ,x
-            ',(list (fn2-columns-sym kind "-ARM-OK-P")
-                    (fn2-columns-sym kind "-SNAPSHOT-READ-CODE")
-                    'fn2-machine-phase-read-code
-                    '(:definition unsigned-byte-p)
-                    '(:definition integer-range-p)
-                    'ceiling 'floor 'mod 'min)))
+            ',(append (and runp (list (fn2-columns-sym kind "-ARM-OK-P")))
+                      (list (fn2-columns-sym kind "-SNAPSHOT-READ-CODE")
+                            'fn2-machine-phase-read-code
+                            '(:definition unsigned-byte-p)
+                            '(:definition integer-range-p)
+                            'ceiling 'floor 'mod 'min))))
          ((eq (car x) 'fn2-core-preserves)
           `(encapsulate ()
              (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p)
                                         nfix min floor mod ceiling fn2-machine-phase-read-code
                                         ,(fn2-columns-sym kind "-SNAPSHOT-READ-CODE")
-                                        ,(fn2-columns-sym kind "-ARM-OK-P"))))
+                                        ,@(and runp (list (fn2-columns-sym kind "-ARM-OK-P"))))))
              ,x))
-         (t (cons (fn2-ea-rewrite-core-ev (car x) kind)
-                  (fn2-ea-rewrite-core-ev (cdr x) kind))))))
+         (t (cons (fn2-ea-rewrite-core-ev (car x) kind runp)
+                  (fn2-ea-rewrite-core-ev (cdr x) kind runp))))))
 (local
  (defun fn2-ea-find-result-fn (x)
    (declare (xargs :mode :program))
@@ -161,7 +161,7 @@
         (fn
          (list* `(encapsulate ()
                    (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p))))
-                   ,(fn2-ea-rewrite-core-ev (car xs) 'fn2-auth))
+                   ,(fn2-ea-rewrite-core-ev (car xs) 'fn2-auth nil))
                 `(local
                   (make-event
                    (let ((guard (getpropc ',fn 'guard t (w state)))
@@ -234,7 +234,7 @@
         ((and (consp (car xs)) (member-eq (caar xs) '(defun progn)))
          (cons `(encapsulate ()
                   (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p))))
-                  ,(fn2-ea-rewrite-core-ev (car xs) 'fn2-auth))
+                  ,(fn2-ea-rewrite-core-ev (car xs) 'fn2-auth nil))
                (fn2-ea-augment-arms-list (cdr xs))))
         (t (cons (car xs) (fn2-ea-augment-arms-list (cdr xs)))))))))
 (fn2-auth-op-events)
@@ -247,7 +247,7 @@
    (if err (er soft 'assembly-callbacks-e-auth "~@0" err)
      (value (cons 'progn (fn2-ea-augment-arms-list (cdr form)))))))
 (make-event
- (let* ((ev (fn2-ea-rewrite-core-ev (fn2-machine-run-event 'fn2-auth (w state)) 'fn2-auth))
+ (let* ((ev (fn2-ea-rewrite-core-ev (fn2-machine-run-event 'fn2-auth (w state)) 'fn2-auth t))
         (arm-fns (fn2-ea-arm-fns (fn2-machine-property 'fn2-auth :continuations (w state))))
         (patched (fn2-ea-wrap-success-charge ev 'fn2-auth arm-fns)))
    (if (equal patched ev)

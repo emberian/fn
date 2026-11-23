@@ -71,7 +71,9 @@
             (and (integerp (nth s (nth *fn2-pool-query-ref-count$ai* p)))
                  (<= 0 (nth s (nth *fn2-pool-query-ref-count$ai* p)))
                  (acl2-numberp (nth s (nth *fn2-pool-query-ref-count$ai* p)))))
-   :hints (("Goal" :in-theory (enable nth fn2-poolp fn2-pool-wfp fn2-pool-query-ref-count fn2-pool-query-ref-count$ai)))))
+   :hints (("Goal" :in-theory (union-theories '(natp) (theory 'minimal-theory))
+                   :use ((:instance fn2-pool-query-ref-count$a-raw-nth-natp (fn2-pool p) (i s))
+                         (:instance fn2-pool-query-ref-count-length-when-wfp (fn2-pool p)))))))
 (encapsulate ()
   (local (in-theory (disable fn2-pool-workspace-code fn2-pool-readable-code
                              fn2-pool-range-in fn2-feed-header-complete-p
@@ -697,27 +699,27 @@
          (t (cons (fn2-du-patch-result-tree (car x) extra-dis)
                   (fn2-du-patch-result-tree (cdr x) extra-dis))))))
 (local
- (defun fn2-du-rewrite-core-ev (x kind)
+ (defun fn2-du-rewrite-core-ev (x kind runp)
    (declare (xargs :mode :program))
    (cond ((atom x) x)
          ((eq (car x) 'fn2-machine-core-result-events)
           `(fn2-du-patch-result-tree
             ,x
-            ',(list (fn2-columns-sym kind "-ARM-OK-P")
-                    (fn2-columns-sym kind "-SNAPSHOT-READ-CODE")
-                    'fn2-machine-phase-read-code
-                    '(:definition unsigned-byte-p)
-                    '(:definition integer-range-p)
-                    'ceiling 'floor 'mod 'min)))
+            ',(append (and runp (list (fn2-columns-sym kind "-ARM-OK-P")))
+                      (list (fn2-columns-sym kind "-SNAPSHOT-READ-CODE")
+                            'fn2-machine-phase-read-code
+                            '(:definition unsigned-byte-p)
+                            '(:definition integer-range-p)
+                            'ceiling 'floor 'mod 'min))))
          ((eq (car x) 'fn2-core-preserves)
           `(encapsulate ()
              (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p)
                                         nfix min floor mod ceiling fn2-machine-phase-read-code
                                         ,(fn2-columns-sym kind "-SNAPSHOT-READ-CODE")
-                                        ,(fn2-columns-sym kind "-ARM-OK-P"))))
+                                        ,@(and runp (list (fn2-columns-sym kind "-ARM-OK-P"))))))
              ,x))
-         (t (cons (fn2-du-rewrite-core-ev (car x) kind)
-                  (fn2-du-rewrite-core-ev (cdr x) kind))))))
+         (t (cons (fn2-du-rewrite-core-ev (car x) kind runp)
+                  (fn2-du-rewrite-core-ev (cdr x) kind runp))))))
 (local
  (defun fn2-du-find-result-fn (x)
    (declare (xargs :mode :program))
@@ -736,7 +738,7 @@
         (fn
          (list* `(encapsulate ()
                    (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p))))
-                   ,(fn2-du-rewrite-core-ev (car xs) 'fn2-upload))
+                   ,(fn2-du-rewrite-core-ev (car xs) 'fn2-upload nil))
                 `(local
                   (make-event
                    (let ((guard (getpropc ',fn 'guard t (w state)))
@@ -809,7 +811,7 @@
         ((and (consp (car xs)) (member-eq (caar xs) '(defun progn)))
          (cons `(encapsulate ()
                   (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p))))
-                  ,(fn2-du-rewrite-core-ev (car xs) 'fn2-upload))
+                  ,(fn2-du-rewrite-core-ev (car xs) 'fn2-upload nil))
                (fn2-du-augment-arms-list (cdr xs))))
         (t (cons (car xs) (fn2-du-augment-arms-list (cdr xs)))))))))
 (make-event
@@ -821,7 +823,7 @@
    (if err (er soft 'assembly-callbacks-d-upload "~@0" err)
      (value (cons 'progn (fn2-du-augment-arms-list (cdr form)))))))
 (make-event
- (let* ((ev (fn2-du-rewrite-core-ev (fn2-machine-run-event 'fn2-upload (w state)) 'fn2-upload))
+ (let* ((ev (fn2-du-rewrite-core-ev (fn2-machine-run-event 'fn2-upload (w state)) 'fn2-upload t))
         (arm-fns (fn2-du-arm-fns (fn2-machine-property 'fn2-upload :continuations (w state))))
         (patched (fn2-du-wrap-success-charge ev 'fn2-upload arm-fns)))
    (if (equal patched ev)

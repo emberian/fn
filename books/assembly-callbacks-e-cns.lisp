@@ -128,27 +128,27 @@
          (t (cons (fn2-ecns-patch-result-tree (car x) extra-dis)
                   (fn2-ecns-patch-result-tree (cdr x) extra-dis))))))
 (local
- (defun fn2-ecns-rewrite-core-ev (x kind)
+ (defun fn2-ecns-rewrite-core-ev (x kind runp)
    (declare (xargs :mode :program))
    (cond ((atom x) x)
          ((eq (car x) 'fn2-machine-core-result-events)
           `(fn2-ecns-patch-result-tree
             ,x
-            ',(list (fn2-columns-sym kind "-ARM-OK-P")
-                    (fn2-columns-sym kind "-SNAPSHOT-READ-CODE")
-                    'fn2-machine-phase-read-code
-                    '(:definition unsigned-byte-p)
-                    '(:definition integer-range-p)
-                    'ceiling 'floor 'mod 'min)))
+            ',(append (and runp (list (fn2-columns-sym kind "-ARM-OK-P")))
+                      (list (fn2-columns-sym kind "-SNAPSHOT-READ-CODE")
+                            'fn2-machine-phase-read-code
+                            '(:definition unsigned-byte-p)
+                            '(:definition integer-range-p)
+                            'ceiling 'floor 'mod 'min))))
          ((eq (car x) 'fn2-core-preserves)
           `(encapsulate ()
              (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p)
                                         nfix min floor mod ceiling fn2-machine-phase-read-code
                                         ,(fn2-columns-sym kind "-SNAPSHOT-READ-CODE")
-                                        ,(fn2-columns-sym kind "-ARM-OK-P"))))
+                                        ,@(and runp (list (fn2-columns-sym kind "-ARM-OK-P"))))))
              ,x))
-         (t (cons (fn2-ecns-rewrite-core-ev (car x) kind)
-                  (fn2-ecns-rewrite-core-ev (cdr x) kind))))))
+         (t (cons (fn2-ecns-rewrite-core-ev (car x) kind runp)
+                  (fn2-ecns-rewrite-core-ev (cdr x) kind runp))))))
 (local
  (defun fn2-ecns-find-result-fn (x)
    (declare (xargs :mode :program))
@@ -167,7 +167,7 @@
         (fn
          (list* `(encapsulate ()
                    (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p))))
-                   ,(fn2-ecns-rewrite-core-ev (car xs) kind))
+                   ,(fn2-ecns-rewrite-core-ev (car xs) kind nil))
                 `(local
                   (make-event
                    (let ((guard (getpropc ',fn 'guard t (w state)))
@@ -241,7 +241,7 @@
         ((and (consp (car xs)) (member-eq (caar xs) '(defun progn)))
          (cons `(encapsulate ()
                   (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p))))
-                  ,(fn2-ecns-rewrite-core-ev (car xs) kind))
+                  ,(fn2-ecns-rewrite-core-ev (car xs) kind nil))
                (fn2-ecns-augment-arms-list (cdr xs) kind)))
         (t (cons (car xs) (fn2-ecns-augment-arms-list (cdr xs) kind))))))))
 (local
@@ -258,6 +258,24 @@
          ((equal x '(fn2-append-outcome-read-events))
           (mv-let (erp exp) (macroexpand1-cmp x 'assembly-callbacks-e-cns wrld (default-state-vars nil))
             (if erp x (fn2-ecns-patch-form exp wrld))))
+         ((equal x '(fn2-cns-source-core-events))
+          (mv-let (erp exp) (macroexpand1-cmp x 'assembly-callbacks-e-cns wrld (default-state-vars nil))
+            (if erp x (fn2-ecns-patch-form exp wrld))))
+         ((and (eq (car x) 'defun) (eq (cadr x) 'fn2-cns-stream-source-capture))
+          (list (car x) (cadr x) (caddr x) (cadddr x)
+                `(if (not (eq (fn2-cns-snapshot-read-code cns fn2-core) :ok))
+                     (mv :bad 0 fn2-core)
+                   ,(nth 4 x))))
+         ((and (eq (car x) 'defun) (eq (cadr x) 'fn2-cns-source-preheader-quiet-p))
+          (list (car x) (cadr x) (caddr x) (cadddr x)
+                `(and (eq (fn2-cns-snapshot-read-code cns fn2-core) :ok)
+                      (eq (fn2-ctl-snapshot-read-code ctl fn2-core) :ok)
+                      ,(nth 4 x))))
+         ((and (eq (car x) 'defun) (eq (cadr x) 'fn2-cns-stream-source-open))
+          (list (car x) (cadr x) (caddr x) (cadddr x)
+                `(if (not (eq (fn2-cns-snapshot-read-code cns fn2-core) :ok))
+                     (mv :bad fn2-core)
+                   ,(nth 4 x))))
          ((equal x '(fn2-ctl-stream-events))
           (mv-let (erp exp) (macroexpand1-cmp x 'assembly-callbacks-e-cns wrld (default-state-vars nil))
             (if erp x (fn2-ecns-patch-form (fn2-ecns-subst-sym 'rfill 'fill exp) wrld))))
@@ -331,7 +349,7 @@
          ((and (equal (car x) 'defmachine-run) (consp (cdr x)) (symbolp (cadr x)))
           (let ((k (cadr x)))
             `(make-event
-              (let* ((ev (fn2-ecns-rewrite-core-ev (fn2-machine-run-event ',k (w state)) ',k))
+              (let* ((ev (fn2-ecns-rewrite-core-ev (fn2-machine-run-event ',k (w state)) ',k t))
                      (arm-fns (fn2-ecns-arm-fns (fn2-machine-property ',k :continuations (w state))))
                      (patched (fn2-ecns-wrap-success-charge ev ',k arm-fns)))
                 (if (equal patched ev)
@@ -380,4 +398,6 @@
    :hints (("Goal" :in-theory (e/d (fn2-fnct-stream-finish)
                                    (fn2-b3-ready fn2-digest-rowp fn2-b3-finalize))))))
 (local (in-theory (disable fn2-fnct-stream-start fn2-fnct-stream-update fn2-fnct-stream-finish)))
+(local (in-theory (enable fn2-cns-rows fn2-ctl-rows fn2-cns-sources-rows
+                          fn2-fc-rows fn2-b3-rows fn2-fields-rows fn2-reads-rows fn2-digests-rows fn2-succ-slots-rows)))
 (fn2-ecns-fast-events (fn2-cns-events))
