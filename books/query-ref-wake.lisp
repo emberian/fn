@@ -47,12 +47,14 @@
                                                               fn2-machine-idp
                                                               fn2-machine-kind
                                                               fn2-machine-generation
+                                                              fn2-machine-phase-read-code
                                                               fn2-machine-phase
                                                               ,@(fn2-query-snapshot-codes (fn2-machine-names (w state)))
                                                               ,@(fn2-machine-row-readers (fn2-machine-names (w state))))))))
     (and (fn2-machine-idp owner fn2-core)
          (equal (fn2-machine-kind owner fn2-core) kind)
          (equal (fn2-machine-generation owner fn2-core) generation)
+         (eq (fn2-machine-phase-read-code owner fn2-core) :ok)
          (let ((phase (fn2-machine-phase owner fn2-core)))
           (cond ,@(fn2-query-live-clauses (fn2-machine-names (w state)) (w state))
                 (t nil)))))))
