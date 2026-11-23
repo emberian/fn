@@ -269,7 +269,7 @@
     (status start2 mode2 discard2 copied lines fn2-pool)
     (fn2-upload-feed-counted (max 1 (nfix left)) (nfix start) (nfix end) (nfix mode) discard raw
                              rslot rgen rk rs rg slot sgen *fn2-upload-kind* u ugen
-                             limit stop-header fn2-pool)
+                             (nfix limit) stop-header fn2-pool)
     (mv status start2 mode2 discard2 copied lines fn2-core)))
 (fn2-core-preserves fn2-upload-feed-pool (left start end mode discard raw rslot rgen rk rs rg slot sgen limit stop-header u ugen fn2-core)
   :position 6 :rows nil)
