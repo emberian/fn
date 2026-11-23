@@ -157,6 +157,23 @@
                                            :in-theory (disable ,iss ,',fn fn2-core-ops fn2-corep fn2-core-wfp
                                                                fn2-ops-issued-count fn2-ops-rows)))))))))
                 (fn2-ecns-augment-arms-list (cdr xs))))
+        ((and (consp (car xs)) (eq (caar xs) 'progn)
+              (consp (cdar xs)) (consp (cadar xs)) (eq (caadar xs) 'defun))
+         (let ((w (cadadar xs))
+               (fms (caddr (cadar xs))))
+           (list* `(encapsulate ()
+                     (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p))))
+                     ,(car xs))
+                  `(local
+                    (defthm ,(fn2-columns-sym w "-PRESERVES-MACHINE-DIR")
+                      (and (equal (fn2-machine-idp fn2-any-id (,w ,@fms)) (fn2-machine-idp fn2-any-id fn2-core))
+                           (equal (fn2-machine-kind fn2-any-id (,w ,@fms)) (fn2-machine-kind fn2-any-id fn2-core))
+                           (equal (fn2-machine-slot fn2-any-id (,w ,@fms)) (fn2-machine-slot fn2-any-id fn2-core)))
+                      :hints (("Goal" :in-theory (e/d (,w fn2-machine-refuse-write fn2-core-stop
+                                                       fn2-machine-idp fn2-machine-kind fn2-machine-slot)
+                                                      ((:definition unsigned-byte-p) (:definition integer-range-p)))))))
+                  `(local (in-theory (disable ,w)))
+                  (fn2-ecns-augment-arms-list (cdr xs)))))
         ((and (consp (car xs)) (member-eq (caar xs) '(defun progn)))
          (cons `(encapsulate ()
                   (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p))))
@@ -257,6 +274,12 @@
         (value (fn2-ecns-patch-form exp (w state)))))))
 (fn2-ecns-fast-events (fn2-auth-read-events))
 (fn2-ecns-fast-events (fn2-authority-depend-events))
+(local
+ (defthm fn2-ecns-b3-ready-implies-natp
+   (implies (fn2-b3-ready row fn2-b3 fn2-digests)
+            (and (natp row) (integerp row) (<= 0 row)))
+   :rule-classes (:rewrite :forward-chaining)
+   :hints (("Goal" :in-theory (enable fn2-b3-ready)))))
 (local
  (defthm fn2-ecns-fnct-stream-start-shape
    (implies (and (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests)

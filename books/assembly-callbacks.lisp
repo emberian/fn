@@ -181,6 +181,23 @@
                                            :in-theory (disable ,iss ,',fn fn2-core-ops fn2-corep fn2-core-wfp
                                                                fn2-ops-issued-count fn2-ops-rows)))))))))
                 (fn2-cb-augment-arms-list (cdr xs))))
+        ((and (consp (car xs)) (eq (caar xs) 'progn)
+              (consp (cdar xs)) (consp (cadar xs)) (eq (caadar xs) 'defun))
+         (let ((w (cadadar xs))
+               (fms (caddr (cadar xs))))
+           (list* `(encapsulate ()
+                     (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p))))
+                     ,(car xs))
+                  `(local
+                    (defthm ,(fn2-columns-sym w "-PRESERVES-MACHINE-DIR")
+                      (and (equal (fn2-machine-idp fn2-any-id (,w ,@fms)) (fn2-machine-idp fn2-any-id fn2-core))
+                           (equal (fn2-machine-kind fn2-any-id (,w ,@fms)) (fn2-machine-kind fn2-any-id fn2-core))
+                           (equal (fn2-machine-slot fn2-any-id (,w ,@fms)) (fn2-machine-slot fn2-any-id fn2-core)))
+                      :hints (("Goal" :in-theory (e/d (,w fn2-machine-refuse-write fn2-core-stop
+                                                       fn2-machine-idp fn2-machine-kind fn2-machine-slot)
+                                                      ((:definition unsigned-byte-p) (:definition integer-range-p)))))))
+                  `(local (in-theory (disable ,w)))
+                  (fn2-cb-augment-arms-list (cdr xs)))))
         ((and (consp (car xs)) (member-eq (caar xs) '(defun progn)))
          (cons `(encapsulate ()
                   (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p))))
@@ -215,7 +232,9 @@
 (make-event
  (value (fn2-cb-patch-runs (fn2-recovery-event-forms-3))))
 (include-book "boot")
-(fn2-boot-events)
+(fn2-boot-operations)
+(make-event
+ (value (fn2-cb-patch-runs '(progn (defmachine-arms fn2-boot) (defmachine-run fn2-boot)))))
 
 (table fn2-costs 'fn2-conn-run-greeting nil)
 (fn2-resolve :callbacks)
