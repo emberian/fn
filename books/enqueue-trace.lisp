@@ -5,7 +5,12 @@
 (in-package "ACL2")
 (include-book "assembly-callbacks-b2")
 (defun fn2-core-record-enqueue (id fn2-core)
- (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                 :guard-hints (("Goal" :in-theory (e/d (fn2-core-wfp)
+                                                       (fn2-trace-lost
+                                                        fn2-trace-append
+                                                        fn2-machine-principal-slot-read-code
+                                                        fn2-machine-principal-slot))))))
  (if (not (eq (fn2-machine-principal-slot-read-code id fn2-core) :ok))
      (stobj-let ((fn2-trace (fn2-core-trace fn2-core))) (fn2-trace)
       (update-fn2-trace-lost (min *fn2-u60-max* (+ 1 (fn2-trace-lost fn2-trace))) fn2-trace)
