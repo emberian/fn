@@ -119,6 +119,49 @@
          (t (cons (fn2-dc-wrap-success-charge (car x) kind arm-fns)
                   (fn2-dc-wrap-success-charge (cdr x) kind arm-fns))))))
 (local
+ (defun fn2-dc-add-cor-hints (rules)
+   (declare (xargs :mode :program))
+   (if (atom rules) nil
+     (cons (append (car rules)
+                   '(:hints (("Goal" :in-theory
+                              (union-theories '(fn2-run-quantitiesp natp)
+                                (union-theories (executable-counterpart-theory :here)
+                                                (theory 'minimal-theory)))))))
+           (fn2-dc-add-cor-hints (cdr rules))))))
+(local
+ (defun fn2-dc-patch-result-tree (x extra-dis)
+   (declare (xargs :mode :program))
+   (cond ((atom x) x)
+         ((and (eq (car x) ':rule-classes) (consp (cdr x)))
+          (list* ':rule-classes (fn2-dc-add-cor-hints (cadr x))
+                 (fn2-dc-patch-result-tree (cddr x) extra-dis)))
+         ((and (eq (car x) 'e/d) (consp (cdr x)) (consp (cddr x)))
+          (list 'e/d (cadr x) (append extra-dis (caddr x))))
+         (t (cons (fn2-dc-patch-result-tree (car x) extra-dis)
+                  (fn2-dc-patch-result-tree (cdr x) extra-dis))))))
+(local
+ (defun fn2-dc-rewrite-core-ev (x kind)
+   (declare (xargs :mode :program))
+   (cond ((atom x) x)
+         ((eq (car x) 'fn2-machine-core-result-events)
+          `(fn2-dc-patch-result-tree
+            ,x
+            ',(list (fn2-columns-sym kind "-ARM-OK-P")
+                    (fn2-columns-sym kind "-SNAPSHOT-READ-CODE")
+                    'fn2-machine-phase-read-code
+                    '(:definition unsigned-byte-p)
+                    '(:definition integer-range-p)
+                    'ceiling 'floor 'mod 'min)))
+         ((eq (car x) 'fn2-core-preserves)
+          `(encapsulate ()
+             (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p)
+                                        nfix min floor mod ceiling fn2-machine-phase-read-code
+                                        ,(fn2-columns-sym kind "-SNAPSHOT-READ-CODE")
+                                        ,(fn2-columns-sym kind "-ARM-OK-P"))))
+             ,x))
+         (t (cons (fn2-dc-rewrite-core-ev (car x) kind)
+                  (fn2-dc-rewrite-core-ev (cdr x) kind))))))
+(local
  (defun fn2-dc-find-result-fn (x)
    (declare (xargs :mode :program))
    (cond ((atom x) nil)
@@ -134,7 +177,9 @@
      (let ((fn (fn2-dc-find-result-fn (car xs))))
        (cond
         (fn
-         (list* (car xs)
+         (list* `(encapsulate ()
+                   (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p))))
+                   ,(fn2-dc-rewrite-core-ev (car xs) kind))
                 `(local
                   (make-event
                    (let ((guard (getpropc ',fn 'guard t (w state)))
@@ -179,7 +224,9 @@
                                                                fn2-ops-issued-count fn2-ops-rows)))))))))
                 (fn2-dc-augment-arms-list (cdr xs) kind)))
         ((and (consp (car xs)) (eq (caar xs) 'progn)
-              (consp (cdar xs)) (consp (cadar xs)) (eq (caadar xs) 'defun))
+              (consp (cdar xs)) (consp (cadar xs)) (eq (caadar xs) 'defun)
+              (symbolp (cadr (cadar xs)))
+              (search "-WRITE+" (symbol-name (cadr (cadar xs)))))
          (let ((w (cadr (cadar xs)))
                (fms (caddr (cadar xs)))
                (upd-tbl (fn2-columns-pre "UPDATE-" (fn2-columns-sym kind "-TABLE"))))
@@ -206,7 +253,7 @@
         ((and (consp (car xs)) (member-eq (caar xs) '(defun progn)))
          (cons `(encapsulate ()
                   (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p))))
-                  ,(car xs))
+                  ,(fn2-dc-rewrite-core-ev (car xs) kind))
                (fn2-dc-augment-arms-list (cdr xs) kind)))
         (t (cons (car xs) (fn2-dc-augment-arms-list (cdr xs) kind))))))))
 (make-event
@@ -218,7 +265,7 @@
    (if err (er soft 'assembly-callbacks-d-conn "~@0" err)
      (value (cons 'progn (fn2-dc-augment-arms-list (cdr form) 'fn2-tls-admit))))))
 (make-event
- (let* ((ev (fn2-machine-run-event 'fn2-tls-admit (w state)))
+ (let* ((ev (fn2-dc-rewrite-core-ev (fn2-machine-run-event 'fn2-tls-admit (w state)) 'fn2-tls-admit))
         (arm-fns (fn2-dc-arm-fns (fn2-machine-property 'fn2-tls-admit :continuations (w state))))
         (patched (fn2-dc-wrap-success-charge ev 'fn2-tls-admit arm-fns)))
    (if (equal patched ev)
@@ -741,7 +788,7 @@
    (if err (er soft 'assembly-callbacks-d-conn "~@0" err)
      (value (cons 'progn (fn2-dc-augment-arms-list (cdr form) 'fn2-conn))))))
 (make-event
- (let* ((ev (fn2-machine-run-event 'fn2-conn (w state)))
+ (let* ((ev (fn2-dc-rewrite-core-ev (fn2-machine-run-event 'fn2-conn (w state)) 'fn2-conn))
         (arm-fns (fn2-dc-arm-fns (fn2-machine-property 'fn2-conn :continuations (w state))))
         (patched (fn2-dc-wrap-success-charge ev 'fn2-conn arm-fns)))
    (if (equal patched ev)

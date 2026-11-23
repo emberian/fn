@@ -71,7 +71,7 @@
             (and (integerp (nth s (nth *fn2-pool-query-ref-count$ai* p)))
                  (<= 0 (nth s (nth *fn2-pool-query-ref-count$ai* p)))
                  (acl2-numberp (nth s (nth *fn2-pool-query-ref-count$ai* p)))))
-   :hints (("Goal" :in-theory (enable fn2-poolp fn2-pool-wfp fn2-pool-query-ref-count fn2-pool-query-ref-count$ai)))))
+   :hints (("Goal" :in-theory (enable nth fn2-poolp fn2-pool-wfp fn2-pool-query-ref-count fn2-pool-query-ref-count$ai)))))
 (encapsulate ()
   (local (in-theory (disable fn2-pool-workspace-code fn2-pool-readable-code
                              fn2-pool-range-in fn2-feed-header-complete-p
@@ -676,6 +676,49 @@
          (t (cons (fn2-du-wrap-success-charge (car x) kind arm-fns)
                   (fn2-du-wrap-success-charge (cdr x) kind arm-fns))))))
 (local
+ (defun fn2-du-add-cor-hints (rules)
+   (declare (xargs :mode :program))
+   (if (atom rules) nil
+     (cons (append (car rules)
+                   '(:hints (("Goal" :in-theory
+                              (union-theories '(fn2-run-quantitiesp natp)
+                                (union-theories (executable-counterpart-theory :here)
+                                                (theory 'minimal-theory)))))))
+           (fn2-du-add-cor-hints (cdr rules))))))
+(local
+ (defun fn2-du-patch-result-tree (x extra-dis)
+   (declare (xargs :mode :program))
+   (cond ((atom x) x)
+         ((and (eq (car x) ':rule-classes) (consp (cdr x)))
+          (list* ':rule-classes (fn2-du-add-cor-hints (cadr x))
+                 (fn2-du-patch-result-tree (cddr x) extra-dis)))
+         ((and (eq (car x) 'e/d) (consp (cdr x)) (consp (cddr x)))
+          (list 'e/d (cadr x) (append extra-dis (caddr x))))
+         (t (cons (fn2-du-patch-result-tree (car x) extra-dis)
+                  (fn2-du-patch-result-tree (cdr x) extra-dis))))))
+(local
+ (defun fn2-du-rewrite-core-ev (x kind)
+   (declare (xargs :mode :program))
+   (cond ((atom x) x)
+         ((eq (car x) 'fn2-machine-core-result-events)
+          `(fn2-du-patch-result-tree
+            ,x
+            ',(list (fn2-columns-sym kind "-ARM-OK-P")
+                    (fn2-columns-sym kind "-SNAPSHOT-READ-CODE")
+                    'fn2-machine-phase-read-code
+                    '(:definition unsigned-byte-p)
+                    '(:definition integer-range-p)
+                    'ceiling 'floor 'mod 'min)))
+         ((eq (car x) 'fn2-core-preserves)
+          `(encapsulate ()
+             (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p)
+                                        nfix min floor mod ceiling fn2-machine-phase-read-code
+                                        ,(fn2-columns-sym kind "-SNAPSHOT-READ-CODE")
+                                        ,(fn2-columns-sym kind "-ARM-OK-P"))))
+             ,x))
+         (t (cons (fn2-du-rewrite-core-ev (car x) kind)
+                  (fn2-du-rewrite-core-ev (cdr x) kind))))))
+(local
  (defun fn2-du-find-result-fn (x)
    (declare (xargs :mode :program))
    (cond ((atom x) nil)
@@ -691,7 +734,9 @@
      (let ((fn (fn2-du-find-result-fn (car xs))))
        (cond
         (fn
-         (list* (car xs)
+         (list* `(encapsulate ()
+                   (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p))))
+                   ,(fn2-du-rewrite-core-ev (car xs) 'fn2-upload))
                 `(local
                   (make-event
                    (let ((guard (getpropc ',fn 'guard t (w state)))
@@ -736,7 +781,9 @@
                                                                fn2-ops-issued-count fn2-ops-rows)))))))))
                 (fn2-du-augment-arms-list (cdr xs))))
         ((and (consp (car xs)) (eq (caar xs) 'progn)
-              (consp (cdar xs)) (consp (cadar xs)) (eq (caadar xs) 'defun))
+              (consp (cdar xs)) (consp (cadar xs)) (eq (caadar xs) 'defun)
+              (symbolp (cadr (cadar xs)))
+              (search "-WRITE+" (symbol-name (cadr (cadar xs)))))
          (let ((w (cadr (cadar xs)))
                (fms (caddr (cadar xs))))
            (list* `(encapsulate ()
@@ -762,7 +809,7 @@
         ((and (consp (car xs)) (member-eq (caar xs) '(defun progn)))
          (cons `(encapsulate ()
                   (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p))))
-                  ,(car xs))
+                  ,(fn2-du-rewrite-core-ev (car xs) 'fn2-upload))
                (fn2-du-augment-arms-list (cdr xs))))
         (t (cons (car xs) (fn2-du-augment-arms-list (cdr xs)))))))))
 (make-event
@@ -774,7 +821,7 @@
    (if err (er soft 'assembly-callbacks-d-upload "~@0" err)
      (value (cons 'progn (fn2-du-augment-arms-list (cdr form)))))))
 (make-event
- (let* ((ev (fn2-machine-run-event 'fn2-upload (w state)))
+ (let* ((ev (fn2-du-rewrite-core-ev (fn2-machine-run-event 'fn2-upload (w state)) 'fn2-upload))
         (arm-fns (fn2-du-arm-fns (fn2-machine-property 'fn2-upload :continuations (w state))))
         (patched (fn2-du-wrap-success-charge ev 'fn2-upload arm-fns)))
    (if (equal patched ev)
