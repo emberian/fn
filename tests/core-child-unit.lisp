@@ -5,7 +5,7 @@
             :init (fn2-test-child-init 1 fn2-test-child) :profilep t :why "duplicate"))
 (must-fail (defcorechild bad fn2-test-child :init fn2-test-child :profilep t
             :reference :environment) :expected :hard)
-(in-theory (enable fn2-core-wfp))
+(in-theory (e/d (fn2-core-wfp) (fn2-test-child-rows)))
 (defun fn2-test-child-step (id fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-test-child (fn2-core-test-child fn2-core)))

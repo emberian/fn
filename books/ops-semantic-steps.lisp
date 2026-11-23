@@ -34,7 +34,6 @@
 (fn2-oss-issue fn2-issue-receive (cap-index cap-nonce slot gen len))
 (fn2-oss-issue fn2-issue-send (cap-index cap-nonce slot gen off len may-release))
 (fn2-oss-issue fn2-issue-tls-start (cap-index cap-nonce slot gen off len))
-(fn2-core-issue-wrapper fn2-issue-compress-start (cap-index cap-nonce slot gen off len))
 (fn2-oss-issue fn2-issue-compress-start (cap-index cap-nonce slot gen off len))
 (fn2-oss-issue fn2-issue-read (offset slot gen len))
 (fn2-oss-issue fn2-issue-write (offset slot gen off len fua))

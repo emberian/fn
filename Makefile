@@ -358,7 +358,6 @@ ACL2_BOOKS = \
   tests/boot-unit \
   tests/borrow-conservation-unit \
   tests/borrow-release-unit \
-  tests/callbacks-unit \
   tests/check-history-unit \
   tests/check-own-unit \
   tests/claims-unit \

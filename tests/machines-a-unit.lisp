@@ -410,17 +410,27 @@
   :hints (("Goal" :in-theory (enable fn2-machine-test-saturate)))
   :rule-classes :type-prescription)
 (in-theory (disable fn2-machine-test-saturate))
-(defmachine-callback fn2-machine-test-accumulate fn2-scribe (id event outcome reason count aux0 aux1) 1
-  ; A test-only handler calling a test helper: the declared escape.
-  :contract (:cost (:steps 1) :writes (completed verified checksum cursor) :next () :uses ()
-             :language :unchecked)
-  (let ((fn2-core (fn2-scribe-put-core id
-          (completed (fn2-machine-test-saturate (+ 1 row-completed)))
-          (verified (fn2-machine-test-saturate (+ (nfix count) row-verified)))
-          (checksum (fn2-machine-test-saturate (+ (nfix reason) (* 16 row-checksum))))
-          (cursor (fn2-machine-test-saturate (+ row-pending
-                                    (* 10 row-cursor)))))))
-    (mv id fn2-core)))
+(fn2-defoperation (:machine fn2-scribe) :callbacks (:value fn2-core)
+  (defun fn2-machine-test-accumulate (id event outcome reason count aux0 aux1 fn2-core)
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core))
+             (ignore event outcome aux0 aux1))
+    (if (not (eq (fn2-scribe-snapshot-read-code id fn2-core) :ok))
+        (let ((fn2-core (fn2-core-stop *fn2-stop-reason-machine-observation* fn2-core)))
+          (mv *fn2-none* fn2-core))
+      (let* ((row-completed (fn2-scribe-row-completed id fn2-core))
+             (row-verified (fn2-scribe-row-verified id fn2-core))
+             (row-checksum (fn2-scribe-row-checksum id fn2-core))
+             (row-pending (fn2-scribe-row-pending id fn2-core))
+             (row-cursor (fn2-scribe-row-cursor id fn2-core))
+             (fn2-core (fn2-scribe-put-core id
+                         (completed (fn2-machine-test-saturate (+ 1 row-completed)))
+                         (verified (fn2-machine-test-saturate (+ (nfix count) row-verified)))
+                         (checksum (fn2-machine-test-saturate (+ (nfix reason) (* 16 row-checksum))))
+                         (cursor (fn2-machine-test-saturate (+ row-pending
+                                                   (* 10 row-cursor)))))))
+        (mv id fn2-core)))))
+(fn2-core-preserves fn2-machine-test-accumulate (id event outcome reason count aux0 aux1 fn2-core)
+  :position 1 :rows nil)
 
 (encapsulate ()
  ; the scribe's handlers are derived (machine-arms.lisp): replace :write-result's there

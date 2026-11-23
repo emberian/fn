@@ -903,78 +903,11 @@
                                                 '(row-phase) (cadr args))))
               (fn2-machine-observe-event-arms (cdr observes) predicatep args))))))
 
-; ----------------------------------------------------------------------
-; Arm contracts in the registry (R7). The contract of a callback: an arm
-; entry's (the union over the arms naming it) or its own :contract.
-(defun fn2-machine-arm-union (name entries acc)
-  (declare (xargs :verify-guards nil))
-  (if (atom entries) acc
-    (fn2-machine-arm-union name (cdr entries)
-      (if (eq (cadar entries) name)
-          (let ((c (cddar entries)))
-            (if (null acc) c
-              (list :cost (fn2-arm-get :cost acc)
-                    :writes (union-eq (fn2-arm-get :writes c) (fn2-arm-get :writes acc))
-                    :tables (union-eq (fn2-arm-get :tables c) (fn2-arm-get :tables acc))
-                    :next (union-eq (fn2-arm-get :next c) (fn2-arm-get :next acc))
-                    :uses (union-equal (fn2-arm-get :uses c) (fn2-arm-get :uses acc))
-                    :language (or (fn2-arm-get :language c) (fn2-arm-get :language acc)))))
-        acc))))
-(defun fn2-machine-arm-cost-max (name entries world acc)
-  (declare (xargs :verify-guards nil))
-  (if (atom entries) acc
-    (fn2-machine-arm-cost-max name (cdr entries) world
-      (if (eq (cadar entries) name)
-          (let ((v (fn2-cost-values (fn2-arm-get :cost (cddar entries)) world)))
-            (if (and acc (natp (car v)) (natp (cadr v)) (natp (caddr v)))
-                (list (max (car v) (car acc)) (max (cadr v) (cadr acc)) (max (caddr v) (caddr acc)))
-              (or acc v)))
-        acc))))
-(defun fn2-machine-phase-map (name states)
-  (declare (xargs :verify-guards nil))
-  (if (atom states) nil
-    (cons (cons (fn2-columns-pre "*" (fn2-columns-sym (fn2-columns-col-name (fn2-columns-sym name "-STATE")
-                                                                           (car states)) "*"))
-                (car states))
-          (fn2-machine-phase-map name (cdr states)))))
 (defun fn2-machine-row-map (columns)
   (declare (xargs :verify-guards nil))
   (if (atom columns) nil
     (cons (cons (fn2-columns-col-name 'row (caar columns)) (caar columns))
           (fn2-machine-row-map (cdr columns)))))
-(defun fn2-machine-arm-env (kind contract world)
-  (declare (xargs :verify-guards nil))
-  (list :kind kind :put (fn2-columns-sym kind "-PUT-CORE")
-        :rows (fn2-machine-row-map (fn2-machine-property kind :columns world))
-        :phases (fn2-machine-phase-map kind (fn2-machine-property kind :states world))
-        :writes (fn2-arm-get :writes contract) :next (fn2-arm-get :next contract)
-        :uses (fn2-arm-use-names (fn2-arm-get :uses contract))
-        :tables (append (fn2-arm-get :tables contract) *fn2-arm-implicit-tables*)
-        :world world))
-; The effective contract and its evaluated bound, or a refusal message.
-(defun fn2-machine-callback-contract (name kind own body world)
-  (declare (xargs :verify-guards nil))
-  (let* ((arms (append (fn2-machine-property kind :continuations world)
-                       (fn2-machine-property kind :observes world)))
-         (entry (fn2-machine-arm-union name arms nil))
-         (contract (or own entry))
-         (states (fn2-machine-property kind :states world))
-         (fields (remove-eq 'phase (strip-cars (fn2-machine-property kind :columns world))))
-         (values (if own (fn2-cost-values (fn2-arm-get :cost own) world)
-                   (fn2-machine-arm-cost-max name arms world nil))))
-    (cond ((and own entry)
-           (mv (msg "~x0 is an arm of ~x1: its contract is the arm entry, not :contract." name kind) nil nil))
-          ((not contract)
-           (mv (msg "~x0 has no contract: declare it as an arm of ~x1 or give :contract." name kind) nil nil))
-          ((and own (fn2-arm-contract-problem name (list* name name own) states fields nil))
-           (mv (fn2-arm-contract-problem name (list* name name own) states fields nil) nil nil))
-          ((not (and (natp (car values)) (natp (cadr values)) (natp (caddr values))))
-           (mv (msg "~x0's cost ~x1 cites a call with no declared cost." name (fn2-arm-get :cost contract)) nil nil))
-          ((eq (fn2-arm-get :language contract) :unchecked) (mv nil contract values))
-          (t (let ((problem (fn2-arm-walk-list body nil (fn2-machine-arm-env kind contract world)
-                                            (+ 16 (* 4 (acl2-count body))))))
-               (if problem (mv (msg "~x0 ~@1" name problem) nil nil)
-                 (mv nil contract values)))))))
 
 ; Per-kind certificates: each phase's declared bound and successors, as
 ; guard-true functions the generated run entry asserts and the owed rows cite.
@@ -3261,38 +3194,6 @@
   (if (atom names) nil
     (append (fn2-machine-snapshot-events (car names) (fn2-machine-property (car names) :columns world))
             (fn2-machine-all-snapshots (cdr names) world))))
-; The submitted spelling check ignores quoted data and shadowed row names.
-(defun fn2-callback-forwarding (form vars world)
-  ; The registry lookup in a ruler is opaque to the termination proof.
-  (declare (xargs :verify-guards nil :measure (acl2-count form)
-                  :hints (("Goal" :in-theory (disable fn2-operation-row)))))
-  (cond ((atom form) nil) ((eq (car form) 'quote) nil)
-        ((and (symbolp (car form)) (fn2-decl-get :row-bindings (fn2-operation-row (car form) world))
-              (intersection-eq vars (cdr form))) (car form))
-        ((member-eq (car form) '(let let*))
-         (or (fn2-callback-forwarding (cadr form) vars world)
-             (fn2-callback-forwarding (cddr form)
-               (set-difference-eq vars (strip-cars (cadr form))) world)))
-        ((eq (car form) 'mv-let)
-         (or (fn2-callback-forwarding (caddr form) vars world)
-             (fn2-callback-forwarding (cdddr form)
-               (set-difference-eq vars (cadr form)) world)))
-        (t (or (fn2-callback-forwarding (car form) vars world)
-               (fn2-callback-forwarding (cdr form) vars world)))))
-(defun fn2-call-expand (form world)
-  (declare (xargs :verify-guards nil))
-  (cond ((atom form) form) ((eq (car form) 'quote) form)
-        ((eq (car form) 'fn2-call)
-         (let* ((row (fn2-operation-row (cadr form) world))
-                (args (fn2-decl-get :args row)))
-           (if (and row (equal (len args) (len (cddr form))))
-               (cons (cadr form)
-                 (sublis (pairlis$ args (cddr form)) (fn2-decl-get :calling-convention row)))
-             (er hard 'fn2-call "Unknown callback or wrong argument count: ~x0." form))))
-        (t (cons (fn2-call-expand (car form) world) (fn2-call-expand (cdr form) world)))))
-(defun fn2-callback-reads (form vars)
-  (cond ((atom form) (member-eq form vars)) ((eq (car form) 'quote) nil)
-        (t (or (fn2-callback-reads (car form) vars) (fn2-callback-reads (cdr form) vars)))))
 (defun fn2-callback-checked-body (body kind position)
   (declare (xargs :verify-guards nil))
   `((if (eq (,(fn2-columns-sym kind "-SNAPSHOT-READ-CODE") id fn2-core) :ok)
@@ -3303,100 +3204,6 @@
         (mv ,@(if (equal position 1) '(*fn2-none*)
                 (if (equal position 4) '(0 *fn2-work-empty* 0 nil)
                   (make-list position :initial-element 0))) fn2-core)))))
-(defun fn2-callback-fresh-body (body kind vars all position)
-  (declare (xargs :verify-guards nil))
-  (if (eq (caar body) 'declare)
-      (cons (car body) (fn2-callback-fresh-body (cdr body) kind vars all position))
-    (if (fn2-callback-reads body vars)
-        (fn2-callback-checked-body
-         `((let ,(fn2-machine-read-bindings kind (fn2-machine-body-reads vars body) all)
-            (declare (ignorable ,@(fn2-machine-body-reads vars body)))
-            ,@body)) kind position)
-      body)))
-; Refresh from the returned core, never the proposed write values. LET* is
-; lowered to nested LETs so every intervening read sees the current core.
-; Fuel bounds the syntax transformation (three times the submitted tree size).
-(defun fn2-callback-refresh (form kind vars all position fuel)
-  (declare (xargs :verify-guards nil :measure (nfix fuel)))
-  (cond ((or (zp fuel) (atom form)) form)
-        ((member-eq (car form) '(quote declare)) form)
-        ((and (eq (car form) 'b*) (consp (cadr form)))
-         (let ((binding (caadr form)))
-           (fn2-callback-refresh
-             (cond ((symbolp (car binding))
-                    `(let (,binding) (b* ,(cdadr form) ,@(cddr form))))
-                   ((eq (caar binding) 'mv)
-                    `(mv-let ,(cdar binding) ,(cadr binding)
-                       (b* ,(cdadr form) ,@(cddr form))))
-                   (t (er hard 'defmachine-callback "Unsupported b* binder ~x0." binding)))
-             kind vars all position (1- fuel))))
-        ((and (eq (car form) 'let*) (consp (cadr form)))
-         (fn2-callback-refresh
-           `(let (,(caadr form))
-              ,@(if (cdadr form) `((let* ,(cdadr form) ,@(cddr form))) (cddr form)))
-           kind vars all position (1- fuel)))
-        ((member-eq (car form) '(let mv-let))
-         (let* ((mvp (eq (car form) 'mv-let))
-                (bound (if mvp (cadr form) (strip-cars (cadr form))))
-                (active (set-difference-eq vars bound))
-                (body (fn2-callback-refresh (if mvp (cdddr form) (cddr form))
-                                            kind active all position (1- fuel)))
-                (body (if (member-eq 'fn2-core bound)
-                          (fn2-callback-fresh-body body kind active all position) body)))
-           (if mvp `(mv-let ,(cadr form)
-                       ,(fn2-callback-refresh (caddr form) kind vars all position (1- fuel)) ,@body)
-             `(let ,(fn2-callback-refresh (cadr form) kind vars all position (1- fuel)) ,@body))))
-        (t (cons (fn2-callback-refresh (car form) kind vars all position (1- fuel))
-                 (fn2-callback-refresh (cdr form) kind vars all position (1- fuel))))))
-(defun fn2-callback-bad-binder (bindings)
-  (if (atom bindings) nil
-    (if (or (symbolp (caar bindings)) (eq (caaar bindings) 'mv))
-        (fn2-callback-bad-binder (cdr bindings)) (car bindings))))
-(defun fn2-callback-input-error (form world)
-  (declare (xargs :verify-guards nil))
-  (cond ((atom form) nil) ((eq (car form) 'quote) nil)
-        ((and (eq (car form) 'fn2-call)
-              (let ((row (fn2-operation-row (cadr form) world)))
-                (or (not row) (not (equal (len (fn2-decl-get :args row)) (len (cddr form))))))) form)
-        ((and (eq (car form) 'b*) (fn2-callback-bad-binder (cadr form))) form)
-        (t (or (fn2-callback-input-error (car form) world)
-               (fn2-callback-input-error (cdr form) world)))))
-(defun fn2-machine-callback-event (name kind args position own body world)
-  (declare (xargs :verify-guards nil))
-  (let* ((all (butlast (cddr (fn2-decl-get :run
-                                (fn2-machine-property kind :calling-convention world))) 1))
-         (columns (fn2-machine-property kind :columns world))
-         (vars (fn2-machine-body-reads all (fn2-call-expand body world)))
-         (problem (fn2-callback-forwarding body all world)))
-    (cond ((fn2-callback-input-error body world)
-           `(make-event (er soft 'defmachine-callback
-                          "~x0 has an unknown call, wrong arity or unsupported binder: ~x1."
-                          ',name ',(fn2-callback-input-error body world))))
-          (problem
-        `(make-event (er soft 'defmachine-callback
-                       "~x0 calls callback ~x1 with positional row fields; use fn2-call."
-                       ',name ',problem)))
-          (t (mv-let (refusal contract values) (fn2-machine-callback-contract name kind own body world)
-           (if refusal `(make-event (er soft 'defmachine-callback "~@0" ',refusal))
-            (fn2-operation-events (list :machine kind) name 'fn2-core args
-          (append (make-list position :initial-element :value) '(fn2-core)) vars :callbacks
-          `(declare (xargs :stobjs fn2-core
-                     :guard (and (fn2-core-wfp fn2-core)
-                                 ,@(fn2-machine-value-guards (fn2-machine-read-columns vars columns) vars)))
-                    (ignorable ,@args ,@vars))
-          (fn2-callback-checked-body
-           (fn2-callback-refresh (fn2-call-expand body world) kind vars columns position (* 3 (acl2-count (fn2-call-expand body world)))) kind position)
-          `((fn2-core-preserves ,name (,@args ,@vars fn2-core) :position ,position :rows nil))
-          (list :writes (fn2-arm-get :writes contract) :cost (fn2-arm-get :cost contract)
-                :refusal (fn2-arm-get :on-refusal contract) :contract contract :cost-values values))))))))
-; ROW-<field> is the public scalar argument vocabulary, in declaration order.
-; No resident list and no child/core alias crosses the callback boundary.
-; An arm's callback takes its contract from its arm entry; a callback only
-; forwarded to (fn2-call) gives :contract (:cost :writes :next :uses ...).
-(defmacro defmachine-callback (name kind args position &rest body)
-  (let ((own (and (eq (car body) :contract) (cadr body)))
-        (body (if (eq (car body) :contract) (cddr body) body)))
-    `(make-event (value (fn2-machine-callback-event ',name ',kind ',args ',position ',own ',body (w state))))))
 (defun fn2-machine-observe-handler-events (router name world)
   (declare (xargs :verify-guards nil))
   (let ((handler (fn2-columns-col-name router name)))
@@ -3442,7 +3249,13 @@
  (if (atom fns) nil
   (cons `(make-event (value (fn2-machine-ops-frame-event ',(car fns) ',kind (w state))))
         (fn2-machine-ops-frame-events (cdr fns) kind))))
-(defun fn2-machine-core-issued-event (fn kind guard)
+(defun fn2-defined-fns (fns world)
+ (declare (xargs :verify-guards nil))
+ (if (atom fns) nil
+  (if (and (symbolp (car fns)) (getpropc (car fns) 'def-bodies nil world))
+      (cons (car fns) (fn2-defined-fns (cdr fns) world))
+   (fn2-defined-fns (cdr fns) world))))
+(defun fn2-machine-core-issued-event-1 (fn kind guard disabled)
  (declare (xargs :verify-guards nil))
  (let ((call `(,fn id budget fn2-core)))
   `(defthm ,(fn2-columns-sym fn "-ISSUED-EFFECT")
@@ -3453,13 +3266,19 @@
       fn2-machine-refuse-phase fn2-machine-idle fn2-machine-finish
       fn2-machine-charge fn2-machine-charge-kindp fn2-machine-refuse-charge
       fn2-machine-refuse-write ,(fn2-columns-sym kind "-CHARGE"))
-     (fn2-core-ops fn2-corep fn2-core-wfp fn2-ops-issued-count fn2-op-issued-weight fn2-ops-rows nfix nth)))))))
+     (fn2-core-ops fn2-corep fn2-core-wfp fn2-ops-issued-count fn2-op-issued-weight fn2-ops-rows nfix nth ,@disabled)))))))
+(defmacro fn2-machine-core-issued-event (fn kind guard &optional disabled)
+ `(fn2-machine-core-issued-event-1 ,fn ,kind ,guard ,disabled))
 (defun fn2-machine-core-result-events (fn kind work-limit world)
   (declare (xargs :verify-guards nil))
   (let* ((call `(,fn id budget fn2-core))
          (hyps (list '(fn2-corep fn2-core) (getpropc fn 'guard t world)))
          (limit (nfix (fn2-arm-get :descriptors (fn2-machine-property kind :budget world))))
-         (terms (fn2-run-quantity-terms call 'budget work-limit limit)))
+         (terms (fn2-run-quantity-terms call 'budget work-limit limit))
+         (other-arms (fn2-defined-fns
+                      (remove-duplicates-eq
+                       (remove-eq fn (strip-cadrs (fn2-machine-property kind :continuations world))))
+                      world)))
     (append
      `((make-event (value (cons 'progn
           (fn2-dc-forms (fn2-dc-todo '(,fn) ',kind (w state) nil 64) ',kind)))))
@@ -3474,7 +3293,7 @@
                                            fn2-machine-refuse-phase fn2-machine-idle fn2-machine-finish
                                            fn2-machine-charge fn2-machine-charge-kindp fn2-machine-refuse-charge
                                            fn2-machine-refuse-write ,(fn2-columns-sym kind "-CHARGE"))
-                                        (fn2-corep fn2-core-wfp nfix nth)))))
+                                        (fn2-corep fn2-core-wfp nfix nth ,@other-arms)))))
       (defthm ,(fn2-columns-sym fn "-DESCRIPTOR-EFFECT")
         (implies (and ,@hyps)
           (equal (nth *fn2-ops-queued* (fn2-core-ops (mv-nth 4 ,call)))
@@ -3484,9 +3303,9 @@
                                              fn2-machine-refuse-phase fn2-machine-idle fn2-machine-finish
                                            fn2-machine-charge fn2-machine-charge-kindp fn2-machine-refuse-charge
                                            fn2-machine-refuse-write ,(fn2-columns-sym kind "-CHARGE"))
-                                        (fn2-core-ops fn2-corep fn2-core-wfp nfix nth)))))
-      ,(fn2-machine-core-issued-event fn kind (getpropc fn 'guard t world))))))
-(defun fn2-machine-success-charge-event (fn charge guard enabled)
+                                        (fn2-core-ops fn2-corep fn2-core-wfp nfix nth ,@other-arms)))))
+      ,(fn2-machine-core-issued-event fn kind (getpropc fn 'guard t world) other-arms)))))
+(defun fn2-machine-success-charge-event-1 (fn charge guard enabled disabled)
   (declare (xargs :verify-guards nil))
   (let ((call `(,fn id budget fn2-core)))
     `(defthm ,(fn2-columns-sym fn "-SUCCESS-CHARGE")
@@ -3499,10 +3318,18 @@
        ; REMOVE-EQUAL also works before that consumer's rune exists.
        :hints (("Goal" :in-theory
                 (remove-equal '(:rewrite fn2-core-stopped-p-is-exec-stop)
-                 (enable ,fn ,@enabled fn2-core-success-p
-                         fn2-core-stopped-p fn2-core-stop-reason fn2-core-stop
-                         fn2-control-record-stop fn2-control-stop
-                         update-fn2-control-stop update-fn2-control-stop-reason)))))))
+                 ,(if disabled
+                      `(e/d (,fn ,@enabled fn2-core-success-p
+                             fn2-core-stopped-p fn2-core-stop-reason fn2-core-stop
+                             fn2-control-record-stop fn2-control-stop
+                             update-fn2-control-stop update-fn2-control-stop-reason)
+                            ,disabled)
+                    `(enable ,fn ,@enabled fn2-core-success-p
+                             fn2-core-stopped-p fn2-core-stop-reason fn2-core-stop
+                             fn2-control-record-stop fn2-control-stop
+                             update-fn2-control-stop update-fn2-control-stop-reason))))))))
+(defmacro fn2-machine-success-charge-event (fn charge guard enabled &optional disabled)
+ `(fn2-machine-success-charge-event-1 ,fn ,charge ,guard ,enabled ,disabled))
 (defun fn2-machine-run-event (name world)
   (declare (xargs :verify-guards nil))
   (let* ((run (fn2-columns-sym name "-RUN"))
@@ -3548,7 +3375,12 @@
             fn2-machine-finish fn2-machine-charge fn2-machine-charge-kindp
             fn2-machine-refuse-charge fn2-machine-refuse-write fn2-machine-phase
             ,(fn2-columns-sym name "-ARM-OK-P") ,(fn2-machine-row-reader name 'phase)
-            ,(fn2-columns-sym name "-CHARGE")))))) nil)
+            ,(fn2-columns-sym name "-CHARGE"))
+          (fn2-defined-fns
+           '(,(fn2-columns-sym name "-ARM-CHARGE-OK-P")
+             ,(fn2-columns-sym name "-ARM-NEXT-OK-P")
+             ,@(remove-duplicates-eq (strip-cadrs (fn2-machine-property name :continuations world))))
+           (w state)))))) nil)
        ,@(and leafp (fn2-machine-observe-handler-events 'fn2-machine-observe name world))
        ,@(fn2-machine-teeth-events name world)
        ,@(fn2-machine-arm-rows name (fn2-machine-property name :continuations world) world)
@@ -3770,7 +3602,8 @@
 (defun fn2-machine-partition-runtime-class-event (world)
   (declare (xargs :verify-guards nil))
   `(defun fn2-machine-partition-runtime-classes (ord fn2-core)
-    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core))
+             (ignorable fn2-core))
     (case ord ,@(fn2-machine-taken-runtime-class-cases (fn2-machine-taken world)
                     (len (fn2-machine-admitted world)) world)
           (otherwise (fn2-machine-partition-classes ord)))))

@@ -2369,6 +2369,17 @@
                 `((acl2-numberp ,q) (integerp ,q) (<= 0 ,q)))
               `((:linear :corollary (implies (and ,@hyps) (<= 0 ,q))))
               (fn2-arms-quantity-projection-rules hyps (cdr projections))))))
+(defthm fn2-nfix-diff-nfix-linear
+  (implies (and (integerp n) (<= 0 n))
+           (and (<= (nfix (+ n (- (nfix y)))) n)
+                (<= (nfix (+ (- (nfix y)) n)) n)))
+  :rule-classes ((:linear :corollary
+                  (implies (and (integerp n) (<= 0 n))
+                           (<= (nfix (+ n (- (nfix y)))) n)))
+                 (:linear :corollary
+                  (implies (and (integerp n) (<= 0 n))
+                           (<= (nfix (+ (- (nfix y)) n)) n))))
+  :hints (("Goal" :in-theory (enable nfix))))
 (defun fn2-arms-child-quantities-event-with-residual (name work-limit residual world)
   (declare (xargs :verify-guards nil))
   (let* ((ins (car (fn2-arms-sig name world)))
@@ -2814,19 +2825,24 @@
          (k (fn2-arms-value-count outs))
          (rvars (fn2-arms-result-vars k))
          (gconjuncts (fn2-arms-guard-conjuncts (getpropc child 'guard t world) sin)))
-    `((defun ,op (,@vformals fn2-core)
-        (declare (xargs :stobjs fn2-core
-                        :guard (and (fn2-core-wfp fn2-core) ,@gconjuncts)
-                        :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
-        (stobj-let ,(fn2-arms-core-stobj-lets sin world)
-          ,(fn2-arms-binders outs rvars)
-          (,child ,@cformals)
-          ,(fn2-arms-mvx (append rvars (and sout '(fn2-core))))))
-      ,@(and sout
-             ;; the core's per-child facts carry the proof: opening fn2-core-wfp
-             ;; walked every child (D26: 16 s per face, 0.3 s closed)
-             `((fn2-core-preserves ,op (,@vformals fn2-core) ,@(if (zp k) '(:prefix "") `(:position ,k)) :rows nil)))
-      (in-theory (disable ,op)))))
+    (if (null sin)
+        `((defun ,op ,vformals
+            (declare (xargs :guard (and ,@gconjuncts)))
+            (,child ,@cformals))
+          (in-theory (disable ,op)))
+      `((defun ,op (,@vformals fn2-core)
+          (declare (xargs :stobjs fn2-core
+                          :guard (and (fn2-core-wfp fn2-core) ,@gconjuncts)
+                          :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
+          (stobj-let ,(fn2-arms-core-stobj-lets sin world)
+            ,(fn2-arms-binders outs rvars)
+            (,child ,@cformals)
+            ,(fn2-arms-mvx (append rvars (and sout '(fn2-core))))))
+        ,@(and sout
+               ;; the core's per-child facts carry the proof: opening fn2-core-wfp
+               ;; walked every child (D26: 16 s per face, 0.3 s closed)
+               `((fn2-core-preserves ,op (,@vformals fn2-core) ,@(if (zp k) '(:prefix "") `(:position ,k)) :rows nil)))
+        (in-theory (disable ,op))))))
 (defun fn2-arms-book-op-faces-1 (rows book world)
   (declare (xargs :verify-guards nil))
   (if (atom rows) nil

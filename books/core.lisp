@@ -378,6 +378,10 @@
 (fn2-core-pool-wrapper fn2-core-copy-range fn2-pool-copy-range
   (src sgen soff dst dgen doff len okind oslot ogen) (code) 1)
 ; A range handed to another row, and its acceptance by that row (D F9).
+(encapsulate ()
+(local (in-theory (disable fn2-pool-hand fn2-pool-accept-own fn2-pool-truncate
+                           fn2-harvest-next fn2-op-finish fn2-terminal-releases-borrow-p
+                           fn2-pool-complete-in fn2-pool-release-out fn2-op-cell fn2-op-range)))
 (fn2-core-pool-wrapper fn2-core-hand fn2-pool-hand
   (slot gen okind oslot ogen tkind tslot tgen) (code) 1)
 (fn2-core-pool-wrapper fn2-core-accept-hand fn2-pool-accept-own
@@ -385,7 +389,7 @@
 (fn2-core-pool-wrapper fn2-core-drop-prefix fn2-pool-drop-prefix
   (slot gen k cursor limit okind oslot ogen) (code cursor) 2)
 (fn2-core-pool-wrapper fn2-core-truncate fn2-pool-truncate
-  (slot gen n okind oslot ogen) (code) 1)
+  (slot gen n okind oslot ogen) (code) 1))
 (fn2-defoperation (:operation-set fn2-core-issue) :core :infer
 (defun fn2-core-compare (s1 g1 off1 k1 os1 og1 s2 g2 off2 k2 os2 og2 len fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -410,6 +414,11 @@
   (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
     (code byte) (fn2-pool-read slot gen idx okind oslot ogen fn2-pool)
     (mv code byte))))
+(defun fn2-core-query-heldp (slot gen fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (held)
+    (fn2-pool-query-heldp slot gen fn2-pool) held))
+(in-theory (disable fn2-core-query-heldp))
 
 ; No row traversal: these are the scalar outbox preconditions needed by
 ; enqueue. A reservation takes the row and credit before a pool loan.
@@ -431,6 +440,7 @@
 (fn2-core-issue-wrapper fn2-issue-receive (cap-index cap-nonce slot gen len))
 (fn2-core-issue-wrapper fn2-issue-send (cap-index cap-nonce slot gen off len may-release))
 (fn2-core-issue-wrapper fn2-issue-tls-start (cap-index cap-nonce slot gen off len))
+(fn2-core-issue-wrapper fn2-issue-compress-start (cap-index cap-nonce slot gen off len))
 (fn2-core-issue-wrapper fn2-issue-read (offset slot gen len))
 (fn2-core-issue-wrapper fn2-issue-write (offset slot gen off len fua))
 (fn2-core-issue-wrapper fn2-issue-fence ())
@@ -481,6 +491,9 @@
     (mv found okind oslot ogen principal)))
 
 (fn2-core-harvest-events)
+(encapsulate ()
+(local (in-theory (disable fn2-harvest-next fn2-op-finish fn2-terminal-releases-borrow-p
+                           fn2-pool-complete-in fn2-pool-release-out fn2-op-cell fn2-op-range)))
 (fn2-defoperation (:operation-set fn2-core-harvest) :core :infer
 (defun fn2-harvest-one (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -534,14 +547,14 @@
              (fn2-core (if ok fn2-core
                          (fn2-core-stop *fn2-stop-reason-harvest-finish* fn2-core))))
        (mv (and ok found) opslot opgen cell evkind outcome reason count aux0 aux1 fn2-core)))))))
-(fn2-core-preserves fn2-harvest-one (fn2-core) :position 10 :rows nil)
+(fn2-core-preserves fn2-harvest-one (fn2-core) :position 10 :rows nil))
 
 (assert-event
  (fn2-assert-compliant-p
   '(fn2-core-wfp fn2-core-profilep fn2-core-reserve fn2-core-release
     fn2-core-reset fn2-core-write fn2-core-read fn2-core-copy-range fn2-core-drop-prefix fn2-core-truncate
     fn2-core-compare fn2-core-fold fn2-core-scan fn2-core-lease
-    fn2-issue-receive fn2-issue-send fn2-issue-read fn2-issue-write
+    fn2-issue-receive fn2-issue-send fn2-issue-tls-start fn2-issue-compress-start fn2-issue-read fn2-issue-write
     fn2-issue-fence fn2-issue-accept fn2-issue-close fn2-issue-cancel fn2-issue-entropy fn2-issue-arm-wake
     fn2-ops-next-owner fn2-core-next-owner fn2-harvest-one)
   (w state)))
@@ -588,6 +601,7 @@
 (fn2-core-owe-refusal fn2-issue-receive (cap-index cap-nonce slot gen len okind oslot ogen principal))
 (fn2-core-owe-refusal fn2-issue-send (cap-index cap-nonce slot gen off len may-release okind oslot ogen principal))
 (fn2-core-owe-refusal fn2-issue-tls-start (cap-index cap-nonce slot gen off len okind oslot ogen principal))
+(fn2-core-owe-refusal fn2-issue-compress-start (cap-index cap-nonce slot gen off len okind oslot ogen principal))
 (fn2-core-owe-refusal fn2-issue-read (offset slot gen len okind oslot ogen principal))
 (fn2-core-owe-refusal fn2-issue-write (offset slot gen off len fua okind oslot ogen principal))
 (fn2-core-owe-refusal fn2-issue-fence (okind oslot ogen principal))
