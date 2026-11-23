@@ -381,7 +381,7 @@
                               (< (+ (fn2-id-decides-rows (fn2-core-id-decides fn2-core)) x)
                                  (fn2-succ-txns-rows (fn2-core-succ-txns fn2-core)))))
                 :rule-classes :forward-chaining
-                :hints (("Goal" :in-theory (union-theories '(fn2-cns-read-contextp)
+                :hints (("Goal" :in-theory (union-theories '(fn2-cns-read-contextp natp)
                                                            (theory 'minimal-theory))))))
              (local
               (defthm fn2-ecns-range-contextp-implies-read-contextp
