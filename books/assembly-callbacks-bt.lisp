@@ -19,12 +19,13 @@
 
 (defthm fn2-inst-begin-put-a-type
   (implies (and (fn2-retirement-controlp fn2-retirement-control)
+                (fn2-retirement-control-wfp fn2-retirement-control)
                 (< 0 (fn2-retirement-control-rows fn2-retirement-control))
                 (unsigned-byte-p 32 c) (unsigned-byte-p 60 ordinal)
                 (unsigned-byte-p 60 token) (unsigned-byte-p 8 okind)
                 (unsigned-byte-p 32 oslot) (unsigned-byte-p 60 ogen))
            (fn2-retirement-controlp (fn2-inst-begin-put-a c ordinal token okind oslot ogen fn2-retirement-control)))
-  :hints (("Goal" :in-theory (disable unsigned-byte-p fn2-retirement-controlp fn2-retirement-control-rows))))
+  :hints (("Goal" :in-theory (disable unsigned-byte-p fn2-retirement-controlp fn2-retirement-control-wfp fn2-retirement-control-rows))))
 
 (defthm fn2-inst-begin-put-a-wfp
   (implies (and (fn2-retirement-controlp fn2-retirement-control)
@@ -55,10 +56,11 @@
 
 (defthm fn2-inst-begin-put-b-type
   (implies (and (fn2-retirement-controlp fn2-retirement-control)
+                (fn2-retirement-control-wfp fn2-retirement-control)
                 (< 0 (fn2-retirement-control-rows fn2-retirement-control))
                 (unsigned-byte-p 32 slot) (unsigned-byte-p 60 gen))
            (fn2-retirement-controlp (fn2-inst-begin-put-b slot gen fn2-retirement-control)))
-  :hints (("Goal" :in-theory (disable unsigned-byte-p fn2-retirement-controlp fn2-retirement-control-rows))))
+  :hints (("Goal" :in-theory (disable unsigned-byte-p fn2-retirement-controlp fn2-retirement-control-wfp fn2-retirement-control-rows))))
 
 (defthm fn2-inst-begin-put-b-wfp
   (implies (and (fn2-retirement-controlp fn2-retirement-control)
