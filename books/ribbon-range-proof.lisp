@@ -4,6 +4,7 @@
 (include-book "ribbon")
 (include-book "range-resume-order-proof")
 (include-book "range-seek-step-proof")
+(include-book "range-page-search-proof")
 (include-book "runs-built-cache-proof")
 (include-book "runs-overview-builder-cursor-proof")
 

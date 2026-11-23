@@ -14,8 +14,7 @@
  :hints (("Goal" :in-theory (e/d (fn2-layout-store fn2-fields-value fn2-fields-set-value
                         update-fn2-fields-value$ai nth-update-nth) (fn2-fields-rows unsigned-byte-p nth update-nth))))))
 
-(local
- (defthm fn2-run-scan-keeps-earlier-id
+(defthm fn2-run-scan-keeps-earlier-id
  (implies (and (natp target) (natp i) (< target i))
   (equal (fn2-fields-value target (mv-nth 9 (fn2-layout-scan layout fuel i pos v hi size ref phase next slot gen end pk ps pg f pool)))
          (fn2-fields-value target f)))
@@ -24,7 +23,7 @@
           :in-theory (e/d ((:induction fn2-layout-scan))
                           (fn2-layout-store fn2-layout-byte fn2-pool-read fn2-fields-rows fn2-fields-value
                            fn2-fields-ref-slot fn2-fields-ref-off fn2-fields-ref-len fn2-fields-status fn2-fields-ref-gen
-                           mod nfix unsigned-byte-p))))))
+                           mod nfix unsigned-byte-p)))))
 
 (local
  (defthm fn2-run-scan-returns-admitted-id
