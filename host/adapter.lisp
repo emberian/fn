@@ -25,6 +25,23 @@
   (compress-record nil)
   (family :none) (port 0) (w0 0) (w1 0) (w2 0) (w3 0) (octets nil) (offset 0) (fua 0))
 
+;; Return OP to the defstruct defaults in place; its TLS record goes back to
+;; zero rows through the generator's own init. Its wfp ties every column's
+;; length to the row count, so a zero-row record is already fresh and kept.
+(defun fn2-nop-reset! (op)
+  (setf (fn2-nop-state op) 0 (fn2-nop-gen op) 0 (fn2-nop-kind op) 0 (fn2-nop-cap op) 0
+        (fn2-nop-nonce op) 0 (fn2-nop-address op) 0 (fn2-nop-len op) 0 (fn2-nop-target op) 0
+        (fn2-nop-target-gen op) 0 (fn2-nop-outcome op) 0 (fn2-nop-reason op) 0
+        (fn2-nop-count op) 0 (fn2-nop-aux0 op) 0 (fn2-nop-aux1 op) 0
+        (fn2-nop-connect-fd op) -1 (fn2-nop-entropy-offset op) 0 (fn2-nop-tls-started op) nil
+        (fn2-nop-tls-record op) (let ((record (fn2-nop-tls-record op)))
+                                  (if (zerop (fn2-tls-record-rows record)) record
+                                    (fn2-tls-record-init 0 record)))
+        (fn2-nop-compress-record op) nil (fn2-nop-family op) :none (fn2-nop-port op) 0
+        (fn2-nop-w0 op) 0 (fn2-nop-w1 op) 0 (fn2-nop-w2 op) 0 (fn2-nop-w3 op) 0
+        (fn2-nop-octets op) nil (fn2-nop-offset op) 0 (fn2-nop-fua op) 0)
+  op)
+
 ;; A capability: index 0 is the listener (its TCP socket, and the owner-only
 ;; Unix-domain socket beside it when the profile names :listener-path: one
 ;; capability, so the listener machine is the same for both); connections from 1.
@@ -48,6 +65,8 @@
   (local-fd -1 :type fixnum) (local-path nil) (local-first nil)
   completions (chead 0 :type fixnum) (ctail 0 :type fixnum) (pending 0 :type fixnum)
   (harvest-limit 1) (action-limit 1)
+  ;; per-turn scratch, one entry per capability, cleared in place each turn
+  interest-masks ready-used
   ;; test instruments: the boundary trace (ENVELOPE), death cuts, the session
   trace (trace-count 0 :type fixnum) (boundaries 0 :type fixnum) (kill-at 0 :type fixnum)
   (boundary-lock (sb-thread:make-mutex :name "fn2 death boundary"))
@@ -184,7 +203,10 @@
 
 (defvar *fn2-n-boundary-observer* nil) ; Test-only diagnostic, never a decision input.
 (defun fn2-n-boundary (host label &optional slot generation)
-  "Death cuts at every take, ack, syscall and post: FN2_KILL_AT=N exits at the Nth."
+  "Death cuts at every take, ack, syscall and post: FN2_KILL_AT=N exits at the Nth.
+With no cut armed and no observer the ordinal has no reader, so the lock is skipped."
+  (when (and (zerop (fn2-nhost-kill-at host)) (null *fn2-n-boundary-observer*))
+    (return-from fn2-n-boundary nil))
   (sb-thread:with-mutex ((fn2-nhost-boundary-lock host))
     (incf (fn2-nhost-boundaries host))
     ;; Observe the actual ordinal inside its serialization lock, before death.
@@ -621,10 +643,12 @@
             (assert (eq acode :ok))
             (multiple-value-bind (span address span-len) (fn2-host-op-span slot gen core)
               (unless (eq span :ok) (error "fn2 native: descriptor ~d has no valid span (~s)" slot span))
-              (setf op (make-fn2-nop :state +fn2-n-waiting+ :gen gen :kind kind :cap cap :nonce nonce
-                                     :address address :len span-len :target cslot :target-gen cgen
-                                     :offset storage-offset :fua fua))
-              (setf (aref (fn2-nhost-ops host) slot) op))
+              ;; A free slot may hold a finished resultless op: reset, then fill in place.
+              (fn2-nop-reset! op)
+              (setf (fn2-nop-state op) +fn2-n-waiting+ (fn2-nop-gen op) gen (fn2-nop-kind op) kind
+                    (fn2-nop-cap op) cap (fn2-nop-nonce op) nonce (fn2-nop-address op) address
+                    (fn2-nop-len op) span-len (fn2-nop-target op) cslot (fn2-nop-target-gen op) cgen
+                    (fn2-nop-offset op) storage-offset (fn2-nop-fua op) fua))
             (fn2-n-record host (list :take slot gen kind cap nonce rslot rgen off len storage-offset fua
                                      may-release cslot cgen deadline observation-gen))
             (fn2-n-boundary host "take")
@@ -668,15 +692,28 @@
         (fn2-n-record host (list :post 0 slot (fn2-nop-gen op) event (fn2-nop-outcome op) (fn2-nop-reason op)
                                  (fn2-nop-count op) (fn2-nop-aux0 op) (fn2-nop-aux1 op) family peer
                                  (fn2-nop-octets op)))
-        (setf (aref (fn2-nhost-ops host) slot) (make-fn2-nop)
-              (fn2-nhost-chead host) (mod (1+ (fn2-nhost-chead host)) (length queue)))
-        (decf (fn2-nhost-pending host))
-        (fn2-n-boundary host "post" slot (fn2-nop-gen op))))))
+        (let ((gen (fn2-nop-gen op)))
+          (fn2-nop-reset! op)
+          (setf (fn2-nhost-chead host) (mod (1+ (fn2-nhost-chead host)) (length queue)))
+          (decf (fn2-nhost-pending host))
+          (fn2-n-boundary host "post" slot gen))))))
+
+;;; Per-capability scratch vectors, kept on the host and cleared in place.
+(defun fn2-n-interest-masks (host)
+  (let ((v (fn2-nhost-interest-masks host)) (n (length (fn2-nhost-caps host))))
+    (if (or (null v) (/= (length v) n))
+        (setf (fn2-nhost-interest-masks host) (make-array n :initial-element 0))
+      (fill v 0))))
+(defun fn2-n-ready-used (host)
+  (let ((v (fn2-nhost-ready-used host)) (n (length (fn2-nhost-caps host))))
+    (if (or (null v) (/= (length v) n))
+        (setf (fn2-nhost-ready-used host) (make-array n :initial-element nil))
+      (fill v nil))))
 
 ;;; Interests: a waiting Accept or Receive wants readable, a Send writable.
 (defun fn2-n-interests (host)
   (let* ((mux (fn2-nhost-mux host)) (caps (fn2-nhost-caps host))
-         (ops (fn2-nhost-ops host)) (masks (make-array (length caps) :initial-element 0)))
+         (ops (fn2-nhost-ops host)) (masks (fn2-n-interest-masks host)))
     (loop for op across ops
           when (and (= (fn2-nop-state op) +fn2-n-waiting+) (fn2-n-readiness-p (fn2-nop-kind op)))
             do (let ((cap (fn2-n-cap host op)))
@@ -705,7 +742,7 @@
 
 ;;; For each ready capability, one syscall for one of its waiting ops.
 (defun fn2-n-ready (host)
-  (let ((used (make-array (length (fn2-nhost-caps host)) :initial-element nil))
+  (let ((used (fn2-n-ready-used host))
         (ops (fn2-nhost-ops host)) (mux (fn2-nhost-mux host)) (any nil))
     (dotimes (slot (length ops))
       (let ((op (aref ops slot)))
@@ -889,6 +926,8 @@ the image launcher always opens its persisted device instead."
                    :bytes (svref (svref core *fn2-core-pool*) *fn2-pool-datai*)
                    :ops (let ((v (make-array n))) (dotimes (i n v) (setf (aref v i) (make-fn2-nop))))
                    :caps (let ((v (make-array ncaps))) (dotimes (i ncaps v) (setf (aref v i) (make-fn2-ncap))))
+                   :interest-masks (make-array ncaps :initial-element 0)
+                   :ready-used (make-array ncaps :initial-element nil)
                    :mux (make-fn2-native-mux (+ ncaps n)) :listen-port lport
                    :tls-window (fn2-tls-setting :tls-window 16384 profile)
                    :tls-quantum *fn2-tls-io-bytes*

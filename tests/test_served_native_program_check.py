@@ -44,8 +44,17 @@ class ServedNativeProgramTests(unittest.TestCase):
 
     def test_terminal_post_cut_cannot_drop_generation(self):
         self.change('host/adapter.lisp',
-                    '(fn2-n-boundary host "post" slot (fn2-nop-gen op))',
+                    '(fn2-n-boundary host "post" slot gen)',
                     '(fn2-n-boundary host "post" slot 0)')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_terminal_post_cut_reads_generation_before_reset(self):
+        self.change('host/adapter.lisp', '(gen (fn2-nop-gen op))', '(gen 0)')
+        self.assertFalse(checker.check(self.root)['audit_ok'])
+
+    def test_take_fills_the_reset_slot_from_the_descriptor(self):
+        self.change('host/adapter.lisp', '(fn2-nop-gen op) gen (fn2-nop-kind op) kind',
+                    '(fn2-nop-gen op) 0 (fn2-nop-kind op) kind')
         self.assertFalse(checker.check(self.root)['audit_ok'])
 
     def test_worker_cut_cannot_drop_actual_job(self):

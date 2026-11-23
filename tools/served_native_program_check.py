@@ -138,8 +138,11 @@ CONTRACTS = {
         '(fn2-n-complete host slot :ok copied)'],
     'fn2-n-take': [
         '(fn2-host-outbox-ack 1 core)',
-        '(make-fn2-nop :state +fn2-n-waiting+ :gen gen :kind kind :cap cap :nonce nonce '
-        ':address address :len span-len :target cslot :target-gen cgen :offset storage-offset :fua fua)'],
+        '(fn2-nop-reset! op)',
+        '(setf (fn2-nop-state op) +fn2-n-waiting+ (fn2-nop-gen op) gen (fn2-nop-kind op) kind '
+        '(fn2-nop-cap op) cap (fn2-nop-nonce op) nonce (fn2-nop-address op) address '
+        '(fn2-nop-len op) span-len (fn2-nop-target op) cslot (fn2-nop-target-gen op) cgen '
+        '(fn2-nop-offset op) storage-offset (fn2-nop-fua op) fua)'],
     'fn2-n-storage-submit': [
         '(fn2-n-boundary host "device-submit" slot (fn2-nop-gen op))',
         '(fn2-device-request (fn2-n-storage-kind (fn2-nop-kind op)) (fn2-nop-fua op) '
@@ -171,7 +174,9 @@ CONTRACTS = {
         '(fn2-sim-terminal-post slot gen event outcome reason count aux0 aux1 '
         'fault word now release early fn2-core fn2-sim fn2-own)'],
     'fn2-n-post-completions': [
-        '(fn2-n-boundary host "post" slot (fn2-nop-gen op))',
+        '(gen (fn2-nop-gen op))',
+        '(fn2-nop-reset! op)',
+        '(fn2-n-boundary host "post" slot gen)',
         '(fn2-host-post-result 0 slot (fn2-nop-gen op) event (fn2-nop-outcome op) (fn2-nop-reason op) '
         '(fn2-nop-count op) (fn2-nop-aux0 op) (fn2-nop-aux1 op) core)'],
     'fn2-own-post-result': [
