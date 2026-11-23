@@ -25,7 +25,6 @@
   (local (in-theory (e/d (fn2-commit-core-invariant)
                          (fn2-core-wfp-commit-opaque
                           fn2-checkpoint-working-credit-configure fn2-idc-scratch
-                          fn2-checkpoint-service-protocol-classes fn2-checkpoint-service-upload-classes
                           nfix floor (:definition unsigned-byte-p)))))
   (make-event (value `(local (in-theory (enable ,@(fn2-core-child-wfp-forward-runes *fn2-core-children*))))))
   (fn2-checkpoint-working-credit-init-events))

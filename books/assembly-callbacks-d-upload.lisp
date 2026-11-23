@@ -467,7 +467,7 @@
      (:let hrow (fn2-upload-hasher id))
      (:do (code end) (fn2-upload-stream-entry hrow row-lslot row-lgen block row-stream-stage-used
           (+ (* *fn2-storage-extent-units* row-cext) (mod block *fn2-storage-extent-units*))
-          row-cepoch row-calloc row-mfill) :accept (:ok))
+          row-cepoch row-calloc row-mfill *fn2-upload-kind* id row-generation) :accept (:ok))
      (:set (pdone (+ row-pdone row-stream-stage-used)) (stream-stage-used 0) (mfill end)
            (stream-provisional end) (cfree 0) (mstep 0) (sready 0))
      (:next :stream-stage) (:charge :bytes *fn2-upload-entry-bytes* :steps *fn2-work-transition* :runnable t))))
