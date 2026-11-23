@@ -177,7 +177,11 @@
                         :accept ()
                         :case (((:ok) (:set (cb-issued (+ 1 row-cb-issued)) (pending (+ 1 row-pending)) (cb-wrote 1))
                                       (:charge :bytes 4096 :steps *fn2-work-stage* :descriptors 1 :runnable t))
-                               (:otherwise (:stop :commit-io)))))
+                               (:otherwise
+                                ,@(fn2-commit-arm-uncertain
+                                   '*fn2-commit-reason-issue*
+                                   '((cb-issued (+ 1 row-cb-issued)) (pending (+ 1 row-pending)) (cb-wrote 1))
+                                   '(:charge :bytes 4096 :steps *fn2-work-stage* :descriptors 1 :runnable t))))))
                       ((:exhausted) (:yield))
                       (:otherwise ,@(fn2-commit-arm-fail-in (not dep) :issue *fn2-commit-arm-mailbox-run* *fn2-commit-arm-mailbox*)))))))))))
 
