@@ -89,6 +89,14 @@
 (fn2-du-fast-events (fn2-upload-stream-reset-op-events))
 (fn2-du-fast-events (fn2-upload-stream-manifest-op-events))
 (local
+ (defthm fn2-du-upload-digest-preserves-tables
+   (and (equal (fn2-core-machines (mv-nth 1 (fn2-upload-digest row hashed fn2-core)))
+               (fn2-core-machines fn2-core))
+        (equal (fn2-upload-table (mv-nth 1 (fn2-upload-digest row hashed fn2-core)))
+               (fn2-upload-table fn2-core)))
+   :hints (("Goal" :in-theory (e/d (fn2-upload-digest fn2-upload-hash-begin fn2-upload-hash-end)
+                                   (fn2-b3-init fn2-b3-finalize fn2-b3-ready fn2-digest-rowp fn2-digest-slot))))))
+(local
  (defthm fn2-du-upload-digest-preserves-machines-and-upload
    (and (equal (fn2-core-machines (mv-nth 1 (fn2-upload-digest row hashed fn2-core)))
                (fn2-core-machines fn2-core))
@@ -104,10 +112,10 @@
                (fn2-upload-row-lslot id fn2-core))
         (equal (fn2-upload-row-lgen id (mv-nth 1 (fn2-upload-digest row hashed fn2-core)))
                (fn2-upload-row-lgen id fn2-core)))
-   :hints (("Goal" :in-theory (e/d (fn2-upload-digest
-                                    fn2-machine-idp fn2-machine-kind fn2-machine-slot
+   :hints (("Goal" :in-theory (e/d (fn2-machine-idp fn2-machine-kind fn2-machine-kind-read-code
+                                    fn2-machine-slot fn2-machine-slot-read-code
                                     fn2-upload-row-lslot fn2-upload-row-lgen)
-                                   (fn2-upload-hash-begin fn2-upload-hash-end))))))
+                                   (fn2-upload-digest))))))
 (fn2-du-fast-events (fn2-upload-stream-op-events))
 (local
  (defthm fn2-du-payload-settle-preserves-machines-and-upload
