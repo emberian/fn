@@ -12,6 +12,7 @@ from __future__ import annotations
 from pathlib import Path
 import re
 import subprocess
+import tempfile
 import json
 import sys
 
@@ -129,12 +130,16 @@ def _probe(paths: list[Path], pairs: list[tuple[int, int]], acl2: Path, root: Pa
            timeout_seconds: int) -> dict[tuple[int, int], tuple[bool, bool]]:
     packages: list[str] = list(_KNOWN_PACKAGES)
     for _ in range(25):
-        # The machine's ACL2 pool and heap cap (PKT-162).
-        result = acl2_slots.run([str(acl2)], "cert_alists pairs", cwd=root, root=root,
-                                input=_driver(paths, pairs, packages).encode(),
-                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                check=False, timeout=timeout_seconds)
-        output = result.stdout.decode("utf-8", "replace")
+        # Use unbuffered temp files for stdin/stdout rather than pipes: Python 3.15
+        # on Darwin can deadlock in os.write when stdin >= 16 KiB with stderr=STDOUT.
+        with tempfile.TemporaryFile() as fin, tempfile.TemporaryFile() as fout:
+            fin.write(_driver(paths, pairs, packages).encode())
+            fin.seek(0)
+            result = acl2_slots.run([str(acl2)], "cert_alists pairs", cwd=root, root=root,
+                                    stdin=fin, stdout=fout, stderr=subprocess.STDOUT,
+                                    check=False, timeout=timeout_seconds)
+            fout.seek(0)
+            output = fout.read().decode("utf-8", "replace")
         missing = _MISSING_PACKAGE.search(output)
         if missing:
             name = missing.group(1)
