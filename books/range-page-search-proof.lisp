@@ -73,8 +73,7 @@
                        '(fn2-run-values-layoutp (:type-prescription len) (:e fn2-layout-parse)
                          (:e mv-nth) (:e car) (:e equal) (:e <) (:e len) eq iff not))))))
 
-(local
- (defthm fn2-run-overview-next-row-offset
+(defthm fn2-run-overview-next-row-offset
  (let* ((indexp (and (integerp level) (< 0 level)))
         (wire (fn2-layout-octets (if indexp *fn2-overview-index* *fn2-overview-entry*) row))
         (next (+ off (len wire))))
@@ -84,7 +83,33 @@
  :hints (("Goal" :use ((:instance fn2-run-overview-row-has-bytes (indexp (and (integerp level) (< 0 level)))))
           :in-theory (e/d (fn2-run-overview-row-atp)
                          (fn2-run-values-layoutp nth fn2-layout-octets fn2-run-read-bytes fn2-poolp
-                          fn2-pool-wfp fn2-pool-base fn2-layout-range-code fn2-fields-rows))))))
+                          fn2-pool-wfp fn2-pool-base fn2-layout-range-code fn2-fields-rows)))))
+
+(defthm fn2-run-overview-seek-first-row
+ (let* ((base (+ rb *fn2-run-reader-entry*)) (end (fn2-run-directory rb f))
+        (entries (fn2-run-header-value rb (+ *fn2-run-c-header-fields* *fn2-run-page-header-field-entries*) f))
+        (layout (if (and (integerp level) (< 0 level)) *fn2-overview-index* *fn2-overview-entry*))
+        (next (+ off (len (fn2-layout-octets layout row))))
+        (order (fn2-run-key-order-spec *fn2-overview-range-key* row (fn2-overview-range-key-at qbase f)))
+        (read (fn2-run-layout-decode 3 level base slot gen off end pk ps pg f pool))
+        (seek (fn2-run-seek 3 level fuel lo hi idx off qbase rb slot gen pk ps pg qk qs qg f pool)))
+  (implies (and (posp fuel) (natp rb) (posp off) (natp qbase) (< (1+ qbase) base)
+                (natp lo) (natp hi) (<= hi lo) (natp idx) (natp entries) (< idx entries)
+                (fn2-run-overview-row-atp level row base slot gen off end pk ps pg f pool))
+           (equal seek (case order
+                         (:eq (list :found lo hi idx off (mv-nth 2 read)))
+                         (:gt (list :absent lo hi idx off (mv-nth 2 read)))
+                         (otherwise (fn2-run-seek 3 level (1- fuel) lo hi (1+ idx) next
+                                      qbase rb slot gen pk ps pg qk qs qg (mv-nth 2 read) pool))))))
+ :rule-classes nil
+ :hints (("Goal" :use ((:instance fn2-run-overview-page-key-order
+                           (base (+ rb *fn2-run-reader-entry*)) (end (fn2-run-directory rb f)))
+                       (:instance fn2-run-overview-next-row-offset
+                           (base (+ rb *fn2-run-reader-entry*)) (end (fn2-run-directory rb f))))
+          :expand ((fn2-run-seek 3 level fuel lo hi idx off qbase rb slot gen pk ps pg qk qs qg f pool))
+          :in-theory (disable fn2-run-overview-row-atp fn2-run-layout-decode fn2-run-layout-compare
+                              fn2-overview-layout-compare-keys fn2-run-key-order-spec fn2-overview-range-key-at
+                              fn2-run-header-value fn2-run-directory fn2-layout-octets fn2-run-seek))))
 
 (defthm fn2-run-overview-seek-one-row
  (let* ((base (+ rb *fn2-run-reader-entry*)) (end (fn2-run-directory rb f))
