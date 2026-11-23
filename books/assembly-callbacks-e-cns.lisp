@@ -52,7 +52,8 @@
 (make-event
  (value `(local (in-theory (disable nth fn2-reads-rows fn2-fields-rows fn2-fc-rows
                                     fn2-digests-rows fn2-b3-rows fn2-pool-fill fn2-pool-base fn2-pool-data-length
-                                    fn2-cns-sources-rows fn2-ctl-rows fn2-cns-rows fn2-succ-slots-rows)))))
+                                    fn2-cns-sources-rows fn2-ctl-rows fn2-cns-rows fn2-succ-slots-rows
+                                    fn2-cns-item-binding-answer fn2-cns-item-fits fn2-cns-put-answer)))))
 (local
  (defun fn2-ecns-arm-fns (arms)
    (declare (xargs :mode :program))
@@ -390,21 +391,24 @@
                 :hints (("Goal" :in-theory (union-theories '(fn2-cns-range-contextp)
                                                            (theory 'minimal-theory))))))
              (local (in-theory (disable fn2-cns-read-contextp fn2-cns-range-contextp)))))
+         ((and (eq (car x) 'defun) (eq (cadr x) 'fn2-cns-range-scalar-keyp))
+          `(progn
+             ,x
+             (local (in-theory (disable fn2-cns-range-ownerp fn2-cns-range-scalar-keyp)))))
+         ((and (eq (car x) 'defthm) (eq (cadr x) 'fn2-cns-fill-cap-types))
+          `(progn
+             ,x
+             (local (in-theory (disable fn2-cns-fill-cap)))))
          ((and (eq (car x) 'defun)
                (member-eq (cadr x) '(fn2-cns-range-ready fn2-cns-article-ready fn2-cns-article-next)))
           `(encapsulate ()
              (local (in-theory (disable nfix min posp floor mod
-                                        fn2-cns-read-row fn2-cns-range-scalar-keyp fn2-read-stripe
-                                        fn2-cns-range-ownerp fn2-cns-item-binding-answer
-                                        fn2-cns-item-fits fn2-cns-put-answer fn2-cns-fill-cap)))
+                                        fn2-cns-read-row fn2-read-stripe)))
              ,(cons (car x) (cons (cadr x) (cons (caddr x) (cons (cadddr x) (fn2-ecns-patch-form (nthcdr 4 x) wrld)))))))
          ((eq (car x) 'fn2-cns-natp-outputs)
           `(encapsulate ()
              (local (in-theory (disable nfix min posp floor mod
-                                        fn2-cns-read-row fn2-cns-range-scalar-keyp fn2-read-stripe
-                                        fn2-cns-range-ownerp fn2-cns-item-binding-answer
-                                        fn2-cns-item-fits fn2-cns-put-answer fn2-cns-fill-cap
-                                        fn2-core-reset fn2-cns-core-copy fn2-cns-core-same fn2-cns-core-mid-span
+                                        fn2-core-reset
                                         fn2-cns-snapshot-read-code fn2-ctl-snapshot-read-code
                                         fn2-machine-phase-read-code)))
              ,x))
@@ -425,8 +429,7 @@
              (local (in-theory (disable nfix min posp floor mod
                                         fn2-cns-snapshot-read-code fn2-ctl-snapshot-read-code
                                         fn2-machine-phase-read-code
-                                        fn2-cns-range-scalar-keyp fn2-cns-range-ownerp fn2-read-stripe
-                                        fn2-cns-item-binding-answer fn2-cns-item-fits fn2-cns-put-answer fn2-cns-fill-cap
+                                        fn2-read-stripe
                                         |(< x (if a b c))| |(< (if a b c) x)|)))
              ,x))
          ((and (equal (car x) 'defmachine-arms) (consp (cdr x)) (symbolp (cadr x)) (null (cddr x)))

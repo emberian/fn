@@ -218,19 +218,31 @@
   ;; :identity: take the transaction row (A-S7), the transaction's copies this
   ;; row's; refused, the take parked this row on the transaction kind's FIFO
   ;; and its grant runs this arm again. The owner gone: abort.
-  (:identity
-   (:if (not (or (:live conn) (:live cns)))
-        ((:next :aborting) (:charge :steps *fn2-work-transition* :runnable t))
-        ((:do (code tid tgen)
-              (fn2-machine-take-fn2-txn *fn2-none* id row-generation row-conn row-conn-gen
-                                        row-request row-rule row-principal-slot)
-              :case (((:ok) (:set (txn tid) (txn-gen tgen)) (:next :stream-init)
-                      (:charge :steps *fn2-work-transition* :runnable t))
-                     ;; no fn2-txn row in the profile: unreachable in composition
-                     ;; (posting, which every upload taker reads, is served only
-                     ;; with one); a contract stop, never a park
-                     ((:none) (:stop :machine-phase))
-                     (:otherwise (:park :taken fn2-txn :steps *fn2-work-transition*)))))))
+  (:identity :on-refusal ((:stop :pool-release :steps *fn2-work-state*))
+   (:cond
+    ((not (or (:live conn) (:live cns)))
+     (:next :aborting) (:charge :steps *fn2-work-transition* :runnable t))
+    ;; Release the uninitialized store page before acquiring/parking on the
+    ;; lower-ranked :transaction-row (D0: :chunk-window < :transaction-row < :storage-window);
+    ;; :stream-init re-acquires the store page once the transaction row is held.
+    ((equal row-lease *fn2-upload-lease-held*)
+     (:if (fn2-core-query-heldp row-lslot row-lgen)
+      ((:charge :steps *fn2-work-state*))
+      ((:do (lc) (fn2-upload-page-release row-lslot row-lgen)
+         :effects ((:release (:storage-window))) :accept (:ok :retired)
+         :why "a retired range is a completed release (the pool retires the slot)")
+       (:set (lease *fn2-upload-lease-none*) (lslot *fn2-none*) (lgen 0))
+       (:charge :steps *fn2-work-transition* :runnable t))))
+    (t (:do (code tid tgen)
+            (fn2-machine-take-fn2-txn *fn2-none* id row-generation row-conn row-conn-gen
+                                      row-request row-rule row-principal-slot)
+            :case (((:ok) (:set (txn tid) (txn-gen tgen)) (:next :stream-init)
+                    (:charge :steps *fn2-work-transition* :runnable t))
+                   ;; no fn2-txn row in the profile: unreachable in composition
+                   ;; (posting, which every upload taker reads, is served only
+                   ;; with one); a contract stop, never a park
+                   ((:none) (:stop :machine-phase))
+                   (:otherwise (:park :taken fn2-txn :steps *fn2-work-transition*)))))))
   (:receiving (:goto work))
   (:validating (:goto work))
   (:discard (:goto work))
@@ -363,16 +375,28 @@
           (:next :discard) (:charge :bytes *fn2-upload-verdict-work-bytes* :steps *fn2-work-transition* :runnable t))
          ((:set (inj inj) (mstep 1) (rootext *fn2-none*) (rootepoch 0) (rootalloc 0) (stream-active 1)) (:charge :bytes *fn2-upload-verdict-work-bytes* :steps *fn2-work-transition* :runnable t))))))
     ((equal row-mstep 1)
-     ; TAKE already owns all three ranges; never wait for a page while
-     ; retaining only header/body windows.
+     ; Re-acquire the store page after :identity holds the transaction row,
+     ; obeying D0 (:chunk-window < :transaction-row < :storage-window).
      (:do (pc pid) (fn2-upload-owner-principal row-conn row-conn-gen row-principal-slot)
       :accept (:ok :state) :why "a missing principal refuses the upload before storage")
      (:cond ((not (and (eq pc :ok) (posp pid) (unsigned-byte-p 60 pid)))
              (:set (word *fn2-upload-word-refused*) (stream-active 0))
              (:do (dc) (fn2-upload-start-discard id row-generation) :accept (:ok))
              (:next :discard) (:charge :steps *fn2-work-transition* :runnable t))
-            ((and (equal row-lease *fn2-upload-lease-held*)
-                  (fn2-upload-stream-page-ready-p id row-generation))
+            ((equal row-lease *fn2-upload-lease-none*)
+             (:let pclass (fn2-upload-stream-class))
+             (:if (not (natp pclass))
+              ((:stop :machine-phase))
+              ((:do (rc ls lg) (fn2-core-reserve pclass)
+                 :effects ((:acquire (:storage-window))) :accept ()
+                 :case (((:ok) (:set (lslot ls) (lgen lg) (lease *fn2-upload-lease-held*)
+                                     (request-principal pid) (mstep 2))
+                               (:charge :steps *fn2-work-transition* :runnable t))
+                        ((:exhausted) (:set (word *fn2-upload-word-unaffordable*) (stream-active 0))
+                         (:do (dc) (fn2-upload-start-discard id row-generation) :accept (:ok))
+                         (:next :discard) (:charge :steps *fn2-work-transition* :runnable t))
+                        (:otherwise (:stop :machine-phase)))))))
+            ((fn2-upload-stream-page-ready-p id row-generation)
              (:set (request-principal pid) (mstep 2))
              (:charge :steps *fn2-work-transition* :runnable t))
             (t (:stop :machine-phase))))
