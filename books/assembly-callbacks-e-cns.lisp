@@ -27,6 +27,28 @@
                  (equal (fn2-core-machines (update-nth k v c)) (fn2-core-machines c))))
    :hints (("Goal" :in-theory (enable fn2-machine-idp fn2-machine-kind fn2-machine-kind-read-code
                                       fn2-machine-slot fn2-machine-slot-read-code fn2-core-machines)))))
+(local
+ (defthm fn2-ecns-cns-snapshot-ok-implies-idp
+   (implies (equal (fn2-cns-snapshot-read-code cns fn2-core) :ok)
+            (and (fn2-machine-idp cns fn2-core)
+                 (equal (fn2-machine-kind cns fn2-core) *fn2-cns-kind*)
+                 (< (fn2-machine-slot cns fn2-core) (fn2-cns-rows (fn2-cns-table fn2-core)))
+                 (natp cns) (integerp cns) (<= 0 cns)
+                 (< cns (fn2-machines-rows (fn2-core-machines fn2-core)))))
+   :rule-classes (:rewrite :forward-chaining)
+   :hints (("Goal" :in-theory (enable fn2-cns-snapshot-read-code fn2-machine-idp
+                                      fn2-machine-phase-read-code)))))
+(local
+ (defthm fn2-ecns-ctl-snapshot-ok-implies-idp
+   (implies (equal (fn2-ctl-snapshot-read-code ctl fn2-core) :ok)
+            (and (fn2-machine-idp ctl fn2-core)
+                 (equal (fn2-machine-kind ctl fn2-core) *fn2-ctl-kind*)
+                 (< (fn2-machine-slot ctl fn2-core) (fn2-ctl-rows (fn2-ctl-table fn2-core)))
+                 (natp ctl) (integerp ctl) (<= 0 ctl)
+                 (< ctl (fn2-machines-rows (fn2-core-machines fn2-core)))))
+   :rule-classes (:rewrite :forward-chaining)
+   :hints (("Goal" :in-theory (enable fn2-ctl-snapshot-read-code fn2-machine-idp
+                                      fn2-machine-phase-read-code)))))
 (make-event
  (value `(local (in-theory (disable nth fn2-reads-rows fn2-fields-rows fn2-fc-rows
                                     fn2-digests-rows fn2-b3-rows fn2-pool-fill fn2-pool-base fn2-pool-data-length
