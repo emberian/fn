@@ -3,6 +3,7 @@
 (include-book "machines-a-access")
 (include-book "commit-format")
 (include-book "checkpoint-commit-leases")
+(include-book "pool-span")
 (fn2-book-layer :b)
 ; Named stops (review ruling 3): a commit helper that finds a state its callers
 ; rule out stops the core with a named reason instead of absorbing it
@@ -930,19 +931,20 @@
 (fn2-core-preserves fn2-block-read-done (bytes len verify lslot lgen boff hoff cvoff block okind oslot ogen fn2-core)
  :position 1 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
 ; B-S2 S4: a member's records copied verbatim from its owner's workspace
-; (owner FKIND FID FGEN) into the commit row's frame, octet by octet until A's
-; cross-owner range copy exists (departure B-TXN-COPY; fn2-core-copy-range
-; copies within one owner only).
+; (owner FKIND FID FGEN) into the commit row's frame: one cross-owner bulk
+; span copy (fn2-rd-copy-span, pool-span.lisp; fn2-core-copy-range copies
+; within one owner only). It checks both handles and both bounds once; a span
+; it refuses, an aliased one included, runs the per-octet model, so every
+; refusal code and written prefix is the model's
+; (tests/commit-span-unit.lisp).
 (defun fn2-commit-copy-in (left dst dg off from fg at fkind fid fgen id ogen fn2-core)
- (declare (xargs :stobjs fn2-core :measure (nfix left)
+ (declare (xargs :stobjs fn2-core
   :guard (and (fn2-core-wfp fn2-core) (natp left) (natp off) (natp at))))
- (if (zp left) (mv :ok fn2-core)
-  (b* (((mv code byte) (fn2-core-read from fg at fkind fid fgen fn2-core))
-       ((unless (eq code :ok)) (mv code fn2-core))
-       ((mv code fn2-core) (fn2-core-write dst dg off byte *fn2-commit-kind* id ogen fn2-core)))
-   (if (eq code :ok) (fn2-commit-copy-in (- left 1) dst dg (+ off 1) from fg (+ at 1) fkind fid fgen id ogen fn2-core)
-    (mv code fn2-core)))))
+ (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (code fn2-pool)
+  (fn2-rd-copy-span left from fg at fkind fid fgen dst dg off *fn2-commit-kind* id ogen fn2-pool)
+  (mv code fn2-core)))
 (fn2-core-preserves fn2-commit-copy-in (left dst dg off from fg at fkind fid fgen id ogen fn2-core) :position 1 :rows nil)
+(in-theory (disable fn2-commit-copy-in))
 ; The workspace of member row R: (mv ok kind slot gen len okind oslot ogen).
 (defun fn2-commit-member-ws (r fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -1136,24 +1138,28 @@
    (fn2-machine-result 0 *fn2-work-mailbox* 0 nil fn2-core)))))
 (fn2-core-preserves fn2-commit-stop-written-follower (id fn2-core) :position 4 :rows nil)
 
+; The commit kind's zero and copy, each one bulk span on the pool
+; (pool-span.lisp): handles and bounds checked once, and a refused span runs
+; the per-octet model, so codes and written prefixes are the model's
+; (tests/commit-span-unit.lisp). Zeroing stops at the unit's end.
 (defun fn2-commit-zero (left at slot gen id ogen fn2-core)
- (declare (xargs :stobjs fn2-core :measure (nfix left)
+ (declare (xargs :stobjs fn2-core
   :guard (and (fn2-core-wfp fn2-core) (natp left) (natp at))))
- (if (or (zp left) (>= at *fn2-commit-unit-bytes*)) (mv :ok fn2-core)
-  (mv-let (code fn2-core) (fn2-core-write slot gen at 0 *fn2-commit-kind* id ogen fn2-core)
-   (if (eq code :ok) (fn2-commit-zero (- left 1) (+ at 1) slot gen id ogen fn2-core)
+ (if (or (zp left) (>= (nfix at) *fn2-commit-unit-bytes*)) (mv :ok fn2-core)
+  (let ((n (min left (- *fn2-commit-unit-bytes* (nfix at)))))
+   (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (code fn2-pool)
+    (fn2-pool-zero-span n slot gen (nfix at) *fn2-commit-kind* id ogen fn2-pool)
     (mv code fn2-core)))))
 (fn2-core-preserves fn2-commit-zero (left at slot gen id ogen fn2-core) :position 1 :rows nil)
+(in-theory (disable fn2-commit-zero))
 (defun fn2-commit-copy-bytes (left src sg off from fg at from-id from-ogen id ogen fn2-core)
- (declare (xargs :stobjs fn2-core :measure (nfix left)
+ (declare (xargs :stobjs fn2-core
   :guard (and (fn2-core-wfp fn2-core) (natp left) (natp off) (natp at))))
- (if (zp left) (mv :ok fn2-core)
-  (b* (((mv code byte) (fn2-core-read from fg at *fn2-commit-kind* from-id from-ogen fn2-core))
-       ((unless (eq code :ok)) (mv code fn2-core))
-       ((mv code fn2-core) (fn2-core-write src sg off byte *fn2-commit-kind* id ogen fn2-core)))
-   (if (eq code :ok) (fn2-commit-copy-bytes (- left 1) src sg (+ off 1) from fg (+ at 1) from-id from-ogen id ogen fn2-core)
-    (mv code fn2-core)))))
+ (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (code fn2-pool)
+  (fn2-rd-copy-span left from fg at *fn2-commit-kind* from-id from-ogen src sg off *fn2-commit-kind* id ogen fn2-pool)
+  (mv code fn2-core)))
 (fn2-core-preserves fn2-commit-copy-bytes (left src sg off from fg at from-id from-ogen id ogen fn2-core) :position 1 :rows nil)
+(in-theory (disable fn2-commit-copy-bytes))
 (defun fn2-commit-pack-core (id kind role index off fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (fn2-commit-checked id (mv :bounds 0 fn2-core)

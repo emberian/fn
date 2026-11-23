@@ -1485,9 +1485,11 @@ damage.
 
 **S4. Seal, verbatim.** For each `:txn` member in member order, the seal's records stage writes the
 envelope, then for each record a record header (`record-kind`, version 1, the member's event) and
-the body copied from the workspace. The copy goes through `fn2-commit-copy-bytes`, the per-octet
-loop the 10-30 review names, until A's pool range copy exists (owed ask A-S8; a recorded departure,
-B-TXN-COPY). The records hash and the seal cover every byte, as for keyed members.
+the body copied from the workspace. The copy goes through `fn2-commit-copy-in`, one cross-owner
+span copy on the pool (`fn2-rd-copy-span`, pool-span.lisp) in place of the per-octet loop the 10-30
+review names; `fn2-commit-copy-bytes` and `fn2-commit-zero` are spans the same way. A refused span
+runs the per-octet model, and tests/commit-span-unit.lisp proves each equal to its per-octet loop in
+code and core. The records hash and the seal cover every byte, as for keyed members.
 
 **S5. The outcome.** It is settled per member (B5-4a M6). `:accepted` comes after publish: the batch
 is durable, `fn2-runs-install` and `fn2-successor-publish` both returned `:ok`, and the settled row
