@@ -277,7 +277,40 @@
     (mv status start2 mode2 discard2 copied lines fn2-core)))
 (fn2-core-preserves fn2-upload-feed-pool (left start end mode discard raw rslot rgen rk rs rg slot sgen limit stop-header u ugen fn2-core)
   :position 6 :rows nil :hints (("Goal" :in-theory (disable nfix max))))
+(local
+ (defthm fn2-upload-feed-pool-preserves-upload-snapshot
+   (equal (fn2-upload-snapshot-read-code x
+            (mv-nth 6 (fn2-upload-feed-pool left start end mode discard raw rslot rgen rk rs rg slot sgen limit stop-header u ugen fn2-core)))
+          (fn2-upload-snapshot-read-code x fn2-core))
+   :hints (("Goal" :in-theory (union-theories
+                               '(fn2-upload-feed-pool fn2-upload-snapshot-read-code
+                                 fn2-machine-phase-read-code fn2-machine-idp
+                                 fn2-machine-kind fn2-machine-kind-read fn2-machine-kind-read-code
+                                 fn2-machine-slot fn2-machine-slot-read fn2-machine-slot-read-code
+                                 fn2-core-machines-of-update-fn2-core-pool)
+                               (theory 'minimal-theory))))))
 (in-theory (disable fn2-upload-feed-pool))
+(local
+ (defthm fn2-snapshot-ok-implies-generation-ok
+   (and (implies (equal (fn2-upload-snapshot-read-code x fn2-core) :ok)
+                 (equal (fn2-machine-generation-read-code x fn2-core) :ok))
+        (implies (equal (fn2-conn-snapshot-read-code x fn2-core) :ok)
+                 (equal (fn2-machine-generation-read-code x fn2-core) :ok))
+        (implies (equal (fn2-cns-snapshot-read-code x fn2-core) :ok)
+                 (equal (fn2-machine-generation-read-code x fn2-core) :ok))
+        (implies (equal (fn2-cursor-snapshot-read-code x fn2-core) :ok)
+                 (equal (fn2-machine-generation-read-code x fn2-core) :ok))
+        (implies (equal (fn2-txn-snapshot-read-code x fn2-core) :ok)
+                 (equal (fn2-machine-generation-read-code x fn2-core) :ok)))
+   :hints (("Goal" :in-theory '(fn2-upload-snapshot-read-code fn2-conn-snapshot-read-code
+                                fn2-cns-snapshot-read-code fn2-cursor-snapshot-read-code
+                                fn2-txn-snapshot-read-code fn2-machine-phase-read-code
+                                fn2-machine-generation-read-code)))))
+(local (in-theory (disable fn2-cns-snapshot-read-code fn2-conn-snapshot-read-code
+                           fn2-upload-snapshot-read-code fn2-cursor-snapshot-read-code
+                           fn2-txn-snapshot-read-code fn2-machine-phase-read-code
+                           fn2-machine-generation-read-code fn2-feed-header-complete-p
+                           fn2-upload-bound)))
 ;; Feed [start, end) of the owner's range RSLOT (read under RK RS RG) into
 ;; upload U's current chunk (the first while it has room), at most
 ;; *fn2-conn-feed-bytes* octets and no further than one octet past the
@@ -287,13 +320,8 @@
 ;; framing error, 2 article too large, 3 header limit reached.
 (defun fn2-upload-feed-run (start end mode why fed raw rslot rgen rk rs rg u ugen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
-                  :guard-hints (("Goal" :in-theory (disable fn2-core-wfp fn2-feed-header-complete-p
-                                                            fn2-upload-snapshot-read-code
-                                                            fn2-conn-snapshot-read-code
-                                                            fn2-cns-snapshot-read-code
-                                                            fn2-machine-generation
-                                                            fn2-upload-chunk-cap fn2-upload-bound
-                                                            nfix min max unsigned-byte-p)))))
+                  :guard-hints (("Goal" :do-not '(preprocess)
+                                        :in-theory (disable member-equal min)))))
   (b* (((unless (and (eq (fn2-upload-snapshot-read-code u fn2-core) :ok)
                      (equal (fn2-machine-generation u fn2-core) ugen)
                      (natp start) (natp mode) (natp fed) (natp why)))
@@ -356,10 +384,7 @@
     (mv (if (member-eq status '(:full :header)) :budget status)
         start2 mode2 why2 (nfix copied) fn2-core)))
 (fn2-core-preserves fn2-upload-feed-run (start end mode why fed raw rslot rgen rk rs rg u ugen fn2-core) :position 5 :rows nil
-  :hints (("Goal" :in-theory (disable fn2-upload-snapshot-read-code fn2-conn-snapshot-read-code
-                                      fn2-cns-snapshot-read-code fn2-machine-generation
-                                      fn2-feed-header-complete-p
-                                      nfix min max unsigned-byte-p))))
+  :hints (("Goal" :do-not '(preprocess) :in-theory (disable member-equal min unsigned-byte-p nfix))))
 (in-theory (disable fn2-upload-feed-run))
 (defun fn2-conn-feed-run (start mode why fed rslot rgen u ugen oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
