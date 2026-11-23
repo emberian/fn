@@ -89,6 +89,23 @@
 (fn2-du-fast-events (fn2-upload-stream-reset-op-events))
 (fn2-du-fast-events (fn2-upload-stream-manifest-op-events))
 (local
+ (defthm fn2-du-repack-entry-naturals
+   (and (natp (mv-nth 1 (fn2-upload-repack-entry base ss sg so se ds dg do kind owner ogen fn2-core)))
+        (integerp (mv-nth 1 (fn2-upload-repack-entry base ss sg so se ds dg do kind owner ogen fn2-core)))
+        (<= 0 (mv-nth 1 (fn2-upload-repack-entry base ss sg so se ds dg do kind owner ogen fn2-core)))
+        (acl2-numberp (mv-nth 1 (fn2-upload-repack-entry base ss sg so se ds dg do kind owner ogen fn2-core)))
+        (natp (mv-nth 2 (fn2-upload-repack-entry base ss sg so se ds dg do kind owner ogen fn2-core)))
+        (integerp (mv-nth 2 (fn2-upload-repack-entry base ss sg so se ds dg do kind owner ogen fn2-core)))
+        (<= 0 (mv-nth 2 (fn2-upload-repack-entry base ss sg so se ds dg do kind owner ogen fn2-core)))
+        (acl2-numberp (mv-nth 2 (fn2-upload-repack-entry base ss sg so se ds dg do kind owner ogen fn2-core))))
+   :rule-classes (:rewrite
+                  (:type-prescription :corollary
+                   (natp (mv-nth 1 (fn2-upload-repack-entry base ss sg so se ds dg do kind owner ogen fn2-core))))
+                  (:type-prescription :corollary
+                   (natp (mv-nth 2 (fn2-upload-repack-entry base ss sg so se ds dg do kind owner ogen fn2-core)))))
+   :hints (("Goal" :in-theory (e/d (fn2-upload-repack-entry) (fn2-upload-repack-entry-children))))))
+(local (in-theory (disable fn2-upload-repack-entry)))
+(local
  (defthm fn2-du-upload-digest-preserves-tables
    (and (equal (fn2-core-machines (mv-nth 1 (fn2-upload-digest row hashed fn2-core)))
                (fn2-core-machines fn2-core))

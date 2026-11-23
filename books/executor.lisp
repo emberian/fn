@@ -9,6 +9,16 @@
 (include-book "executor-loop-events")
 
 (fn2-executor-loop-events)
+(local (defun fn2-ex-core-child-type-terms (children)
+         (declare (xargs :verify-guards nil))
+         (if (atom children) nil
+           (cons `(,(fn2-columns-sym (cadar children) "P") (,(caar children) fn2-core))
+                 (fn2-ex-core-child-type-terms (cdr children))))))
+(make-event
+ (value `(local (defthm fn2-ex-core-child-types-fc
+                  (implies (fn2-corep fn2-core)
+                           (and ,@(fn2-ex-core-child-type-terms *fn2-core-children*)))
+                  :rule-classes :forward-chaining))))
 (local
  (defthm fn2-exec-working-credit-configure-shape
    (implies (and (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
@@ -25,9 +35,42 @@
   (local (in-theory (e/d (fn2-commit-core-invariant)
                          (fn2-core-wfp-commit-opaque
                           fn2-checkpoint-working-credit-configure fn2-idc-scratch
+                          fn2-pool-class-for fn2-pool-class-scan
                           nfix floor (:definition unsigned-byte-p)))))
   (make-event (value `(local (in-theory (enable ,@(fn2-core-child-wfp-forward-runes *fn2-core-children*))))))
-  (fn2-checkpoint-working-credit-init-events))
+  (make-event
+   (let* ((world (w state))
+          (conn (fn2-checkpoint-service-kind-form 'fn2-conn :admission world))
+          (ctl (fn2-checkpoint-service-kind-form 'fn2-ctl :admission world))
+          (cns (fn2-checkpoint-service-kind-form 'fn2-cns :taken world))
+          (uploads (fn2-checkpoint-service-kind-form 'fn2-upload :taken world)))
+     (value
+      `(progn
+         (defun fn2-checkpoint-service-protocol-classes (fn2-pool)
+           (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
+           (list ,conn (append ,ctl ,cns)))
+         (defun fn2-checkpoint-service-upload-classes (fn2-input-config fn2-pool)
+           (declare (xargs :stobjs (fn2-input-config fn2-pool)
+                           :guard (and (fn2-input-config-wfp fn2-input-config) (fn2-pool-wfp fn2-pool))))
+           ,uploads)
+         (defun fn2-checkpoint-working-credit-init (profile fn2-core)
+           (declare (xargs :stobjs fn2-core :guard (and (fn2-profilep profile) (fn2-core-wfp fn2-core))))
+           (stobj-let ((fn2-commit (fn2-commit-table fn2-core))
+                       (fn2-commit-io (fn2-core-commit-io fn2-core))
+                       (fn2-id-engine (fn2-core-id-engine fn2-core))
+                       (fn2-input-config (fn2-core-input-config fn2-core))
+                       (fn2-pool (fn2-core-pool fn2-core)))
+             (code fn2-id-engine fn2-pool)
+             (b* (((mv configured fn2-pool)
+                   (fn2-checkpoint-working-credit-configure
+                    profile (fn2-commit-rows fn2-commit) (fn2-commit-io-rows fn2-commit-io)
+                    (fn2-checkpoint-service-protocol-classes fn2-pool)
+                    (fn2-checkpoint-service-upload-classes fn2-input-config fn2-pool) fn2-pool))
+                  ((unless (eq configured :ok)) (mv configured fn2-id-engine fn2-pool)))
+               (fn2-idc-scratch fn2-id-engine fn2-pool))
+             (mv code fn2-core)))
+         (fn2-core-preserves fn2-checkpoint-working-credit-init (profile fn2-core)
+           :position 1 :rows nil :hyps ((fn2-corep fn2-core) (fn2-core-wfp fn2-core) (fn2-profilep profile))))))))
 
 ;; Genesis (MACHINE-FORM G3, C gap 5): each kind's :genesis arm runs once on
 ;; each of its rows at init, from the row's initial phase, so a row's first
