@@ -30,6 +30,9 @@
                 (unsigned-byte-p 32 off) (unsigned-byte-p 32 end)
                 (eq (fn2-layout-range-code slot gen off end t 9 0 1 pool) :ok))
            (and (equal (car load) :ok)
+                (fn2-poolp after) (fn2-pool-wfp after)
+                (natp (fn2-pool-base slot after))
+                (equal (fn2-layout-range-code slot gen off end nil 9 0 1 after) :ok)
                 (equal (car read) :ok) (equal (mv-nth 1 read) end))))
  :rule-classes nil
  :hints (("Goal" :use
@@ -71,6 +74,9 @@
                   (eq (fn2-layout-range-code src sg at (+ at n) nil 9 0 1 pool) :ok)
                   (eq (fn2-layout-range-code dst dg off end t 9 0 1 pool) :ok))
              (and (equal (car actual) :ok) (equal (car read) :ok)
+                  (fn2-poolp (mv-nth 2 actual)) (fn2-pool-wfp (mv-nth 2 actual))
+                (natp (fn2-pool-base dst (mv-nth 2 actual)))
+                (equal (fn2-layout-range-code dst dg off end nil 9 0 1 (mv-nth 2 actual)) :ok)
                   (equal (mv-nth 1 actual) (+ off (len bytes)))
                   (equal (mv-nth 1 read) (mv-nth 1 actual)))))
   :rule-classes nil
@@ -105,6 +111,9 @@
                 (equal (fn2-layout-range-code src sg at (+ at n) t 9 0 1 pool) :ok)
                 (equal (fn2-layout-range-code dst dg off end t 9 0 1 pool) :ok))
            (and (equal (car load) :ok) (equal (car write) :ok) (equal (car read) :ok)
+                (fn2-poolp (mv-nth 2 write)) (fn2-pool-wfp (mv-nth 2 write))
+                (natp (fn2-pool-base dst (mv-nth 2 write)))
+                (equal (fn2-layout-range-code dst dg off end nil 9 0 1 (mv-nth 2 write)) :ok)
                 (equal (mv-nth 1 write) end) (equal (mv-nth 1 read) end)
                 (equal (fn2-run-read-bytes size dst dg off 9 0 1 (mv-nth 2 write)) bytes))))
  :rule-classes nil
