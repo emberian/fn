@@ -32,23 +32,25 @@
    (implies (equal (fn2-cns-snapshot-read-code cns fn2-core) :ok)
             (and (fn2-machine-idp cns fn2-core)
                  (equal (fn2-machine-kind cns fn2-core) *fn2-cns-kind*)
+                 (equal (fn2-machine-generation-read-code cns fn2-core) :ok)
                  (< (fn2-machine-slot cns fn2-core) (fn2-cns-rows (fn2-cns-table fn2-core)))
                  (natp cns) (integerp cns) (<= 0 cns)
                  (< cns (fn2-machines-rows (fn2-core-machines fn2-core)))))
    :rule-classes (:rewrite :forward-chaining)
    :hints (("Goal" :in-theory (enable fn2-cns-snapshot-read-code fn2-machine-idp
-                                      fn2-machine-phase-read-code)))))
+                                      fn2-machine-phase-read-code fn2-machine-generation-read-code)))))
 (local
  (defthm fn2-ecns-ctl-snapshot-ok-implies-idp
    (implies (equal (fn2-ctl-snapshot-read-code ctl fn2-core) :ok)
             (and (fn2-machine-idp ctl fn2-core)
                  (equal (fn2-machine-kind ctl fn2-core) *fn2-ctl-kind*)
+                 (equal (fn2-machine-generation-read-code ctl fn2-core) :ok)
                  (< (fn2-machine-slot ctl fn2-core) (fn2-ctl-rows (fn2-ctl-table fn2-core)))
                  (natp ctl) (integerp ctl) (<= 0 ctl)
                  (< ctl (fn2-machines-rows (fn2-core-machines fn2-core)))))
    :rule-classes (:rewrite :forward-chaining)
    :hints (("Goal" :in-theory (enable fn2-ctl-snapshot-read-code fn2-machine-idp
-                                      fn2-machine-phase-read-code)))))
+                                      fn2-machine-phase-read-code fn2-machine-generation-read-code)))))
 (make-event
  (value `(local (in-theory (disable nth fn2-reads-rows fn2-fields-rows fn2-fc-rows
                                     fn2-digests-rows fn2-b3-rows fn2-pool-fill fn2-pool-base fn2-pool-data-length
@@ -374,23 +376,32 @@
                 (implies (fn2-cns-read-contextp cns gen x fn2-core)
                          (and (equal (fn2-cns-snapshot-read-code cns fn2-core) :ok)
                               (equal (fn2-machine-generation cns fn2-core) gen)
+                              (equal (fn2-cns-row-xrow cns fn2-core) x)
                               (natp x) (integerp x) (<= 0 x)
                               (< x (fn2-reads-rows (fn2-core-reads fn2-core)))
                               (< x (fn2-ranges-rows (fn2-core-ranges fn2-core)))
                               (< x (fn2-seeks-rows (fn2-core-seeks fn2-core)))
                               (< (+ (fn2-id-decides-rows (fn2-core-id-decides fn2-core)) x)
-                                 (fn2-succ-txns-rows (fn2-core-succ-txns fn2-core)))))
+                                 (fn2-succ-txns-rows (fn2-core-succ-txns fn2-core)))
+                              (equal (fn2-seeks-phase x (fn2-core-seeks fn2-core))
+                                     *fn2-seek-phase-idle*)))
                 :rule-classes :forward-chaining
                 :hints (("Goal" :in-theory (union-theories '(fn2-cns-read-contextp natp)
                                                            (theory 'minimal-theory))))))
              (local
               (defthm fn2-ecns-range-contextp-implies-read-contextp
                 (implies (fn2-cns-range-contextp cns gen x fn2-core)
-                         (fn2-cns-read-contextp cns gen x fn2-core))
+                         (and (fn2-cns-read-contextp cns gen x fn2-core)
+                              (equal (fn2-succ-txns-lphase
+                                      (+ (fn2-id-decides-rows (fn2-core-id-decides fn2-core)) x)
+                                      (fn2-core-succ-txns fn2-core))
+                                     *fn2-succ-lookup-idle*)))
                 :rule-classes :forward-chaining
                 :hints (("Goal" :in-theory (union-theories '(fn2-cns-range-contextp)
                                                            (theory 'minimal-theory))))))
-             (local (in-theory (disable fn2-cns-read-contextp fn2-cns-range-contextp)))))
+             (local (in-theory (disable fn2-cns-read-contextp fn2-cns-range-contextp
+                                        fn2-ranges-rows fn2-seeks-rows
+                                        fn2-id-decides-rows fn2-succ-txns-rows)))))
          ((and (eq (car x) 'defun) (eq (cadr x) 'fn2-cns-range-scalar-keyp))
           `(progn
              ,x
