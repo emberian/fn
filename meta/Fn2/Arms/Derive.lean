@@ -334,7 +334,7 @@ def toothArmStep : Arm :=
     sig := some ⟨["FN2-ECHO", "FN2-MACHINES", "FN2-CONTROL"],
                  ["FN2-ECHO", "FN2-MACHINES", "FN2-CONTROL"], 4⟩
     decl := Val.ofList [
-      Val.ofList [.sym ":SET", Val.ofList [.sym "OFF", .int 0]],
+      Val.ofList [.sym ":SET", Val.ofList [.sym "ACL2::OFF", .int 0]],
       Val.ofList [.sym ":NEXT", .sym ":REPLY"],
       Val.ofList [.sym ":CHARGE", .sym ":BYTES", .int 64, .sym ":STEPS", .int 2]
     ]
@@ -344,7 +344,7 @@ def toothArmStep : Arm :=
 def mutantArmCost : Arm :=
   { toothArmStep with
     decl := Val.ofList [
-      Val.ofList [.sym ":SET", Val.ofList [.sym "OFF", .int 0]],
+      Val.ofList [.sym ":SET", Val.ofList [.sym "ACL2::OFF", .int 0]],
       Val.ofList [.sym ":NEXT", .sym ":REPLY"],
       Val.ofList [.sym ":CHARGE", .sym ":BYTES", .int 999, .sym ":STEPS", .int 2]
     ] }
@@ -353,7 +353,7 @@ def mutantArmCost : Arm :=
 def mutantArmWrites : Arm :=
   { toothArmStep with
     decl := Val.ofList [
-      Val.ofList [.sym ":SET", Val.ofList [.sym "OFF", .int 0], Val.ofList [.sym "STOPPED", .int 1]],
+      Val.ofList [.sym ":SET", Val.ofList [.sym "ACL2::OFF", .int 0], Val.ofList [.sym "ACL2::STOPPED", .int 1]],
       Val.ofList [.sym ":NEXT", .sym ":REPLY"],
       Val.ofList [.sym ":CHARGE", .sym ":BYTES", .int 64, .sym ":STEPS", .int 2]
     ] }
@@ -362,7 +362,7 @@ def mutantArmWrites : Arm :=
 def mutantArmNext : Arm :=
   { toothArmStep with
     decl := Val.ofList [
-      Val.ofList [.sym ":SET", Val.ofList [.sym "OFF", .int 0]],
+      Val.ofList [.sym ":SET", Val.ofList [.sym "ACL2::OFF", .int 0]],
       Val.ofList [.sym ":NEXT", .sym ":CLOSING"],
       Val.ofList [.sym ":CHARGE", .sym ":BYTES", .int 64, .sym ":STEPS", .int 2]
     ] }
@@ -371,10 +371,10 @@ def mutantArmNext : Arm :=
 def mutantArmTables : Arm :=
   { toothArmStep with
     decl := Val.ofList [
-      Val.ofList [.sym ":DO", Val.ofList [.sym "CODE"],
-        Val.ofList [.sym "FN2-CORE-RESET", .int 0, .int 0],
+      Val.ofList [.sym ":DO", Val.ofList [.sym "ACL2::CODE"],
+        Val.ofList [.sym "ACL2::FN2-CORE-RESET", .int 0, .int 0],
         .sym ":ACCEPT", Val.ofList [.sym ":OK"]],
-      Val.ofList [.sym ":SET", Val.ofList [.sym "OFF", .int 0]],
+      Val.ofList [.sym ":SET", Val.ofList [.sym "ACL2::OFF", .int 0]],
       Val.ofList [.sym ":NEXT", .sym ":REPLY"],
       Val.ofList [.sym ":CHARGE", .sym ":BYTES", .int 64, .sym ":STEPS", .int 2]
     ] }
@@ -422,8 +422,8 @@ def runTooth (a : Arm) (fuel : Nat := 10) : Val :=
 def mutantArmNegOperand : Arm :=
   { toothArmStep with
     decl := Val.ofList [
-      Val.ofList [.sym ":LET", .sym "N", .int (-5)],
-      Val.ofList [.sym ":CHARGE", .sym ":BYTES", Val.ofList [.sym "-", .int 10, .sym "N"],
+      Val.ofList [.sym ":LET", .sym "ACL2::N", .int (-5)],
+      Val.ofList [.sym ":CHARGE", .sym ":BYTES", Val.ofList [.sym "COMMON-LISP::-", .int 10, .sym "ACL2::N"],
         .sym ":STEPS", .int 2]
     ] }
 
@@ -431,7 +431,7 @@ def mutantArmNegOperand : Arm :=
 def mutantArmRowCharge : Arm :=
   { toothArmStep with
     decl := Val.ofList [
-      Val.ofList [.sym ":CHARGE", .sym ":BYTES", .sym "ROW-OFF", .sym ":STEPS", .int 2]
+      Val.ofList [.sym ":CHARGE", .sym ":BYTES", .sym "ACL2::ROW-OFF", .sym ":STEPS", .int 2]
     ] }
 
 /-! ### 3.1 The charge bound (`Cost.runArm_charge_le_cost`) -/

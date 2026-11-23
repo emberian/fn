@@ -211,7 +211,7 @@ local macro "adq_tail" : tactic => `(tactic| (
              · rename_i hne; try rw [if_neg hne]
                exact viaStop _ _ h1b hrun)))
 
-set_option maxHeartbeats 1000000 in
+set_option maxHeartbeats 4000000 in
 /-- **Fuel adequacy (`run_adq`)**: a path whose derived fuel is `F` (with its continuation `X`
 adequate from `K`), and that returns `r` at some fuel, returns `r` at every fuel from `F` on. -/
 theorem run_adq (subF : String → Option Nat) (hsub : SubOK w k subF) :
@@ -382,12 +382,13 @@ theorem run_adq (subF : String → Option Nat) (hsub : SubOK w k subF) :
     all_goals simp only [hA] at hrun ⊢
     all_goals repeat' (first
       | (refine viaRest _ ?_; exact hrun)
-      | (refine viaCase2 _ _ _ _ ?_ ?_ <;> first | exact hrun | assumption)
       | (obtain ⟨_, hth, _⟩ := bind_ok hrun; simp [throw, throwThe, MonadExceptOf.throw] at hth; done)
       | peel
       | (split at hrun <;> rename_i hh2 <;> split <;> rename_i hh1 <;>
-          (try first | contradiction | (rw [hh1] at hh2; cases hh2)))
-      | (split <;> rename_i hh1 <;> simp only [hh1, ↓reduceIte] at hrun))
+          (try first | contradiction | (rw [hh1] at hh2; cases hh2)
+                     | exact viaCase _ _ _ (List.mem_of_find?_eq_some hh1) hrun))
+      | (split <;> rename_i hh1 <;> simp only [hh1] at hrun <;>
+          (try exact viaCase _ _ _ (List.mem_of_find?_eq_some hh1) hrun)))
     all_goals
       have hq : cases.find? (·.1.isNone) = none := by assumption
       obtain ⟨h1b, href⟩ := hno hq
@@ -487,7 +488,184 @@ theorem run_adq (subF : String → Option Nat) (hsub : SubOK w k subF) :
     peel
     exact cont _ _ (fun R' h => by rw [hgr] at h; cases h; omega) ⟨gr, hgr⟩ hrun
 
+theorem refFuel_ok (subF : String → Option Nat) (hsub : SubOK w k subF)
+    (f : Frame) (hk : f.kind = k) (rf : Nat)
+    (hrf : refFuel w k subF f.refusal = some rf) :
+    RefOK w (some rf) f := by
+  intro RF hEq
+  cases hEq
+  unfold refFuel at hrf
+  split at hrf
+  · rename_i hemp
+    cases hrf
+    have hnil : f.refusal = [] := List.isEmpty_iff.mp hemp
+    exact ⟨Nat.le_refl 1, hnil ▸ adqX_nil w f 1⟩
+  · obtain ⟨G, hG, rfl⟩ := Option.map_eq_some_iff.mp hrf
+    refine ⟨Nat.le_max_left 1 G, adqX_mono w f f.refusal G (max 1 G) ?_ (Nat.le_max_right 1 G)⟩
+    intro a b st r hrun hb
+    have hR0 : RefOK w none f := fun _ h => by nomatch h
+    simpa using run_adq w k subF hsub a f none f.refusal [] (some 1) G b st r hk hR0 hG
+      (fun K _ => adqX_nil w f K) (by simpa using hrun) hb
+
+theorem subFuelN_ok (d : Nat) : SubOK w k (subFuelN w k d) := by
+  induction d with
+  | zero => intro _ _ h; nomatch h
+  | succ d ih =>
+    intro name SF hSF sub hfind decl hread f hk href
+    unfold subFuelN at hSF
+    rw [hfind] at hSF
+    dsimp only at hSF
+    rw [hread] at hSF
+    simp only [bind, Option.bind] at hSF
+    cases hrf : refFuel w k (subFuelN w k d) decl.onRefusal with
+    | none => rw [hrf] at hSF; nomatch hSF
+    | some rf =>
+      rw [hrf] at hSF
+      have hRef : RefOK w (some rf) f := refFuel_ok w k (subFuelN w k d) ih f hk rf (href ▸ hrf)
+      intro a b st r hrun hb
+      simpa using run_adq w k (subFuelN w k d) ih a f (some rf) decl.steps [] (some 1) SF b st r
+        hk hRef hSF (fun K _ => adqX_nil w f K) (by simpa using hrun) hb
+
+/-- **Arm fuel adequacy (`runArm_fuel_adequate`)**: if `derivedFuel w k a = some F` and
+`runArm` succeeds at any fuel `aFuel`, it succeeds with the identical result at every fuel
+`bFuel ≥ F`. -/
+theorem runArm_fuel_adequate (a : Arm) (observe : Bool) (args : List Val)
+    (F aFuel bFuel : Nat) (v : Val)
+    (hF : derivedFuel w k a = some F)
+    (hrun : runArm w k a observe args aFuel = .ok v)
+    (hb : F ≤ bFuel) :
+    runArm w k a observe args bFuel = .ok v := by
+  unfold derivedFuel at hF
+  cases hread : a.read with
+  | error e => rw [hread] at hF; nomatch hF
+  | ok decl =>
+    rw [hread] at hF
+    simp only [bind, Option.bind] at hF
+    cases hrf : refFuel w k (subFuelN w k (k.subarms.length + 1)) decl.onRefusal with
+    | none => rw [hrf] at hF; nomatch hF
+    | some rf =>
+      rw [hrf] at hF
+      have hsub := subFuelN_ok w k (k.subarms.length + 1)
+      cases observe
+      all_goals
+        simp only [runArm, Bool.false_eq_true, if_false, if_true] at hrun ⊢
+        split at hrun
+        · simp [throw, throwThe, MonadExceptOf.throw] at hrun
+        rename_i hcf
+        rw [if_neg hcf]
+        split at hrun
+        · simp [throw, throwThe, MonadExceptOf.throw] at hrun
+        rename_i hlen
+        rw [if_neg hlen]
+        obtain ⟨_, _, hrun⟩ := bind_ok hrun
+        obtain ⟨_, _, hrun⟩ := bind_ok hrun
+        simp only [pure, Except.pure, except_ok_bind]
+        refine bind_tail hrun (fun reads _ hrun => ?_)
+        rw [hread] at hrun ⊢
+        simp only [except_ok_bind] at hrun ⊢
+        obtain ⟨res, hres, hdone⟩ := bind_ok hrun
+        have hadq := run_adq w k _ hsub aFuel _ (some rf) decl.steps [] (some 1) F bFuel _ res
+          rfl (refFuel_ok w k _ hsub _ rfl rf hrf) hF (fun K _ => adqX_nil w _ K)
+          (by simpa only [List.append_nil] using hres) hb
+        simp only [List.append_nil] at hadq
+        rw [hadq]
+        simp only [except_ok_bind]
+        exact hdone
+
 end
+
+/-! ## Witnesses and teeth for `runArm_fuel_adequate` -/
+
+section FuelTeeth
+
+deriving instance DecidableEq for Except
+
+def fuelKind : Kind :=
+  { name := "FN2-ECHO"
+    childForm := true
+    tuple := ["FN2-ECHO", "FN2-MACHINES", "FN2-CONTROL"]
+    states := [":FREE", ":COMMAND", ":REPLY"]
+    phases := [(":FREE", 0), (":COMMAND", 1), (":REPLY", 2)]
+    columns := [("PHASE", .enum 3), ("WAIT-REASON", .enum 4), ("OFF", .uw 32)]
+    table := ["PHASE", "OFF"]
+    stops := []
+    links := []
+    subarms := []
+    arms := []
+    observes := [] }
+
+def fuelFns : Fns
+  | "FN2-ECHO-ROWS", [_] => some (.int 4)
+  | "FN2-MACHINES-ROWS", [_] => some (.int 4)
+  | "FN2-ECHO-PHASE", [_, t] => some (Native.nth (.int 0) t)
+  | "FN2-ECHO-OFF", [_, t] => some (Native.nth (.int 1) t)
+  | "FN2-MACHINES-WAIT-REASON", [_, d] => some (Native.nth (.int 0) d)
+  | "FN2-ECHO-SET-PHASE", [_, v, t] => some (Native.updateNth (.int 0) v t)
+  | "FN2-ECHO-SET-OFF", [_, v, t] => some (Native.updateNth (.int 1) v t)
+  | "FN2-MACHINES-SET-WAIT-REASON", [_, v, d] => some (Native.updateNth (.int 0) v d)
+  | _, _ => none
+
+def fuelWorld : World :=
+  { kinds := [fuelKind]
+    ops := []
+    waits := []
+    consts := [("*FN2-WORK-EMPTY*", .int 1)]
+    fns := fuelFns }
+
+def fuelArm : Arm :=
+  { tag := ":COMMAND"
+    sig := some ⟨["FN2-ECHO", "FN2-MACHINES", "FN2-CONTROL"],
+                 ["FN2-ECHO", "FN2-MACHINES", "FN2-CONTROL"], 4⟩
+    decl := Val.ofList [
+      Val.ofList [.sym ":SET", Val.ofList [.sym "ACL2::OFF", .int 0]],
+      Val.ofList [.sym ":NEXT", .sym ":REPLY"],
+      Val.ofList [.sym ":CHARGE", .sym ":BYTES", .int 64, .sym ":STEPS", .int 2]
+    ]
+    fn := "FN2-ECHO-RUN-COMMAND-CHILDREN" }
+
+def fuelArgs : List Val :=
+  [.int 0, .int 0, .int 0, .int 0, .int 10,
+   Val.ofList [.int 1, .int 99],
+   Val.ofList [.int 0],
+   .sym "ORIG-CTRL"]
+
+/-- Positive witness: `fuelArm`'s derived fuel bound is `3`, and `runArm` succeeds at `3` and
+agrees with higher fuel (`10`). -/
+theorem runArm_fuel_adequate_pos :
+    derivedFuel fuelWorld fuelKind fuelArm = some 3 ∧
+    (runArm fuelWorld fuelKind fuelArm false fuelArgs 3).isOk = true ∧
+    runArm fuelWorld fuelKind fuelArm false fuelArgs 3 =
+      runArm fuelWorld fuelKind fuelArm false fuelArgs 10 :=
+  ⟨by decide +kernel, by decide +kernel, by decide +kernel⟩
+
+/-- Tightness tooth: `F ≤ bFuel` cannot be weakened to `F - 1 ≤ bFuel`; at fuel `2 = 3 - 1`,
+`runArm` fails with `.error "fuel"`. -/
+theorem fuel_bound_tight_neg :
+    derivedFuel fuelWorld fuelKind fuelArm = some 3 ∧
+    runArm fuelWorld fuelKind fuelArm false fuelArgs 2 = .error "fuel" :=
+  ⟨by decide +kernel, by decide +kernel⟩
+
+def cyclicKind : Kind :=
+  { fuelKind with
+    subarms := [
+      { tag := "SUB-A", sig := none, fn := "FN2-ECHO-SUB-A",
+        decl := Val.ofList [Val.ofList [.sym ":GOTO", .sym "ACL2::SUB-B"]] },
+      { tag := "SUB-B", sig := none, fn := "FN2-ECHO-SUB-B",
+        decl := Val.ofList [Val.ofList [.sym ":GOTO", .sym "ACL2::SUB-A"]] }
+    ] }
+
+def cyclicArm : Arm :=
+  { fuelArm with
+    decl := Val.ofList [Val.ofList [.sym ":GOTO", .sym "ACL2::SUB-A"]] }
+
+/-- Hypothesis-removal witness: a `:goto` cycle has `derivedFuel = none` and fails at finite fuel. -/
+theorem cyclic_subarm_fuel_none :
+    derivedFuel { fuelWorld with kinds := [cyclicKind] } cyclicKind cyclicArm = none ∧
+    runArm { fuelWorld with kinds := [cyclicKind] } cyclicKind cyclicArm false fuelArgs 10 =
+      .error "fuel" :=
+  ⟨by decide +kernel, by decide +kernel⟩
+
+end FuelTeeth
 
 end Fn2.Arms.Fuel
 

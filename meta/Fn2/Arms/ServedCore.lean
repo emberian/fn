@@ -63,6 +63,18 @@ namespace Fn2.Arms.ServedCore
 open Fn2.ACL2 Fn2.Arms Fn2.Arms.Cost Fn2.Arms.Frame Fn2.Arms.Columns Fn2.Arms.Core Fn2.Arms.Derive
 open Fn2.Arms.Served Fn2.Arms.ServedColumns Fn2.Instances.LayerAKinds
 
+set_option maxHeartbeats 800000
+
+private theorem mem_of_all_pred {α : Type} (p : α → Bool) (xs : List α) {a : α}
+    (hall : xs.all p = true) (ha : a ∈ xs) : p a = true := by
+  induction xs with
+  | nil => cases ha
+  | cons x rest ih =>
+    simp only [List.all_cons, Bool.and_eq_true] at hall
+    cases List.mem_cons.mp ha with
+    | inl h => subst h; exact hall.1
+    | inr h => exact ih hall.2 h
+
 /-- The core face's world and kinds. -/
 def cw : World := coreWorld world coreTuple
 def cnsC : Kind := coreKind cnsK coreTuple
@@ -93,15 +105,19 @@ theorem cns_core_charge (a : Arm) (ha : a ∈ cnsK.arms) :
   have hall : cnsK.arms.all (fun a => match derivedCost cw cnsC a with
       | some C => decide (CostLe (0, 1, 0) C)
       | none => false) = true := by decide +kernel
-  have h := List.all_eq_true.mp hall a ha
-  split at h
-  · rename_i C hC
-    refine ⟨C, hC, fun args fuel v hrun => runCore_charge_le_cost world coreTuple cnsK a args fuel v C hC
+  have h := mem_of_all_pred (fun a => match derivedCost cw cnsC a with
+      | some C => decide (CostLe (0, 1, 0) C)
+      | none => false) cnsK.arms hall ha
+  dsimp only at h
+  cases hC : derivedCost cw cnsC a with
+  | none => rw [hC] at h; cases h
+  | some C =>
+    rw [hC] at h
+    refine ⟨C, rfl, fun args fuel v hrun => runCore_charge_le_cost world coreTuple cnsK a args fuel v C hC
       (fun e he => ?_) hrun⟩
     rw [work_empty] at he
     cases he
     simpa [Val.toInt] using h
-  · cases h
 
 /-- The `:COMMIT` arm (it calls `fn2-cns-commit-op`, an operation with no child form): at most
 512 bytes, 24 steps and no descriptor per turn. -/
@@ -121,7 +137,8 @@ theorem cns_core_frame (a : Arm) (ha : a ∈ cnsK.subarms ++ cnsK.arms ++ cnsK.o
             core'.toList[i]? = (args.getLastD Val.nil).toList[i]? := by
   have hall : (cnsK.subarms ++ cnsK.arms ++ cnsK.observes).all
       (fun a => (derivedTables cw cnsC a).isSome) = true := by decide +kernel
-  obtain ⟨D, hD⟩ := Option.isSome_iff_exists.mp (List.all_eq_true.mp hall a ha)
+  obtain ⟨D, hD⟩ := mem_of_all_isSome (derivedTables cw cnsC)
+    (cnsK.subarms ++ cnsK.arms ++ cnsK.observes) hall ha
   exact ⟨D, hD, fun observe args fuel v hrun =>
     runCore_frame world coreTuple cnsK a observe args fuel v D hD layout.2.1 hrun⟩
 
@@ -135,7 +152,8 @@ theorem conn_core_frame (a : Arm) (ha : a ∈ connK.subarms ++ connK.arms ++ con
             core'.toList[i]? = (args.getLastD Val.nil).toList[i]? := by
   have hall : (connK.subarms ++ connK.arms ++ connK.observes).all
       (fun a => (derivedTables cw connC a).isSome) = true := by decide +kernel
-  obtain ⟨D, hD⟩ := Option.isSome_iff_exists.mp (List.all_eq_true.mp hall a ha)
+  obtain ⟨D, hD⟩ := mem_of_all_isSome (derivedTables cw connC)
+    (connK.subarms ++ connK.arms ++ connK.observes) hall ha
   exact ⟨D, hD, fun observe args fuel v hrun =>
     runCore_frame world coreTuple connK a observe args fuel v D hD layout.2.1 hrun⟩
 
@@ -197,7 +215,8 @@ theorem cns_core_writes (a : Arm) (ha : a ∈ cnsC.subarms ++ cnsC.arms ++ cnsC.
               colGet cw cnsC (stobj (coreSt coreTuple (args.getLastD Val.nil))) c s := by
   have hall : (cnsC.subarms ++ cnsC.arms ++ cnsC.observes).all
       (fun a => (checkedWrites cw cnsC a).isSome) = true := by decide +kernel
-  obtain ⟨W, hW⟩ := Option.isSome_iff_exists.mp (List.all_eq_true.mp hall a ha)
+  obtain ⟨W, hW⟩ := mem_of_all_isSome (checkedWrites cw cnsC)
+    (cnsC.subarms ++ cnsC.arms ++ cnsC.observes) hall ha
   exact ⟨W, hW, fun observe args fuel v hrun =>
     runCore_writes_sub world coreTuple _ a observe args fuel v W hW cns_tableFacts cns_shape.1 hrun⟩
 
@@ -279,7 +298,8 @@ theorem conn_core_writes (a : Arm) (ha : a ∈ connC.subarms ++ connC.arms ++ co
               colGet cw connC (stobj (coreSt coreTuple (args.getLastD Val.nil))) c s := by
   have hall : (connC.subarms ++ connC.arms ++ connC.observes).all
       (fun a => (checkedWrites cw connC a).isSome) = true := by decide +kernel
-  obtain ⟨W, hW⟩ := Option.isSome_iff_exists.mp (List.all_eq_true.mp hall a ha)
+  obtain ⟨W, hW⟩ := mem_of_all_isSome (checkedWrites cw connC)
+    (connC.subarms ++ connC.arms ++ connC.observes) hall ha
   exact ⟨W, hW, fun observe args fuel v hrun =>
     runCore_writes_sub world coreTuple _ a observe args fuel v W hW conn_tableFacts conn_shape.1 hrun⟩
 

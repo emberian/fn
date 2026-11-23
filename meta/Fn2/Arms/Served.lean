@@ -29,6 +29,8 @@ interval analysis does not bound, `MIN` and `NFIX` being world functions).
 namespace Fn2.Arms.Served
 open Fn2.ACL2 Fn2.Arms Fn2.Instances.LayerAKinds
 
+set_option maxHeartbeats 800000
+
 def kindNamed (n : String) : Kind := (kinds.find? (·.name == n)).getD default
 
 def cursorK : Kind := kindNamed "FN2-CURSOR"
@@ -44,6 +46,21 @@ theorem cursor_derived_costs :
        (":FINISH", some (0, 24, 0)), (":DRAINING", some (0, 20, 0)), (":RETIRED", some (0, 1, 0))] := by
   decide +kernel
 
+theorem mem_of_all_isSome {α β : Type} (f : α → Option β) (xs : List α) {a : α}
+    (hall : xs.all (fun x => (f x).isSome) = true) (ha : a ∈ xs) :
+    ∃ y, f a = some y := by
+  induction xs with
+  | nil => cases ha
+  | cons x rest ih =>
+    simp only [List.all_cons, Bool.and_eq_true] at hall
+    cases List.mem_cons.mp ha with
+    | inl h =>
+      subst h
+      cases hf : f a with
+      | none => rw [hf] at hall; cases hall.1
+      | some y => exact ⟨y, rfl⟩
+    | inr h => exact ih hall.2 h
+
 /-- **Every `FN2-CURSOR` arm's charge is bounded on every run** by its derived bound. -/
 theorem cursor_arm_charge (a : Arm) (ha : a ∈ cursorK.arms) :
     ∃ C, Cost.derivedCost world cursorK a = some C ∧
@@ -51,8 +68,7 @@ theorem cursor_arm_charge (a : Arm) (ha : a ∈ cursorK.arms) :
         Cost.CostLe (Cost.extractCharge v) C := by
   have hall : cursorK.arms.all (fun a => (Cost.derivedCost world cursorK a).isSome) = true := by
     decide +kernel
-  have := List.all_eq_true.mp hall a ha
-  obtain ⟨C, hC⟩ := Option.isSome_iff_exists.mp this
+  obtain ⟨C, hC⟩ := mem_of_all_isSome (Cost.derivedCost world cursorK) cursorK.arms hall ha
   exact ⟨C, hC, fun args fuel v hrun => Cost.runArm_charge_le_cost world cursorK a args fuel v C hC hrun⟩
 
 /-- The `:RENDER` arm, for instance: at most 8192 bytes, 24 steps and one descriptor per turn. -/
@@ -72,8 +88,8 @@ theorem cursor_arm_frame (a : Arm) (ha : a ∈ cursorK.subarms ++ cursorK.arms +
   have hall : (cursorK.subarms ++ cursorK.arms ++ cursorK.observes).all
       (fun a => (Frame.derivedTables world cursorK a).isSome) = true := by decide +kernel
   have hnd : cursorK.tuple.Nodup := by decide +kernel
-  have := List.all_eq_true.mp hall a ha
-  obtain ⟨D, hD⟩ := Option.isSome_iff_exists.mp this
+  obtain ⟨D, hD⟩ := mem_of_all_isSome (Frame.derivedTables world cursorK)
+    (cursorK.subarms ++ cursorK.arms ++ cursorK.observes) hall ha
   exact ⟨D, hD, fun observe args fuel v hrun =>
     Frame.runArm_frame world cursorK a observe args fuel v D hD hnd hrun⟩
 

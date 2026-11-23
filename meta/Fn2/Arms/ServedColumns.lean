@@ -45,6 +45,8 @@ contracts hold on every run of the interpreter.
 namespace Fn2.Arms.ServedColumns
 open Fn2.ACL2 Fn2.Arms Fn2.Arms.Columns Fn2.Arms.Derive Fn2.Arms.Served Fn2.Instances.LayerAKinds
 
+set_option maxHeartbeats 800000
+
 /-- The directory's row fields in `fn2-machines` (P1): `READY-PREV` 2, `READY-NEXT` 3,
 `WAIT-REASON` 4. -/
 def dirIdx (c : String) : Nat := directoryFields.idxOf c + 2
@@ -123,7 +125,8 @@ theorem cursor_arm_writes (a : Arm) (ha : a ∈ cursorK.subarms ++ cursorK.arms 
               colGet world cursorK (stobj (Inv.startSt cursorK observe args)) c s := by
   have hall : (cursorK.subarms ++ cursorK.arms ++ cursorK.observes).all
       (fun a => (checkedWrites world cursorK a).isSome) = true := by decide +kernel
-  obtain ⟨W, hW⟩ := Option.isSome_iff_exists.mp (List.all_eq_true.mp hall a ha)
+  obtain ⟨W, hW⟩ := Served.mem_of_all_isSome (checkedWrites world cursorK)
+    (cursorK.subarms ++ cursorK.arms ++ cursorK.observes) hall ha
   exact ⟨W, hW, fun observe args fuel v hrun =>
     runArm_writes_sub world cursorK a observe args fuel v W hW cursor_tableFacts cursor_shape.1 hrun⟩
 
@@ -139,7 +142,8 @@ theorem cursor_arm_next (a : Arm) (ha : a ∈ cursorK.subarms ++ cursorK.arms ++
               colGet world cursorK (stobj (tupleSt cursorK ts)) "PHASE" s = .ok (.int i) := by
   have hall : (cursorK.subarms ++ cursorK.arms ++ cursorK.observes).all
       (fun a => (checkedNext world cursorK a).isSome) = true := by decide +kernel
-  obtain ⟨D, hD⟩ := Option.isSome_iff_exists.mp (List.all_eq_true.mp hall a ha)
+  obtain ⟨D, hD⟩ := Served.mem_of_all_isSome (checkedNext world cursorK)
+    (cursorK.subarms ++ cursorK.arms ++ cursorK.observes) hall ha
   exact ⟨D, hD, fun observe args fuel v hrun =>
     runArm_next_mem world cursorK a observe args fuel v D hD cursor_tableFacts cursor_shape.1
       cursor_shape.2 hrun⟩

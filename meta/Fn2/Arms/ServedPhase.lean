@@ -27,6 +27,8 @@ namespace Fn2.Arms.ServedPhase
 open Fn2.ACL2 Fn2.Arms Fn2.Arms.Core Fn2.Arms.Columns Fn2.Arms.ServedCore
 open Fn2.Instances.LayerAKinds Fn2.Instances.LayerAPhase
 
+set_option maxHeartbeats 800000
+
 /-- No `FN2-CNS` arm, handler or sub-arm is left unchecked once its kind-table operations are
 admitted by their `KeepsPhase`. -/
 theorem cns_next_checked :
@@ -52,7 +54,8 @@ theorem cns_core_next_all (a : Arm) (ha : a ∈ cnsC.subarms ++ cnsC.arms ++ cns
               colGet cw cnsC (stobj (coreSt coreTuple core')) "PHASE" s = .ok (.int i) := by
   have hall : (cnsC.subarms ++ cnsC.arms ++ cnsC.observes).all
       (fun a => (checkedNextP cw cnsC cnsPK a).isSome) = true := by decide +kernel
-  obtain ⟨D, hD⟩ := Option.isSome_iff_exists.mp (List.all_eq_true.mp hall a ha)
+  obtain ⟨D, hD⟩ := Served.mem_of_all_isSome (checkedNextP cw cnsC cnsPK)
+    (cnsC.subarms ++ cnsC.arms ++ cnsC.observes) hall ha
   exact ⟨D, hD, fun observe args fuel v hrun =>
     runCore_next_mem world coreTuple _ cnsPK cns_keeps a observe args fuel v D hD cns_tableFacts
       cns_shape.1 cns_shape.2 hrun⟩
@@ -69,7 +72,8 @@ theorem conn_core_next_all (a : Arm) (ha : a ∈ connC.subarms ++ connC.arms ++ 
               colGet cw connC (stobj (coreSt coreTuple core')) "PHASE" s = .ok (.int i) := by
   have hall : (connC.subarms ++ connC.arms ++ connC.observes).all
       (fun a => (checkedNextP cw connC connPK a).isSome) = true := by decide +kernel
-  obtain ⟨D, hD⟩ := Option.isSome_iff_exists.mp (List.all_eq_true.mp hall a ha)
+  obtain ⟨D, hD⟩ := Served.mem_of_all_isSome (checkedNextP cw connC connPK)
+    (connC.subarms ++ connC.arms ++ connC.observes) hall ha
   exact ⟨D, hD, fun observe args fuel v hrun =>
     runCore_next_mem world coreTuple _ connPK conn_keeps a observe args fuel v D hD conn_tableFacts
       conn_shape.1 conn_shape.2 hrun⟩
