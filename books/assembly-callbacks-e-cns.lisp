@@ -220,7 +220,7 @@
                (upd-tbl (fn2-columns-pre "UPDATE-" (fn2-columns-sym kind "-TABLE"))))
            (list* `(encapsulate ()
                      (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p))))
-                     ,(fn2-ecns-rewrite-core-ev (car xs) kind nil nil))
+                     ,(car xs))
                   `(local
                     (make-event
                      (value
@@ -279,6 +279,10 @@
                 `(if (not (eq (fn2-cns-snapshot-read-code cns fn2-core) :ok))
                      (mv :bad fn2-core)
                    ,(nth 4 x))))
+         ((and (eq (car x) 'stobj-let) (equal (len x) 5)
+               (equal (nth 4 x) '(mv mode fn2-reads)))
+          (list (car x) (cadr x) (caddr x) (cadddr x)
+                '(mv mode fn2-core)))
          ((equal x '(fn2-ctl-stream-events))
           (mv-let (erp exp) (macroexpand1-cmp x 'assembly-callbacks-e-cns wrld (default-state-vars nil))
             (if erp x (fn2-ecns-patch-form (fn2-ecns-subst-sym 'rfill 'fill exp) wrld))))

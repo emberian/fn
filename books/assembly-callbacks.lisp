@@ -244,7 +244,7 @@
                (upd-tbl (fn2-columns-pre "UPDATE-" (fn2-columns-sym kind "-TABLE"))))
            (list* `(encapsulate ()
                      (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p))))
-                     ,(fn2-cb-rewrite-core-ev (car xs) kind nil nil))
+                     ,(car xs))
                   `(local
                     (make-event
                      (value

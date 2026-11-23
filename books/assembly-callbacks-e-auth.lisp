@@ -213,7 +213,7 @@
                (fms (caddr (cadar xs))))
            (list* `(encapsulate ()
                      (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p))))
-                     ,(fn2-ea-rewrite-core-ev (car xs) 'fn2-auth nil nil))
+                     ,(car xs))
                   `(local
                     (make-event
                      (value
