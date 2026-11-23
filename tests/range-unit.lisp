@@ -25,6 +25,19 @@
               ,(cadr formula))))))
 (fn2-rgt-domain fn2-rgt-read-domain fn2-range-read-exact)
 (fn2-rgt-domain fn2-rgt-seek-domain fn2-range-seek-position)
+
+; #tooth The last legal byte and the first illegal one in the same overview.
+(assert-event
+ (let* ((row '(1 1 1 0 (255))) (sources (list (list row))))
+   (and (fn2-run-values-layoutp *fn2-overview-entry* row)
+        (fn2-rgt-read-domain sources '(1 0) '(1 1) nil 0 1 nil)
+        (fn2-rgt-seek-domain sources '(1) 0 2 1))))
+(assert-event
+ (let* ((row '(1 1 1 0 (256))) (sources (list (list row))))
+   (and (not (fn2-run-values-layoutp *fn2-overview-entry* row))
+        (not (fn2-rgt-read-domain sources '(1 0) '(1 1) nil 0 1 nil))
+        (not (fn2-rgt-seek-domain sources '(1) 0 2 1)))))
+
 (defun fn2-rgt-holds (cases)
  (declare (xargs :verify-guards nil))
  (or (atom cases)
