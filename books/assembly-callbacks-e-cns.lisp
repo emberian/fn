@@ -159,7 +159,7 @@
                 (fn2-ecns-augment-arms-list (cdr xs))))
         ((and (consp (car xs)) (eq (caar xs) 'progn)
               (consp (cdar xs)) (consp (cadar xs)) (eq (caadar xs) 'defun))
-         (let ((w (cadadar xs))
+         (let ((w (cadr (cadar xs)))
                (fms (caddr (cadar xs))))
            (list* `(encapsulate ()
                      (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p))))
