@@ -7,6 +7,7 @@
 (include-book "runs-load-overview-proof")
 (include-book "runs-built-cache-proof")
 (include-book "runs-seek-budget-proof")
+(include-book "runs-overview-decode-proof")
 
 (local
  (defthm fn2-range-value-after-set
