@@ -9,13 +9,25 @@
         (pos-i (position-equal '(fn2-checkpoint-installation-coordinator-events) body))
         (wrapped
          '(encapsulate ()
+            (local
+             (defthm fn2-checkpoint-builder-claimp-bounds-fc
+               (implies (fn2-checkpoint-builder-claimp c token okind oslot ogen fn2-checkpoints)
+                        (and (natp c)
+                             (< c (fn2-checkpoints-rows fn2-checkpoints))
+                             (posp token)))
+               :rule-classes :forward-chaining
+               :hints (("Goal" :in-theory (enable fn2-checkpoint-builder-claimp)))))
             (make-event
-             (value `(local (in-theory (disable nth ,@(fn2-columns-getter-runes
-                       '(fn2-extents fn2-checkpoint-construction fn2-retirement-control
-                         fn2-checkpoint-future fn2-checkpoint-future-windows
-                         fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
-                         fn2-fields fn2-pool)
-                       (w state)))))))
+             (value `(local (in-theory (disable nth
+                       fn2-checkpoint-builder-claimp
+                       fn2-checkpoint-production-roots-p
+                       fn2-alloc-handle-code
+                       ,@(fn2-columns-getter-runes
+                           '(fn2-extents fn2-checkpoint-construction fn2-retirement-control
+                             fn2-checkpoint-future fn2-checkpoint-future-windows
+                             fn2-checkpoints fn2-checkpoint-refs fn2-checkpoint-bytes
+                             fn2-fields fn2-pool)
+                           (w state)))))))
             (local
              (defthm fn2-checkpoint-staging-claim-candidate-u32
                (and (natp (mv-nth 1 (fn2-checkpoint-staging-claim expected-c okind oslot ogen need fn2-core)))
