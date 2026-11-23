@@ -6,7 +6,14 @@
 
 (include-book "commit-arms")
 (local
- (defun fn2-r2-wrap-success-charge (x)
+ (defun fn2-r2-arm-fns (arms)
+   (declare (xargs :mode :program))
+   (if (atom arms)
+       nil
+     (cons (cadar arms) (fn2-r2-arm-fns (cdr arms))))))
+
+(local
+ (defun fn2-r2-wrap-success-charge (x arm-fns)
    (declare (xargs :mode :program))
    (cond ((atom x) x)
          ((and (eq (car x) 'make-event)
@@ -18,10 +25,11 @@
                (eq (car (cadadr x)) 'fn2-machine-success-charge-event))
           `(encapsulate ()
              (local (in-theory (disable fn2-commit-arm-charge-ok-p
-                                        fn2-commit-arm-next-ok-p)))
+                                        fn2-commit-arm-next-ok-p
+                                        ,@arm-fns)))
              ,x))
-         (t (cons (fn2-r2-wrap-success-charge (car x))
-                  (fn2-r2-wrap-success-charge (cdr x)))))))
+         (t (cons (fn2-r2-wrap-success-charge (car x) arm-fns)
+                  (fn2-r2-wrap-success-charge (cdr x) arm-fns))))))
 
 (make-event
  (let* ((body (fn2-commit-event-forms-2b))
@@ -269,7 +277,8 @@
         (run-patched
          '(make-event
            (let* ((ev (fn2-machine-run-event 'fn2-commit (w state)))
-                  (patched (fn2-r2-wrap-success-charge ev)))
+                  (arm-fns (fn2-r2-arm-fns (fn2-machine-property 'fn2-commit :continuations (w state))))
+                  (patched (fn2-r2-wrap-success-charge ev arm-fns)))
              (if (equal patched ev)
                  (er soft 'assembly-callbacks-r2 "Could not locate fn2-machine-success-charge-event in fn2-machine-run-event.")
                (value patched))))))
