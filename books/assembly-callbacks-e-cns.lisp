@@ -338,11 +338,8 @@
          ((and (eq (car x) 'defun)
                (member-eq (cadr x) '(fn2-cns-range-ready fn2-cns-article-ready)))
           `(encapsulate ()
-             (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p)
-                                        nfix min posp floor mod
-                                        fn2-cns-range-contextp fn2-cns-read-contextp
-                                        fn2-cns-snapshot-read-code fn2-machine-phase
-                                        fn2-cns-range-scalar-keyp)))
+             (local (in-theory (disable nfix min posp floor mod
+                                        fn2-cns-read-row fn2-cns-range-scalar-keyp fn2-read-stripe)))
              ,(cons (car x) (cons (cadr x) (cons (caddr x) (cons (cadddr x) (fn2-ecns-patch-form (nthcdr 4 x) wrld)))))))
          ((and (eq (car x) 'fn2-core-preserves)
                (consp (cdr x)))
