@@ -288,8 +288,10 @@
               :rule-classes (:rewrite :type-prescription)
               :hints (("Goal" :do-not '(preprocess)
                               :in-theory (union-theories '(,name ,@extra-runes)
-                                           (union-theories (executable-counterpart-theory :here)
-                                                           (theory 'minimal-theory))))))
+                                           (union-theories
+                                            (set-difference-theories (executable-counterpart-theory :here)
+                                                                     '((:executable-counterpart bubble-down)))
+                                            (theory 'minimal-theory))))))
            (fn2-ecns-fast-natp-outputs name args (cdr idxs) extra-runes)))))
 (local
  (defun fn2-ecns-patch-form (x wrld)
@@ -435,8 +437,19 @@
                (consp (cdr x))
                (eq (cadr x) 'fn2-cns-article-next))
           (cons 'progn
-                (fn2-ecns-fast-natp-outputs (cadr x) (caddr x) (cadddr x)
-                                            '(fn2-cns-item-answer-types))))
+                (fn2-ecns-fast-natp-outputs
+                 (cadr x) (caddr x) (cadddr x)
+                 '(fn2-cns-item-answer-types
+                   (:type-prescription fn2-cns-article-ready)
+                   (:type-prescription fn2-read-lookup)
+                   (:type-prescription fn2-read-value)
+                   (:type-prescription fn2-cns-article-answer)
+                   (:type-prescription fn2-cns-fill-cap)
+                   (:type-prescription fn2-cns-item-answer)
+                   (:type-prescription fn2-core-reset)
+                   (:type-prescription fn2-cns-stream-source-capture)
+                   (:type-prescription fn2-read-octets)
+                   (:type-prescription fn2-cns-article-release)))))
          ((eq (car x) 'fn2-cns-natp-outputs)
           `(encapsulate ()
              (local (in-theory (disable nfix min posp floor mod
@@ -448,16 +461,28 @@
           `(defthm fn2-cns-decode-port-at-types
              ,(caddr x)
              :hints (("Goal" :do-not '(preprocess)
-                             :in-theory (union-theories '(fn2-cns-decode-port-at natp unsigned-byte-p integer-range-p nfix)
-                                          (union-theories (executable-counterpart-theory :here)
-                                                          (theory 'minimal-theory)))))))
+                             :in-theory (union-theories
+                                          '(fn2-cns-decode-port-at natp unsigned-byte-p integer-range-p nfix
+                                            (:type-prescription fn2-ctl-fc-row)
+                                            (:type-prescription fn2-core-history-values)
+                                            (:type-prescription fn2-cns-decode-port-pool)
+                                            (:type-prescription fn2-cns-dec-refuse))
+                                          (union-theories
+                                           (set-difference-theories (executable-counterpart-theory :here)
+                                                                    '((:executable-counterpart bubble-down)))
+                                           (theory 'minimal-theory)))))))
          ((and (eq (car x) 'defthm) (eq (cadr x) 'fn2-cns-decode-port-types))
           `(defthm fn2-cns-decode-port-types
              ,(caddr x)
              :hints (("Goal" :do-not '(preprocess)
-                             :in-theory (union-theories '(fn2-cns-decode-port fn2-cns-decode-port-at-types)
-                                          (union-theories (executable-counterpart-theory :here)
-                                                          (theory 'minimal-theory)))))))
+                             :in-theory (union-theories
+                                          '(fn2-cns-decode-port fn2-cns-decode-port-at-types
+                                            (:type-prescription fn2-cns-stream-frontier)
+                                            (:type-prescription fn2-cns-decode-port-at))
+                                          (union-theories
+                                           (set-difference-theories (executable-counterpart-theory :here)
+                                                                    '((:executable-counterpart bubble-down)))
+                                           (theory 'minimal-theory)))))))
          ((and (eq (car x) 'fn2-core-preserves)
                (consp (cdr x))
                (eq (cadr x) 'fn2-cns-article-next))
