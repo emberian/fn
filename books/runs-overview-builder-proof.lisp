@@ -112,8 +112,8 @@
                              (fn2-run-add fn2-run-builds-height fn2-run-builds-phase fn2-run-builds-schema
                               fn2-run-builds-wbase fn2-run-writers-phase unsigned-byte-p nth update-nth))))))
 
-(defthm fn2-run-builder-appends-overview-source-row
- (let* ((w (fn2-run-builds-wbase 0 builds)) (base *fn2-run-run-entry*)
+(defmacro fn2-run-checked-overview-append (conclusion)
+ `(let* ((w (fn2-run-builds-wbase 0 builds)) (base *fn2-run-run-entry*)
         (dst (fn2-run-writers-slot w writers)) (dg (fn2-run-writers-gen w writers))
         (off (fn2-run-writers-cursor w writers)) (line (nth 4 row)) (n (len line))
         (bytes (fn2-layout-octets *fn2-overview-entry* row)) (size (len bytes)) (end (+ off size))
@@ -141,17 +141,24 @@
                 (or (<= (+ source n) target) (<= (+ target size) source))
                 (equal (fn2-layout-range-code src sg at (+ at n) t 9 0 1 pool) :ok)
                 (equal (fn2-layout-range-code dst dg off end t 9 0 1 pool) :ok))
-           (and (equal (car load) :ok) (equal (car build) :ok)
-                (fn2-poolp (mv-nth 5 build)) (fn2-pool-wfp (mv-nth 5 build))
-                (natp (fn2-pool-base dst (mv-nth 5 build)))
-                (equal (fn2-layout-range-code dst dg off end nil 9 0 1 (mv-nth 5 build)) :ok)
-                (equal (fn2-run-builds-entries 0 (mv-nth 1 build)) total)
-                (equal (fn2-run-writers-entries w after) (1+ idx))
-                (equal (fn2-run-writers-cursor w after) end)
-                (equal (fn2-run-writers-restarts w after) (if restartp (1+ nr) nr))
-                (implies restartp
-                         (equal (fn2-run-restarts-offset (+ (* w *fn2-run-restart-capacity*) nr) (mv-nth 3 build)) off))
-                (equal (fn2-run-read-bytes size dst dg off 9 0 1 (mv-nth 5 build)) bytes))))
+           ,conclusion)))
+
+(defthm fn2-run-builder-appends-overview-source-row
+ (fn2-run-checked-overview-append
+  (and (equal (car load) :ok) (equal (car build) :ok)
+       (equal (mv-nth 5 build)
+              (mv-nth 1 (fn2-run-load-bytes bytes dst dg off 9 0 1
+                        (mv-nth 1 (fn2-run-load-bytes line src sg at 9 0 1 pool)))))
+       (fn2-poolp (mv-nth 5 build)) (fn2-pool-wfp (mv-nth 5 build))
+       (natp (fn2-pool-base dst (mv-nth 5 build)))
+       (equal (fn2-layout-range-code dst dg off end nil 9 0 1 (mv-nth 5 build)) :ok)
+       (equal (fn2-run-builds-entries 0 (mv-nth 1 build)) total)
+       (equal (fn2-run-writers-entries w after) (1+ idx))
+       (equal (fn2-run-writers-cursor w after) end)
+       (equal (fn2-run-writers-restarts w after) (if restartp (1+ nr) nr))
+       (implies restartp
+                (equal (fn2-run-restarts-offset (+ (* w *fn2-run-restart-capacity*) nr) (mv-nth 3 build)) off))
+       (equal (fn2-run-read-bytes size dst dg off 9 0 1 (mv-nth 5 build)) bytes)))
  :rule-classes nil
  :hints (("Goal" :do-not '(preprocess) :use
           ((:instance fn2-run-adapter-source-wire-readback
@@ -167,3 +174,50 @@
              (f (mv-nth 2 (fn2-run-load-values *fn2-overview-entry* row *fn2-run-run-entry* src sg at 9 0 1 f pool))) (pool (mv-nth 3 (fn2-run-load-values *fn2-overview-entry* row *fn2-run-run-entry* src sg at 9 0 1 f pool)))))
           :in-theory (union-theories (theory 'minimal-theory)
                      '(eq not (:e len) (:e natp) (:e equal) commutativity-of-+)))))
+
+(local
+ (defthm fn2-run-append-keeps-page-prefix
+ (let* ((sp (mv-nth 1 (fn2-run-load-bytes line src sg at 9 0 1 pool)))
+        (after (mv-nth 1 (fn2-run-load-bytes bytes dst dg off 9 0 1 sp)))
+        (old (+ (fn2-pool-base dst pool) start)) (source (+ (fn2-pool-base src pool) at)))
+  (implies (and (natp dst) (natp src) (not (equal src dst))
+                (natp (fn2-pool-base src pool)) (natp (fn2-pool-base dst pool))
+                (natp start) (natp n) (natp at) (natp off) (<= (+ start n) off)
+                (or (<= (+ old n) source) (<= (+ source (len line)) old)))
+           (equal (fn2-run-read-bytes n dst dg start 9 0 1 after)
+                  (fn2-run-read-bytes n dst dg start 9 0 1 pool))))
+ :rule-classes nil
+ :hints (("Goal" :use ((:instance fn2-run-load-preserves-earlier-bytes
+                        (src dst) (sg dg) (at start) (pk 9) (ps 0) (pg 1)
+                        (pool (mv-nth 1 (fn2-run-load-bytes line src sg at 9 0 1 pool))))
+                       (:instance fn2-run-load-preserves-earlier-bytes
+                        (src dst) (sg dg) (at start) (dst src) (dg sg) (off at)
+                        (bytes line) (pk 9) (ps 0) (pg 1)))
+          :in-theory (disable fn2-run-load-preserves-earlier-bytes fn2-pool-base
+                      fn2-run-read-bytes fn2-run-load-bytes)))))
+
+(local
+ (defthm fn2-run-page-offset-natural
+ (implies (unsigned-byte-p 32 x) (natp x))
+ :rule-classes :forward-chaining))
+
+(defthm fn2-run-builder-append-keeps-prior-rows
+ (fn2-run-checked-overview-append
+  (implies (and (natp start) (natp count) (<= (+ start count) off)
+                (let ((old (+ (fn2-pool-base dst pool) start)))
+                  (or (<= (+ old count) source) (<= (+ source n) old))))
+           (and (equal (car build) :ok)
+                (equal (fn2-run-writers-cursor w after) end)
+                (implies restartp (equal (fn2-run-restarts-offset (+ (* w *fn2-run-restart-capacity*) nr) (mv-nth 3 build)) off))
+                (equal (fn2-run-read-bytes count dst dg start 9 0 1 (mv-nth 5 build))
+                       (fn2-run-read-bytes count dst dg start 9 0 1 pool)))))
+ :rule-classes nil
+ :hints (("Goal" :do-not '(preprocess)
+          :use (fn2-run-builder-appends-overview-source-row
+                (:instance fn2-run-append-keeps-page-prefix (n count) (line (nth 4 row))
+                  (bytes (fn2-layout-octets *fn2-overview-entry* row))
+                  (dst (fn2-run-writers-slot (fn2-run-builds-wbase 0 builds) writers))
+                  (dg (fn2-run-writers-gen (fn2-run-builds-wbase 0 builds) writers))
+                  (off (fn2-run-writers-cursor (fn2-run-builds-wbase 0 builds) writers))))
+          :in-theory (union-theories (theory 'minimal-theory)
+                      '(eq not (:e len) (:e natp) (:e equal) fn2-run-page-offset-natural commutativity-of-+)))))

@@ -13,24 +13,24 @@
            :in-theory (e/d (fn2-run-load-bytes) (fn2-pool-write)))))
 
 (local
- (defthm fn2-run-read-across-other-write
-  (implies (and (natp src) (natp dst) (not (equal src dst))
+ (defthm fn2-run-read-across-disjoint-write
+  (implies (and (natp src) (natp dst) (or (not (equal src dst)) (< at off))
                 (natp (fn2-pool-base src pool)) (natp (fn2-pool-base dst pool))
                 (natp at) (natp off)
                 (not (equal (+ (fn2-pool-base src pool) at) (+ (fn2-pool-base dst pool) off))))
            (equal (fn2-pool-read src sg at pk ps pg
                                  (mv-nth 1 (fn2-pool-write dst dg off byte pk ps pg pool)))
                   (fn2-pool-read src sg at pk ps pg pool)))
-  :hints (("Goal" :in-theory (e/d ( fn2-pool-write fn2-pool-read
+  :hints (("Goal" :in-theory (e/d (fn2-pool-write fn2-pool-read
                                      fn2-pool-readable-code fn2-pool-handle-code fn2-pool-ownerp
                                      fn2-pool-set-fill update-fn2-pool-fill$ai update-fn2-pool-datai nth-update-nth)
                            (nth update-nth unsigned-byte-p fn2-pool-workspace-code))))))
 
 (local
- (defthm fn2-run-source-bytes-after-write
+ (defthm fn2-run-earlier-bytes-after-write
   (let ((start (+ (fn2-pool-base src pool) at))
         (target (+ (fn2-pool-base dst pool) off)))
-    (implies (and (natp src) (natp dst) (not (equal src dst))
+    (implies (and (natp src) (natp dst) (or (not (equal src dst)) (<= (+ at n) off))
                   (natp (fn2-pool-base src pool)) (natp (fn2-pool-base dst pool))
                   (natp at) (natp off) (natp n)
                   (or (< target start) (<= (+ start n) target)))
@@ -64,11 +64,10 @@
            :in-theory (e/d (fn2-layout-copy-loop fn2-run-load-bytes fn2-pool-write-keeps-extents)
                            (fn2-pool-write fn2-pool-read fn2-pool-base fn2-run-read-bytes unsigned-byte-p))))))
 
-(local
- (defthm fn2-run-load-separate-from-source
+(defthm fn2-run-load-preserves-earlier-bytes
   (let* ((source (+ (fn2-pool-base src pool) at)) (target (+ (fn2-pool-base dst pool) off))
          (after (mv-nth 1 (fn2-run-load-bytes bytes dst dg off pk ps pg pool))))
-    (implies (and (natp src) (natp dst) (not (equal src dst))
+    (implies (and (natp src) (natp dst) (or (not (equal src dst)) (<= (+ at n) off))
                   (natp (fn2-pool-base src pool)) (natp (fn2-pool-base dst pool))
                   (natp at) (natp off) (natp n)
                   (or (<= (+ source n) target) (<= (+ target (len bytes)) source)))
@@ -76,7 +75,7 @@
                     (fn2-run-read-bytes n src sg at pk ps pg pool))))
   :hints (("Goal" :induct (fn2-run-load-bytes bytes dst dg off pk ps pg pool)
            :in-theory (e/d (fn2-run-load-bytes fn2-pool-write-keeps-extents)
-                           (fn2-pool-write fn2-pool-read fn2-pool-base fn2-run-read-bytes))))))
+                           (fn2-pool-write fn2-pool-read fn2-pool-base fn2-run-read-bytes)))))
 
 (local
  (defthm fn2-run-octets-true-list-fix
@@ -102,7 +101,6 @@
   :hints (("Goal" :use ((:instance fn2-run-load-bytes-roundtrip (bytes header) (slot dst)
                                    (gen dg) (cap (+ off (len header) n))))
            :in-theory (e/d (fn2-layout-copy fn2-run-copy-writes-source-octets fn2-run-load-byte-segments
-                            fn2-run-load-preserves-other-range fn2-run-load-preserves-base fn2-run-load-separate-from-source)
+                            fn2-run-load-preserves-other-range fn2-run-load-preserves-base fn2-run-load-preserves-earlier-bytes)
                            (fn2-layout-copy-loop fn2-run-load-bytes fn2-run-read-bytes
                             fn2-pool-base fn2-layout-range-code fn-b3-octet-listp unsigned-byte-p)))))
-
