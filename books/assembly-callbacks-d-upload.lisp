@@ -68,13 +68,17 @@
                                       fn2-upload-row-lslot fn2-upload-row-lgen)))))
 (fn2-du-fast-events (fn2-upload-stream-op-events))
 (local
- (defthm fn2-du-pool-codes-imply-row-bounds
-   (and (implies (equal (fn2-pool-workspace-code s g okind oid ogen p) :ok)
-                 (and (natp s) (integerp s) (<= 0 s) (< s (fn2-pool-rows p))))
-        (implies (equal (fn2-pool-readable-code s g okind oid ogen p) :ok)
-                 (and (natp s) (integerp s) (<= 0 s) (< s (fn2-pool-rows p)))))
+ (defthm fn2-du-workspace-code-implies-row-bounds
+   (implies (equal (fn2-pool-workspace-code s g okind oid ogen p) :ok)
+            (and (natp s) (integerp s) (<= 0 s) (< s (fn2-pool-rows p))))
    :rule-classes (:rewrite :forward-chaining)
-   :hints (("Goal" :in-theory (enable fn2-pool-workspace-code fn2-pool-readable-code fn2-pool-handle-code)))))
+   :hints (("Goal" :in-theory (enable fn2-pool-workspace-code fn2-pool-handle-code)))))
+(local
+ (defthm fn2-du-readable-code-implies-row-bounds
+   (implies (equal (fn2-pool-readable-code s g okind oid ogen p) :ok)
+            (and (natp s) (integerp s) (<= 0 s) (< s (fn2-pool-rows p))))
+   :rule-classes (:rewrite :forward-chaining)
+   :hints (("Goal" :in-theory (enable fn2-pool-readable-code fn2-pool-handle-code)))))
 (local
  (defthm fn2-du-payload-settle-preserves-machines-and-upload
    (and (equal (fn2-machine-idp id (mv-nth 1 (fn2-upload-payload-settle e ep al fn2-core)))
@@ -688,6 +692,12 @@
                                          (integerp (mv-nth 2 (,',fn id budget fn2-core)))
                                          (<= 0 (mv-nth 2 (,',fn id budget fn2-core)))
                                          (acl2-numberp (mv-nth 2 (,',fn id budget fn2-core)))))
+                           :rule-classes (:rewrite
+                                          (:linear :corollary
+                                           (implies (and (fn2-corep fn2-core) ,guard)
+                                                    (and (<= 0 (car (,',fn id budget fn2-core)))
+                                                         (<= 0 (mv-nth 1 (,',fn id budget fn2-core)))
+                                                         (<= 0 (mv-nth 2 (,',fn id budget fn2-core)))))))
                            :hints (("Goal" :use ,qnt
                                            :in-theory (e/d (fn2-run-quantitiesp)
                                                            (,qnt ,',fn fn2-corep fn2-core-wfp)))))
