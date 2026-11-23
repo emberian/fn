@@ -37,6 +37,7 @@
 
 (defthm-owed fn2-pm-reclaimed-duplicate (name subject eid deps st)
   (implies (and (null (fn2-pm-get :faults st))
+                (fn2-pm-history-entry name st)
                 (equal (cadr (fn2-pm-history-entry name st)) subject)
                 (member-equal name (fn2-pm-get :reclaimed st)))
            (mv-let (o after) (fn2-pm-accept name subject eid deps st)
@@ -45,4 +46,4 @@
                   (equal (fn2-pm-get :pins after) (fn2-pm-get :pins st)))))
   :schema :invariant :from (:operation-set fn2-consumer)
   :teeth (fn2-pmt-positive fn2-pmt-negative)
-  :doc "K-P6: an IHAVE or TAKETHIS matching a history entry whose body was reclaimed is a duplicate (435/439), allocates no article number and changes no pin. Teeth: W7; a reoffer that republishes (fault :resurrect).")
+  :doc "K-P6: an IHAVE or TAKETHIS matching a history entry whose body was reclaimed is a duplicate (435/439), allocates no article number and changes no pin. Teeth: W7; a reoffer that republishes (fault :resurrect); a name reclaimed before any acceptance has no history entry and is accepted fresh (fn2-pmt-unaccepted-reclaim).")

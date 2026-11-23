@@ -87,6 +87,20 @@
           :kp5-release (and (eq r4 :released) (eq r5 :refused))
           :o2-untouched (equal (cadddr (assoc-equal 'o2 (fn2-pm-get :pins a))) :held))))
 
+;; K-P6's history-entry premise is load-bearing: a name reclaimed before any
+;; acceptance has no entry (its CADR is NIL, so subject NIL matches it), and a
+;; later offer is accepted fresh and allocates.
+(defun fn2-pmt-unaccepted-reclaim ()
+  (declare (xargs :verify-guards nil))
+  (b* ((a (fn2-pm-reclaim "<n@x>" (fn2-pm-node 'a 10 nil)))
+       (alloc (fn2-pm-get :allocations a))
+       ((mv o b) (fn2-pm-accept "<n@x>" nil 'e1 nil a)))
+    (and (null (fn2-pm-history-entry "<n@x>" a))
+         (equal (cadr (fn2-pm-history-entry "<n@x>" a)) nil)
+         (member-equal "<n@x>" (fn2-pm-get :reclaimed a))
+         (eq o :accepted)
+         (equal (fn2-pm-get :allocations b) (+ 1 alloc)))))
+
 ;; Offers are suppressed only by the node's history: evidence alone
 ;; (here a foreign binding learned by import) never makes a node decline.
 (defun fn2-pmt-offer (faults)
@@ -164,6 +178,7 @@
 (assert-event (fn2-pmt-caught (fn2-pmt-w1 '(:first-arrival)) :kp1))
 (assert-event (not (cadr (member-eq :honest-short (fn2-pmt-w2 '(:false-complete))))))
 (assert-event (not (cadr (member-eq :kp6 (fn2-pmt-w7 '(:resurrect))))))
+(assert-event (fn2-pmt-unaccepted-reclaim))
 (assert-event (not (cadr (member-eq :kp5-refusals (fn2-pmt-w7 '(:xfer-ack-releases))))))
 (assert-event (fn2-pmt-caught (fn2-pmt-offer '(:evidence-suppresses)) :wants))
 (assert-event (not (cadr (member-eq :no-loop (fn2-pmt-f1 '(:no-loop-check))))))
@@ -178,6 +193,7 @@
 (defun fn2-pmt-negative () (declare (xargs :verify-guards nil))
   (and (fn2-pmt-caught (fn2-pmt-w1 '(:first-arrival)) :kp1)
        (not (cadr (member-eq :kp6 (fn2-pmt-w7 '(:resurrect)))))
+       (fn2-pmt-unaccepted-reclaim)
        (not (cadr (member-eq :kp5-refusals (fn2-pmt-w7 '(:xfer-ack-releases)))))
        (not (cadr (member-eq :no-loop (fn2-pmt-f1 '(:no-loop-check)))))
        (not (cadr (member-eq :kp4 (fn2-pmt-f2 '(:double-terminal)))))))

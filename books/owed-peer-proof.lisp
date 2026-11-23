@@ -3,18 +3,6 @@
 (include-book "owed-peer")
 (include-book "owed-discharge")
 
-; K-P6 counterexample: reclaim a name before its first acceptance.  The
-; missing history entry has CADR NIL, so subject NIL satisfies the premise.
-; Acceptance returns :accepted and changes allocations from 0 to 1.
-(local
- (defthm fn2-pm-reclaimed-duplicate-counterexample
-   (let ((st (fn2-pm-reclaim 'm (fn2-pm-node 'n 1 nil))))
-     (and (not (fn2-pm-reclaimed-duplicate$owed 'm nil 'e nil st))
-          (equal (mv-nth 0 (fn2-pm-accept 'm nil 'e nil st)) :accepted)
-          (equal (fn2-pm-get :allocations
-                             (mv-nth 1 (fn2-pm-accept 'm nil 'e nil st))) 1)))
-   :rule-classes nil))
-
 ; Canonical lists are strictly lexordered. If two of them differ, their
 ; first unequal heads give a membership witness.
 (local (in-theory (disable lexorder)))
@@ -404,3 +392,11 @@
   (fn2-pm-feed-safety$owed ops budget)
   :rule-classes nil)
 (fn2-owed-discharge fn2-pm-feed-safety fn2-pm-feed-safety-proved)
+
+; K-P6. The matching entry sends acceptance to its duplicate branch, which
+; keeps the state evidence admission leaves, and admission writes neither
+; allocations nor pins.
+(defthm fn2-pm-reclaimed-duplicate-proved
+  (fn2-pm-reclaimed-duplicate$owed name subject eid deps st)
+  :hints (("Goal" :in-theory (enable fn2-pm-reclaimed-duplicate$owed fn2-pm-accept))))
+(fn2-owed-discharge fn2-pm-reclaimed-duplicate fn2-pm-reclaimed-duplicate-proved)
