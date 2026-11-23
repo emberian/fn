@@ -351,7 +351,6 @@
                                         nfix min posp floor mod
                                         fn2-cns-snapshot-read-code fn2-ctl-snapshot-read-code
                                         fn2-machine-phase-read-code
-                                        fn2-cns-range-contextp fn2-cns-read-contextp
                                         |(< x (if a b c))| |(< (if a b c) x)|)))
              ,x))
          ((and (equal (car x) 'defmachine-arms) (consp (cdr x)) (symbolp (cadr x)) (null (cddr x)))

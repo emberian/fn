@@ -136,7 +136,9 @@
                              fn2-layout-range-code fn2-am-get-entry
                              fn2-upload-payload-settle fn2-am-entry-at min mod floor)))
   (fn2-du-fast-events (fn2-upload-stream-settle-op-events)))
-(fn2-du-fast-events (fn2-upload-block-private-op-events))
+(encapsulate ()
+  (local (in-theory (disable fn2-upload-hash-private-children fn2-upload-cv-private-children)))
+  (fn2-du-fast-events (fn2-upload-block-private-op-events)))
 
 ;; The source manifest's pure decisions the arms read (article-manifest.lisp).
 (defcost fn2-am-fits :doc "Whether stored octets of a length are named by one source manifest.")
