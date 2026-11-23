@@ -6,8 +6,17 @@
  (let* ((body (fn2-commit-event-forms-1t))
         (pos-a (position-equal '(fn2-checkpoint-allocation-coordinator-events) body))
         (pos-i (position-equal '(fn2-checkpoint-installation-coordinator-events) body))
+        (inst-progn (cadr (getpropc 'fn2-checkpoint-installation-coordinator-events 'macro-body nil (w state))))
+        (inst-begin (cadr inst-progn))
+        (inst-begin-fixed
+         (list* (car inst-begin) (cadr inst-begin) (caddr inst-begin)
+                '(declare (xargs :stobjs fn2-core
+                                 :guard (fn2-core-wfp fn2-core)
+                                 :guard-hints (("Goal" :do-not '(preprocess)))))
+                (cddddr inst-begin)))
+        (inst-fixed (list* 'progn inst-begin-fixed (cddr inst-progn)))
         (wrapped
-         '(encapsulate ()
+         `(encapsulate ()
             (local
              (defthm fn2-checkpoint-builder-claimp-bounds-fc
                (implies (fn2-checkpoint-builder-claimp c token okind oslot ogen fn2-checkpoints)
@@ -16,6 +25,14 @@
                              (posp token)))
                :rule-classes :forward-chaining
                :hints (("Goal" :in-theory (enable fn2-checkpoint-builder-claimp)))))
+            (local
+             (defthm fn2-construction-next-ticket-u60
+               (implies (and (fn2-checkpoint-constructionp x)
+                             (fn2-checkpoint-construction-wfp x))
+                        (unsigned-byte-p 60 (fn2-construction-next-ticket x)))
+               :hints (("Goal" :use ((:instance fn2-construction-next-ticket-natp (fn2-checkpoint-construction x))
+                                     (:instance fn2-construction-next-ticket-bound (fn2-checkpoint-construction x)))
+                               :in-theory (enable unsigned-byte-p)))))
             (make-event
              (value `(local (in-theory (disable nth
                        fn2-core-wfp
@@ -58,7 +75,7 @@
                                                (fn2-checkpoint-staging-claim
                                                 fn2-checkpoint-future-rows fn2-checkpoint-future-candidate))))))
             (fn2-checkpoint-allocation-coordinator-events)
-            (fn2-checkpoint-installation-coordinator-events))))
+            ,inst-fixed)))
    (if (and pos-a pos-i (= (+ 1 pos-a) pos-i))
        (value (list* 'progn
                      (fn2-commit-local-theory)
