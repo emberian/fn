@@ -35,12 +35,12 @@
    :hints (("Goal" :induct (fn2-layout-parse-field (list :id id) bytes rest pos v hi size ref phase next)
             :in-theory (disable fn2-layout-byte fn-b3-octet-listp unsigned-byte-p)))))
 
-(local
- (defun-nx fn2-run-parse-at-induct (i layout bytes)
+; Follow the parser remainder and field index together.
+(defun-nx fn2-run-parse-at-induct (i layout bytes)
   (declare (xargs :verify-guards nil :measure (nfix i)))
   (if (or (zp i) (atom layout)) bytes
     (fn2-run-parse-at-induct (1- i) (cdr layout)
-                             (mv-nth 2 (fn2-layout-parse-field (cadar layout) bytes bytes 0 0 0 0 0 0 0))))))
+                             (mv-nth 2 (fn2-layout-parse-field (cadar layout) bytes bytes 0 0 0 0 0 0 0)))))
 
 (local
  (defthm fn2-run-parsed-id-natural
