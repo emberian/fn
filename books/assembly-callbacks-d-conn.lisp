@@ -17,6 +17,15 @@
 (make-event
  (value `(local (in-theory (enable ,@(fn2-core-child-wfp-forward-runes *fn2-core-children*))))))
 (local
+ (defthm fn2-dc-dir-readers-over-other-child
+   (implies (not (equal (nfix k) *fn2-core-machines*))
+            (and (equal (fn2-machine-idp i (update-nth k v c)) (fn2-machine-idp i c))
+                 (equal (fn2-machine-kind i (update-nth k v c)) (fn2-machine-kind i c))
+                 (equal (fn2-machine-slot i (update-nth k v c)) (fn2-machine-slot i c))
+                 (equal (fn2-core-machines (update-nth k v c)) (fn2-core-machines c))))
+   :hints (("Goal" :in-theory (enable fn2-machine-idp fn2-machine-kind fn2-machine-kind-read-code
+                                      fn2-machine-slot fn2-machine-slot-read-code fn2-core-machines)))))
+(local
  (make-event
   (let* ((old (cdr (assoc-eq 'fn2-tls-admit (table-alist 'fn2-machine-arm-bodies (w state)))))
          (arms
@@ -119,7 +128,7 @@
          (t (or (fn2-dc-find-result-fn (car x))
                 (fn2-dc-find-result-fn (cdr x)))))))
 (local
- (defun fn2-dc-augment-arms-list (xs)
+ (defun fn2-dc-augment-arms-list (xs kind)
    (declare (xargs :mode :program))
    (if (atom xs) nil
      (let ((fn (fn2-dc-find-result-fn (car xs))))
@@ -168,30 +177,38 @@
                            :hints (("Goal" :use ,iss
                                            :in-theory (disable ,iss ,',fn fn2-core-ops fn2-corep fn2-core-wfp
                                                                fn2-ops-issued-count fn2-ops-rows)))))))))
-                (fn2-dc-augment-arms-list (cdr xs))))
+                (fn2-dc-augment-arms-list (cdr xs) kind)))
         ((and (consp (car xs)) (eq (caar xs) 'progn)
               (consp (cdar xs)) (consp (cadar xs)) (eq (caadar xs) 'defun))
          (let ((w (cadr (cadar xs)))
-               (fms (caddr (cadar xs))))
+               (fms (caddr (cadar xs)))
+               (upd-tbl (fn2-columns-pre "UPDATE-" (fn2-columns-sym kind "-TABLE"))))
            (list* `(encapsulate ()
                      (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p))))
                      ,(car xs))
                   `(local
-                    (defthm ,(fn2-columns-sym w "-PRESERVES-MACHINE-DIR")
-                      (and (equal (fn2-machine-idp fn2-any-id (,w ,@fms)) (fn2-machine-idp fn2-any-id fn2-core))
-                           (equal (fn2-machine-kind fn2-any-id (,w ,@fms)) (fn2-machine-kind fn2-any-id fn2-core))
-                           (equal (fn2-machine-slot fn2-any-id (,w ,@fms)) (fn2-machine-slot fn2-any-id fn2-core)))
-                      :hints (("Goal" :in-theory (e/d (,w fn2-machine-refuse-write fn2-core-stop
-                                                       fn2-machine-idp fn2-machine-kind fn2-machine-slot)
-                                                      ((:definition unsigned-byte-p) (:definition integer-range-p)))))))
+                    (make-event
+                     (value
+                      `(defthm ,(fn2-columns-sym ',w "-PRESERVES-MACHINE-DIR")
+                         (and (equal (fn2-machine-idp fn2-any-id (,',w ,@',fms)) (fn2-machine-idp fn2-any-id fn2-core))
+                              (equal (fn2-machine-kind fn2-any-id (,',w ,@',fms)) (fn2-machine-kind fn2-any-id fn2-core))
+                              (equal (fn2-machine-slot fn2-any-id (,',w ,@',fms)) (fn2-machine-slot fn2-any-id fn2-core)))
+                         :hints (("Goal" :in-theory
+                                  (union-theories
+                                   '(,',w fn2-machine-refuse-write fn2-core-stop fn2-control-record-stop
+                                     update-fn2-core-control ,',upd-tbl
+                                     fn2-machine-idp-bounds fn2-dc-dir-readers-over-other-child
+                                     ,(fn2-arm-frame-name ',w "-ARM-SLOT")
+                                     ,@(fn2-arm-frame-directory-runes (strip-cars *fn2-machine-directory-fields*)))
+                                   (theory 'fn2-arm-frame-base))))))))
                   `(local (in-theory (disable ,w)))
-                  (fn2-dc-augment-arms-list (cdr xs)))))
+                  (fn2-dc-augment-arms-list (cdr xs) kind))))
         ((and (consp (car xs)) (member-eq (caar xs) '(defun progn)))
          (cons `(encapsulate ()
                   (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p))))
                   ,(car xs))
-               (fn2-dc-augment-arms-list (cdr xs))))
-        (t (cons (car xs) (fn2-dc-augment-arms-list (cdr xs)))))))))
+               (fn2-dc-augment-arms-list (cdr xs) kind)))
+        (t (cons (car xs) (fn2-dc-augment-arms-list (cdr xs) kind))))))))
 (make-event
  (mv-let (err events) (fn2-arms-link-core-events 'fn2-tls-admit (fn2-arms-links 'fn2-tls-admit (w state)) (w state))
    (if err (er soft 'assembly-callbacks-d-conn "~@0" err) (value (cons 'progn events)))))
@@ -199,7 +216,7 @@
 (make-event
  (mv-let (err form) (fn2-arms-events 'fn2-tls-admit ':core (w state))
    (if err (er soft 'assembly-callbacks-d-conn "~@0" err)
-     (value (cons 'progn (fn2-dc-augment-arms-list (cdr form)))))))
+     (value (cons 'progn (fn2-dc-augment-arms-list (cdr form) 'fn2-tls-admit))))))
 (make-event
  (let* ((ev (fn2-machine-run-event 'fn2-tls-admit (w state)))
         (arm-fns (fn2-dc-arm-fns (fn2-machine-property 'fn2-tls-admit :continuations (w state))))
@@ -722,7 +739,7 @@
 (make-event
  (mv-let (err form) (fn2-arms-events 'fn2-conn ':core (w state))
    (if err (er soft 'assembly-callbacks-d-conn "~@0" err)
-     (value (cons 'progn (fn2-dc-augment-arms-list (cdr form)))))))
+     (value (cons 'progn (fn2-dc-augment-arms-list (cdr form) 'fn2-conn))))))
 (make-event
  (let* ((ev (fn2-machine-run-event 'fn2-conn (w state)))
         (arm-fns (fn2-dc-arm-fns (fn2-machine-property 'fn2-conn :continuations (w state))))

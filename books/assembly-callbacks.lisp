@@ -20,6 +20,15 @@
  (value `(local (in-theory (enable ,@(fn2-core-child-wfp-forward-runes *fn2-core-children*))))))
 (local (in-theory (e/d (fn2-commit-core-invariant) (fn2-core-wfp-commit-opaque))))
 (local
+ (defthm fn2-cb-dir-readers-over-other-child
+   (implies (not (equal (nfix k) *fn2-core-machines*))
+            (and (equal (fn2-machine-idp i (update-nth k v c)) (fn2-machine-idp i c))
+                 (equal (fn2-machine-kind i (update-nth k v c)) (fn2-machine-kind i c))
+                 (equal (fn2-machine-slot i (update-nth k v c)) (fn2-machine-slot i c))
+                 (equal (fn2-core-machines (update-nth k v c)) (fn2-core-machines c))))
+   :hints (("Goal" :in-theory (enable fn2-machine-idp fn2-machine-kind fn2-machine-kind-read-code
+                                      fn2-machine-slot fn2-machine-slot-read-code fn2-core-machines)))))
+(local
  (defmacro fn2-cb-wfp-bridge (fn pos)
    `(local
      (make-event
@@ -131,13 +140,15 @@
          (t (or (fn2-cb-find-result-fn (car x))
                 (fn2-cb-find-result-fn (cdr x)))))))
 (local
- (defun fn2-cb-augment-arms-list (xs)
+ (defun fn2-cb-augment-arms-list (xs kind)
    (declare (xargs :mode :program))
    (if (atom xs) nil
      (let ((fn (fn2-cb-find-result-fn (car xs))))
        (cond
         (fn
-         (list* (car xs)
+         (list* `(encapsulate ()
+                   (local (in-theory (disable ceiling floor mod min)))
+                   ,(car xs))
                 `(local
                   (make-event
                    (let ((guard (getpropc ',fn 'guard t (w state)))
@@ -180,30 +191,38 @@
                            :hints (("Goal" :use ,iss
                                            :in-theory (disable ,iss ,',fn fn2-core-ops fn2-corep fn2-core-wfp
                                                                fn2-ops-issued-count fn2-ops-rows)))))))))
-                (fn2-cb-augment-arms-list (cdr xs))))
+                (fn2-cb-augment-arms-list (cdr xs) kind)))
         ((and (consp (car xs)) (eq (caar xs) 'progn)
               (consp (cdar xs)) (consp (cadar xs)) (eq (caadar xs) 'defun))
          (let ((w (cadr (cadar xs)))
-               (fms (caddr (cadar xs))))
+               (fms (caddr (cadar xs)))
+               (upd-tbl (fn2-columns-pre "UPDATE-" (fn2-columns-sym kind "-TABLE"))))
            (list* `(encapsulate ()
                      (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p))))
                      ,(car xs))
                   `(local
-                    (defthm ,(fn2-columns-sym w "-PRESERVES-MACHINE-DIR")
-                      (and (equal (fn2-machine-idp fn2-any-id (,w ,@fms)) (fn2-machine-idp fn2-any-id fn2-core))
-                           (equal (fn2-machine-kind fn2-any-id (,w ,@fms)) (fn2-machine-kind fn2-any-id fn2-core))
-                           (equal (fn2-machine-slot fn2-any-id (,w ,@fms)) (fn2-machine-slot fn2-any-id fn2-core)))
-                      :hints (("Goal" :in-theory (e/d (,w fn2-machine-refuse-write fn2-core-stop
-                                                       fn2-machine-idp fn2-machine-kind fn2-machine-slot)
-                                                      ((:definition unsigned-byte-p) (:definition integer-range-p)))))))
+                    (make-event
+                     (value
+                      `(defthm ,(fn2-columns-sym ',w "-PRESERVES-MACHINE-DIR")
+                         (and (equal (fn2-machine-idp fn2-any-id (,',w ,@',fms)) (fn2-machine-idp fn2-any-id fn2-core))
+                              (equal (fn2-machine-kind fn2-any-id (,',w ,@',fms)) (fn2-machine-kind fn2-any-id fn2-core))
+                              (equal (fn2-machine-slot fn2-any-id (,',w ,@',fms)) (fn2-machine-slot fn2-any-id fn2-core)))
+                         :hints (("Goal" :in-theory
+                                  (union-theories
+                                   '(,',w fn2-machine-refuse-write fn2-core-stop fn2-control-record-stop
+                                     update-fn2-core-control ,',upd-tbl
+                                     fn2-machine-idp-bounds fn2-cb-dir-readers-over-other-child
+                                     ,(fn2-arm-frame-name ',w "-ARM-SLOT")
+                                     ,@(fn2-arm-frame-directory-runes (strip-cars *fn2-machine-directory-fields*)))
+                                   (theory 'fn2-arm-frame-base))))))))
                   `(local (in-theory (disable ,w)))
-                  (fn2-cb-augment-arms-list (cdr xs)))))
+                  (fn2-cb-augment-arms-list (cdr xs) kind))))
         ((and (consp (car xs)) (member-eq (caar xs) '(defun progn)))
          (cons `(encapsulate ()
                   (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p))))
                   ,(car xs))
-               (fn2-cb-augment-arms-list (cdr xs))))
-        (t (cons (car xs) (fn2-cb-augment-arms-list (cdr xs)))))))))
+               (fn2-cb-augment-arms-list (cdr xs) kind)))
+        (t (cons (car xs) (fn2-cb-augment-arms-list (cdr xs) kind))))))))
 (local
  (defun fn2-cb-patch-runs (x)
    (declare (xargs :mode :program))
@@ -218,7 +237,7 @@
                (make-event
                 (mv-let (err form) (fn2-arms-events ',k ':core (w state))
                   (if err (er soft 'assembly-callbacks "~@0" err)
-                    (value (cons 'progn (fn2-cb-augment-arms-list (cdr form))))))))))
+                    (value (cons 'progn (fn2-cb-augment-arms-list (cdr form) ',k)))))))))
          ((and (equal (car x) 'defmachine-run) (consp (cdr x)) (symbolp (cadr x)))
           (let ((k (cadr x)))
             `(make-event
@@ -228,11 +247,19 @@
                 (if (equal patched ev)
                     (er soft 'assembly-callbacks "Could not patch ~x0." ',k)
                   (value patched))))))
+         ((and (eq (car x) 'fn2-core-preserves) (consp (cdr x)))
+          `(encapsulate ()
+             (local (in-theory (disable nfix min floor mod ceiling
+                                        (:definition unsigned-byte-p) (:definition integer-range-p))))
+             ,x))
          (t (cons (fn2-cb-patch-runs (car x)) (fn2-cb-patch-runs (cdr x)))))))
 (make-event
  (value (fn2-cb-patch-runs (fn2-recovery-event-forms-3))))
 (include-book "boot")
-(fn2-boot-operations)
+(make-event
+ (mv-let (erp exp) (macroexpand1-cmp '(fn2-boot-operations) 'assembly-callbacks (w state) (default-state-vars nil))
+   (if erp (er soft 'assembly-callbacks "Expand failed: fn2-boot-operations")
+     (value (fn2-cb-patch-runs exp)))))
 (make-event
  (value (fn2-cb-patch-runs '(progn (defmachine-arms fn2-boot) (defmachine-run fn2-boot)))))
 
