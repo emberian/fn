@@ -658,6 +658,12 @@
                                          (integerp (mv-nth 2 (,',fn id budget fn2-core)))
                                          (<= 0 (mv-nth 2 (,',fn id budget fn2-core)))
                                          (acl2-numberp (mv-nth 2 (,',fn id budget fn2-core)))))
+                           :rule-classes (:rewrite
+                                          (:linear :corollary
+                                           (implies (and (fn2-corep fn2-core) ,guard)
+                                                    (and (<= 0 (car (,',fn id budget fn2-core)))
+                                                         (<= 0 (mv-nth 1 (,',fn id budget fn2-core)))
+                                                         (<= 0 (mv-nth 2 (,',fn id budget fn2-core)))))))
                            :hints (("Goal" :use ,qnt
                                            :in-theory (e/d (fn2-run-quantitiesp)
                                                            (,qnt ,',fn fn2-corep fn2-core-wfp)))))

@@ -137,6 +137,12 @@
                                          (integerp (mv-nth 2 (,',fn id budget fn2-core)))
                                          (<= 0 (mv-nth 2 (,',fn id budget fn2-core)))
                                          (acl2-numberp (mv-nth 2 (,',fn id budget fn2-core)))))
+                           :rule-classes (:rewrite
+                                          (:linear :corollary
+                                           (implies (and (fn2-corep fn2-core) ,guard)
+                                                    (and (<= 0 (car (,',fn id budget fn2-core)))
+                                                         (<= 0 (mv-nth 1 (,',fn id budget fn2-core)))
+                                                         (<= 0 (mv-nth 2 (,',fn id budget fn2-core)))))))
                            :hints (("Goal" :use ,qnt
                                            :in-theory (e/d (fn2-run-quantitiesp)
                                                            (,qnt ,',fn fn2-corep fn2-core-wfp)))))
@@ -216,7 +222,9 @@
                 :hints (("Goal" :in-theory (enable fn2-cns-append-read-contextp
                                                    fn2-cns-snapshot-read-code
                                                    fn2-machine-phase-read-code)))))))
-         ((eq (car x) 'fn2-core-preserves)
+         ((and (eq (car x) 'fn2-core-preserves)
+               (consp (cdr x))
+               (member-eq (cadr x) '(fn2-auth-find-current fn2-outcome-lookup-step)))
           `(encapsulate ()
              (local (in-theory (disable nfix min posp floor mod
                                         |(< x (if a b c))| |(< (if a b c) x)|)))
@@ -249,4 +257,33 @@
         (value (fn2-ecns-patch-form exp (w state)))))))
 (fn2-ecns-fast-events (fn2-auth-read-events))
 (fn2-ecns-fast-events (fn2-authority-depend-events))
+(local
+ (defthm fn2-ecns-fnct-stream-start-shape
+   (implies (and (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests)
+                 (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3))
+            (b* (((mv & d b) (fn2-fnct-stream-start row fn2-digests fn2-b3)))
+              (and (fn2-digestsp d) (fn2-digests-wfp d)
+                   (fn2-b3p b) (fn2-b3-wfp b))))
+   :hints (("Goal" :in-theory (e/d (fn2-fnct-stream-start)
+                                   (fn2-b3-ready fn2-digest-rowp fn2-digest-slot fn2-b3-init))))))
+(local
+ (defthm fn2-ecns-fnct-stream-update-shape
+   (implies (and (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests)
+                 (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3)
+                 (fn2-poolp fn2-pool) (fn2-pool-wfp fn2-pool))
+            (b* (((mv & & d b) (fn2-fnct-stream-update row slot gen off count okind oslot ogen fn2-digests fn2-b3 fn2-pool)))
+              (and (fn2-digestsp d) (fn2-digests-wfp d)
+                   (fn2-b3p b) (fn2-b3-wfp b))))
+   :hints (("Goal" :in-theory (e/d (fn2-fnct-stream-update)
+                                   (fn2-b3-ready fn2-b3-update (:definition unsigned-byte-p)))))))
+(local
+ (defthm fn2-ecns-fnct-stream-finish-shape
+   (implies (and (fn2-digestsp fn2-digests) (fn2-digests-wfp fn2-digests)
+                 (fn2-b3p fn2-b3) (fn2-b3-wfp fn2-b3))
+            (b* (((mv & d b) (fn2-fnct-stream-finish row fn2-digests fn2-b3)))
+              (and (fn2-digestsp d) (fn2-digests-wfp d)
+                   (fn2-b3p b) (fn2-b3-wfp b))))
+   :hints (("Goal" :in-theory (e/d (fn2-fnct-stream-finish)
+                                   (fn2-b3-ready fn2-digest-rowp fn2-digest-slot fn2-b3-finalize))))))
+(local (in-theory (disable fn2-fnct-stream-start fn2-fnct-stream-update fn2-fnct-stream-finish)))
 (fn2-ecns-fast-events (fn2-cns-events))
