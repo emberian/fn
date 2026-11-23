@@ -21,7 +21,7 @@
 (defun fn2-retirement-extent-complete-p (extent epoch allocation batch fn2-extents)
  (declare (xargs :stobjs fn2-extents :guard (and (fn2-extents-wfp fn2-extents) (natp batch))
   :guard-hints (("Goal"
-   :in-theory (disable fn2-alloc-handle-code fn2-extents-state fn2-extents-retirement)
+   :in-theory (disable nth fn2-extents-rows fn2-alloc-handle-code fn2-extents-state fn2-extents-retirement)
    :use ((:instance fn2-alloc-handle-code-ok-slotp (i extent) (counter allocation)))))))
  (and (eq (fn2-alloc-handle-code extent epoch allocation fn2-extents) :ok)
       (= (fn2-extents-state extent fn2-extents) *fn2-extent-state-retire-pending*)
