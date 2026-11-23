@@ -1,7 +1,8 @@
 ; Positioned seek over the overview range reader.
 (in-package "ACL2")
 
-(include-book "ribbon-range-proof")
+(include-book "range-seek-narrow-proof")
+(include-book "range-union-proof")
 
 (local
  (defthm fn2-range-bisection-width
@@ -25,10 +26,6 @@
   (implies (and (natp lo) (unsigned-byte-p 60 hi) (< lo hi))
            (let ((mid (floor (+ lo hi) 2)))
              (and (natp mid) (<= lo mid) (< mid hi))))
-  :rule-classes nil))
-(local
- (defthm fn2-range-below-upper-fits
-  (implies (and (unsigned-byte-p 60 hi) (natp n) (< n hi)) (unsigned-byte-p 60 (+ 1 n)))
   :rule-classes nil))
 (local
  (defthm fn2-range-seek-narrowing-step
