@@ -234,16 +234,16 @@ def «THE-CHECK» («GUARD» : Val) («X» : Val) («Y» : Val) : Val :=
   «Y»
 
 def «FN-B3-ADD3$INLINE» («X» : Val) («Y» : Val) («Z» : Val) : Val :=
-  ((fun («VAR» : Val) => («THE-CHECK» («UNSIGNED-BYTE-P» (Val.int 32) «VAR») (Val.ofList [(Val.sym "UNSIGNED-BYTE"), (Val.int 32)]) «VAR»)) (Native.mod (Prim.plus («IFIX» «X») (Prim.plus («IFIX» «Y») («IFIX» «Z»))) (Val.int 4294967296)))
+  ((fun («VAR» : Val) => («THE-CHECK» («UNSIGNED-BYTE-P» (Val.int 32) «VAR») (Val.ofList [(Val.sym "COMMON-LISP::UNSIGNED-BYTE"), (Val.int 32)]) «VAR»)) (Native.mod (Prim.plus («IFIX» «X») (Prim.plus («IFIX» «Y») («IFIX» «Z»))) (Val.int 4294967296)))
 
 def «FN-B3-ADD$INLINE» («X» : Val) («Y» : Val) : Val :=
-  ((fun («VAR» : Val) => («THE-CHECK» («UNSIGNED-BYTE-P» (Val.int 32) «VAR») (Val.ofList [(Val.sym "UNSIGNED-BYTE"), (Val.int 32)]) «VAR»)) (Native.mod (Prim.plus («IFIX» «X») («IFIX» «Y»)) (Val.int 4294967296)))
+  ((fun («VAR» : Val) => («THE-CHECK» («UNSIGNED-BYTE-P» (Val.int 32) «VAR») (Val.ofList [(Val.sym "COMMON-LISP::UNSIGNED-BYTE"), (Val.int 32)]) «VAR»)) (Native.mod (Prim.plus («IFIX» «X») («IFIX» «Y»)) (Val.int 4294967296)))
 
 def «FN-B3-XOR$INLINE» («X» : Val) («Y» : Val) : Val :=
-  ((fun («VAR» : Val) => («THE-CHECK» («UNSIGNED-BYTE-P» (Val.int 32) «VAR») (Val.ofList [(Val.sym "UNSIGNED-BYTE"), (Val.int 32)]) «VAR»)) (Native.mod (Native.logxor «X» «Y») (Val.int 4294967296)))
+  ((fun («VAR» : Val) => («THE-CHECK» («UNSIGNED-BYTE-P» (Val.int 32) «VAR») (Val.ofList [(Val.sym "COMMON-LISP::UNSIGNED-BYTE"), (Val.int 32)]) «VAR»)) (Native.mod (Native.logxor «X» «Y») (Val.int 4294967296)))
 
 def «FN-B3-ROTR$INLINE» («X» : Val) («N» : Val) : Val :=
-  ((fun («VAR» : Val) => («THE-CHECK» («UNSIGNED-BYTE-P» (Val.int 32) «VAR») (Val.ofList [(Val.sym "UNSIGNED-BYTE"), (Val.int 32)]) «VAR»)) (Native.mod (Native.logior (Native.ash «X» (Prim.neg «N»)) (Native.ash «X» (Prim.plus (Val.int 32) (Prim.neg «N»)))) (Val.int 4294967296)))
+  ((fun («VAR» : Val) => («THE-CHECK» («UNSIGNED-BYTE-P» (Val.int 32) «VAR») (Val.ofList [(Val.sym "COMMON-LISP::UNSIGNED-BYTE"), (Val.int 32)]) «VAR»)) (Native.mod (Native.logior (Native.ash «X» (Prim.neg «N»)) (Native.ash «X» (Prim.plus (Val.int 32) (Prim.neg «N»)))) (Val.int 4294967296)))
 
 def «FN-B3-G$INLINE» («A» : Val) («B» : Val) («C» : Val) («D» : Val) («MX» : Val) («MY» : Val) : Val :=
   ((fun («A» : Val) («C» : Val) («MY» : Val) («B» : Val) («D» : Val) => ((fun («D» : Val) («B» : Val) («MY» : Val) («A» : Val) («C» : Val) => ((fun («C» : Val) («A» : Val) («MY» : Val) («D» : Val) («B» : Val) => ((fun («B» : Val) («D» : Val) («C» : Val) («MY» : Val) («A» : Val) => ((fun («A» : Val) («C» : Val) («B» : Val) («D» : Val) => ((fun («D» : Val) («B» : Val) («A» : Val) («C» : Val) => ((fun («C» : Val) («A» : Val) («D» : Val) («B» : Val) => ((fun («B» : Val) («D» : Val) («C» : Val) («A» : Val) => (Val.cons «A» (Val.cons «B» (Val.cons «C» (Val.cons «D» Val.nil))))) («FN-B3-ROTR$INLINE» («FN-B3-XOR$INLINE» «B» «C») (Val.int 7)) «D» «C» «A»)) («FN-B3-ADD$INLINE» «C» «D») «A» «D» «B»)) («FN-B3-ROTR$INLINE» («FN-B3-XOR$INLINE» «D» «A») (Val.int 8)) «B» «A» «C»)) («FN-B3-ADD3$INLINE» «A» «B» «MY») «C» «B» «D»)) («FN-B3-ROTR$INLINE» («FN-B3-XOR$INLINE» «B» «C») (Val.int 12)) «D» «C» «MY» «A»)) («FN-B3-ADD$INLINE» «C» «D») «A» «MY» «D» «B»)) («FN-B3-ROTR$INLINE» («FN-B3-XOR$INLINE» «D» «A») (Val.int 16)) «B» «MY» «A» «C»)) («FN-B3-ADD3$INLINE» «A» «B» «MX») «C» «MY» «B» «D»)

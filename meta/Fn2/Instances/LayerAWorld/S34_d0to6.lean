@@ -42,7 +42,7 @@ def «ATOM» («X» : Val) : Val :=
   («NOT» (Prim.consp «X»))
 
 def «LENGTH» («X» : Val) : Val :=
-  (if ((Prim.stringp «X»)).truthy then (Native.len (Prim.coerce «X» (Val.sym "LIST"))) else (Native.len «X»))
+  (if ((Prim.stringp «X»)).truthy then (Native.len (Prim.coerce «X» (Val.sym "COMMON-LISP::LIST"))) else (Native.len «X»))
 
 /-- TRUE-LISTP, recursive: fuel `measure + 1` suffices by ACL2's admitted measure. -/
 def «TRUE-LISTP».go : Nat → Val → Val
