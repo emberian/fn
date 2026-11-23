@@ -592,12 +592,13 @@
                (not (member-equal (fn2-sim-kind target fn2-sim)
                       (list *fn2-action-close* *fn2-action-read*
                             *fn2-action-write* *fn2-action-fence*))))
-          (mv t (fn2-sim-set-cancelled target 1 fn2-sim))
+          (let ((fn2-sim (fn2-sim-set-cancelled target 1 fn2-sim)))
+            (mv t fn2-sim))
         (mv nil fn2-sim)))))
 (fn2-sim-preserves fn2-sim-cancel-target (slot fn2-sim) :forward t
   :hyps ((fn2-simp fn2-sim) (fn2-sim-ready fn2-sim))
   :specs (("-TYPE" fn2-simp 1) ("-READY" fn2-sim-ready 1) ("-WFP" fn2-sim-wfp 1))
-  :hints (("Goal" :in-theory (enable fn2-sim-ready))))
+  :hints (("Goal" :in-theory (e/d (fn2-sim-ready) (member-equal)))))
 (fn2-sim-preserves fn2-sim-cancel-target (slot fn2-sim) :disable nil
   :specs (("-RAW-ROWS" (lambda (s) (nth *fn2-sim-rows* s)) 1 :frame fn2-sim))
   :hints (("Goal" :in-theory (enable fn2-sim-cancel-target))))
