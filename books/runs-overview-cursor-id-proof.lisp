@@ -103,3 +103,28 @@
                       fn2-run-paths-entries fn2-fields-rows fn2-run-cursors-phase fn2-run-cursors-idx
                       fn2-run-cursors-off fn2-layout-range-code fn2-layout-octets fn2-run-read-bytes
                       fn2-run-values-layoutp fn2-pool-base fn2-poolp fn2-pool-wfp))))
+
+(defthm fn2-run-overview-page-row-keeps-query
+ (let* ((indexp (and (integerp level) (< 0 level)))
+        (layout (if indexp *fn2-overview-index* *fn2-overview-entry*))
+        (bytes (fn2-layout-octets layout row))
+        (bound (+ off (len bytes)))
+        (read (fn2-run-layout-decode 3 level base slot gen off end pk ps pg f pool)))
+   (implies (and (fn2-run-values-layoutp layout row) (natp target) (< target base)
+                 (unsigned-byte-p 32 slot) (unsigned-byte-p 60 gen) (natp base)
+                 (<= (+ base (len layout)) (fn2-fields-rows f))
+                 (unsigned-byte-p 32 off) (unsigned-byte-p 32 end) (<= bound end)
+                 (fn2-poolp pool) (fn2-pool-wfp pool) (natp (fn2-pool-base slot pool))
+                 (eq (fn2-layout-range-code slot gen off end nil pk ps pg pool) :ok)
+                 (equal (fn2-run-read-bytes (len bytes) slot gen off pk ps pg pool) bytes))
+            (equal (fn2-fields-value target (mv-nth 2 read)) (fn2-fields-value target f))))
+ :rule-classes nil
+ :hints (("Goal" :cases ((and (integerp level) (< 0 level)))
+          :use (fn2-run-overview-page-decode-refines-layout
+                (:instance fn2-run-overview-scan-row-id (j 0)
+                 (f (if (and (integerp level) (< 0 level)) (fn2-overview-index-start base f)
+                       (fn2-overview-entry-start base f)))))
+          :in-theory (e/d (fn2-overview-entry-start fn2-overview-index-start)
+                         (fn2-codec-save fn2-run-layout-decode fn2-layout-scan fn2-run-values-layoutp
+                          unsigned-byte-p nth fn2-fields-value fn2-layout-octets fn2-run-read-bytes
+                          fn2-poolp fn2-pool-wfp fn2-pool-base fn2-layout-range-code fn2-fields-rows)))))
