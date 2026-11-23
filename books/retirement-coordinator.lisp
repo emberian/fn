@@ -18,6 +18,16 @@
    (fn2-retirement-adapter-installation . (mv :invalid fn2-core))
    (fn2-retirement-adapter-allocation . (mv :invalid fn2-core))))
 
+(defun fn2-retirement-extent-complete-p (extent epoch allocation batch fn2-extents)
+ (declare (xargs :stobjs fn2-extents :guard (and (fn2-extents-wfp fn2-extents) (natp batch))
+  :guard-hints (("Goal"
+   :in-theory (disable fn2-alloc-handle-code fn2-extents-state fn2-extents-retirement)
+   :use ((:instance fn2-alloc-handle-code-ok-slotp (i extent) (counter allocation)))))))
+ (and (eq (fn2-alloc-handle-code extent epoch allocation fn2-extents) :ok)
+      (= (fn2-extents-state extent fn2-extents) *fn2-extent-state-retire-pending*)
+      (= (fn2-extents-retirement extent fn2-extents) batch)))
+(in-theory (disable fn2-retirement-extent-complete-p))
+
 ; Materialized after B's existing planner and member-admission operations.
 ; No general transaction decoder is opened to lifecycle input: this producer
 ; constructs the sole record after selecting its actual containing batch.
@@ -26,7 +36,11 @@
  '(progn
  fn2-retirement-adapter-prelude
  (defun fn2-retirement-admit (extent epoch allocation slot gen okind oslot ogen fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+   :guard-hints (("Goal"
+     :in-theory (disable fn2-core-wfp fn2-alloc-handle-code fn2-extents-state)
+     :use ((:instance fn2-alloc-handle-code-ok-slotp (i extent) (counter allocation)
+                      (fn2-extents (fn2-core-extents fn2-core))))))))
   (b* (((unless (and (unsigned-byte-p 32 extent) (unsigned-byte-p 60 epoch)
                      (unsigned-byte-p 60 allocation) (unsigned-byte-p 32 slot)
                      (unsigned-byte-p 60 gen) (posp okind) (unsigned-byte-p 8 okind)
@@ -89,7 +103,9 @@
             (mv (if (eq cancelled :ok) code :uncertain) admitted event fn2-core))))))
    (mv code admitted event fn2-core)))
  (fn2-core-preserves fn2-retirement-admit
-  (extent epoch allocation slot gen okind oslot ogen fn2-core) :position 3 :rows nil)
+  (extent epoch allocation slot gen okind oslot ogen fn2-core) :position 3 :rows nil
+  :hints (("Goal" :in-theory (disable fn2-core-wfp
+    fn2-alloc-handle-code fn2-extents-state))))
 
  (defun fn2-retirement-submit (extent epoch allocation okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -145,6 +161,22 @@
  (fn2-core-preserves fn2-retirement-submit
   (extent epoch allocation okind oslot ogen fn2-core) :position 3 :rows nil)
 
+ (make-event
+  (value `(local (in-theory (disable fn2-core-wfp fn2-retirement-control-rows
+      ,@(fn2-columns-projection-readers 'fn2-retirement-control
+         (fn2-decl-get :columns (fn2-decl-row '(:columns fn2-retirement-control) (w state)))))))))
+ (local (defthm fn2-retirement-control-scan-of-set-state
+   (equal (fn2-retirement-control-scan i (fn2-retirement-control-set-state j phase ctl))
+          (fn2-retirement-control-scan i ctl))
+   :hints (("Goal" :in-theory (enable fn2-retirement-control-scan)))))
+ (local (defthm fn2-retirement-control-scan-u32
+   (implies (and (fn2-retirement-controlp ctl) (fn2-retirement-control-wfp ctl)
+                 (< 0 (fn2-retirement-control-rows ctl)))
+            (unsigned-byte-p 32 (fn2-retirement-control-scan 0 ctl)))
+   :hints (("Goal" :use ((:instance fn2-retirement-control-scan-natp
+                                   (i 0) (fn2-retirement-control ctl))
+                         (:instance fn2-retirement-control-scan-bound
+                                   (i 0) (fn2-retirement-control ctl)))))))
  (defun fn2-retirement-poll (okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (b* (((mv match phase slot gen batch event)
@@ -185,12 +217,10 @@
                    (and (< 0 (fn2-retirement-control-rows fn2-retirement-control))
                         (or (and (= (fn2-retirement-control-allocation-member 0 fn2-retirement-control) 0)
                                  (= (fn2-retirement-control-installation-member 0 fn2-retirement-control) 0)
-                                 (eq (fn2-alloc-handle-code (fn2-retirement-control-extent 0 fn2-retirement-control)
-                                       (fn2-retirement-control-epoch 0 fn2-retirement-control)
-                                       (fn2-retirement-control-allocation 0 fn2-retirement-control) fn2-extents) :ok)
-                                 (= (fn2-extents-state (fn2-retirement-control-extent 0 fn2-retirement-control) fn2-extents)
-                                    *fn2-extent-state-retire-pending*)
-                                 (= (fn2-extents-retirement (fn2-retirement-control-extent 0 fn2-retirement-control) fn2-extents) batch))
+                                 (fn2-retirement-extent-complete-p
+                                  (fn2-retirement-control-extent 0 fn2-retirement-control)
+                                  (fn2-retirement-control-epoch 0 fn2-retirement-control)
+                                  (fn2-retirement-control-allocation 0 fn2-retirement-control) batch fn2-extents))
                             (and (or (= (fn2-retirement-control-allocation-member 0 fn2-retirement-control) 1)
                                      (= (fn2-retirement-control-installation-member 0 fn2-retirement-control) 1))
                                  (= (fn2-retirement-control-installed 0 fn2-retirement-control)
@@ -239,7 +269,8 @@
                    (fn2-retirement-control-scan 0 fn2-retirement-control) 0)))
       fn2-retirement-control)
     (mv (if (equal outcome *fn2-commit-outcome-accepted*) :accepted :refused) batch event fn2-core))))
- (fn2-core-preserves fn2-retirement-poll (okind oslot ogen fn2-core) :position 3 :rows nil)
+ (fn2-core-preserves fn2-retirement-poll (okind oslot ogen fn2-core) :position 3 :rows nil
+  :hints (("Goal" :in-theory (disable unsigned-byte-p))))
  ) (or adapter (fn2-retirement-ordinary-adapter))))
 
 ; Emitted in the persisted installation section, before the commit's arms.
