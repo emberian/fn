@@ -113,7 +113,7 @@
 ; discharges this square. A square takes one discharge, so this book does
 ; not repeat it.
 
-; FN2-RIBBON-MUTATION-REFUSED stays owed and cannot be proved as stated. The
+; FN2-RIBBON-MUTATION-REFUSED remains owed. The
 ; check after the mutation is B's checker, which compares the page's BLAKE3
 ; digest with the parent-held words. Evaluated at KEYS = ((1 2 3)) (65 slots,
 ; so the payload ends at offset 209) and X = 1 for every OFF below 65536,
@@ -126,6 +126,13 @@
 ; the solution bytes. At those offsets the statement says that no filter
 ; page of up to 256 keys collides under BLAKE3 with a one-byte change of
 ; itself, and it carries no collision-freedom premise (compare
-; FN2-FC-COLLISION-FREE-PAIRP in FN2-FORMAT-FRAME-BINDS-LOCATION). A
-; counterexample is a BLAKE3 collision; a proof is a collision-resistance
-; theorem about the hash.
+; FN2-FC-COLLISION-FREE-PAIRP in FN2-FORMAT-FRAME-BINDS-LOCATION).
+; On a successfully sealed and checked page, this branch would need a theorem
+; that the specific one-byte change alters the digest. These controls exercise
+; the unchanged page, a header refusal, and a hash-only refusal.
+(local
+ (assert-event
+  (let ((keys '((1 2 3))))
+    (and (equal (cadr (fn2-ribbon-image keys nil nil nil)) :ok)
+         (equal (cadr (fn2-ribbon-image keys nil nil (cons 0 1))) :bad-magic)
+         (equal (cadr (fn2-ribbon-image keys nil nil (cons *fn2-ribbon-base* 1))) :bad-hash)))))
