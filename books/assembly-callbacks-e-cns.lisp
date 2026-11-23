@@ -283,9 +283,17 @@
          ((equal x '(fn2-cns-source-core-events))
           (mv-let (erp exp) (macroexpand1-cmp x 'assembly-callbacks-e-cns wrld (default-state-vars nil))
             (if erp x
-              `(encapsulate ()
-                 (local (in-theory (enable fn2-cns-rows fn2-ctl-rows fn2-cns-sources-rows)))
-                 ,(fn2-ecns-patch-form exp wrld)))))
+              `(progn
+                 (encapsulate ()
+                   (local (in-theory (enable fn2-cns-rows fn2-ctl-rows fn2-cns-sources-rows)))
+                   ,(fn2-ecns-patch-form exp wrld))
+                 (local (in-theory (disable fn2-cns-stream-source-capture
+                                            fn2-cns-stream-source-next
+                                            fn2-cns-stream-source-finish
+                                            fn2-cns-stream-source-abort
+                                            fn2-cns-stream-source-clear
+                                            fn2-cns-stream-source-issue
+                                            fn2-cns-stream-source-step)))))))
          ((and (eq (car x) 'defun) (eq (cadr x) 'fn2-cns-stream-source-capture))
           (list (car x) (cadr x) (caddr x) (cadddr x)
                 `(if (not (eq (fn2-cns-snapshot-read-code cns fn2-core) :ok))
@@ -357,18 +365,68 @@
                 :hints (("Goal" :in-theory (enable fn2-cns-append-read-contextp
                                                    fn2-cns-snapshot-read-code
                                                    fn2-machine-phase-read-code)))))))
+         ((and (eq (car x) 'defun) (eq (cadr x) 'fn2-cns-range-contextp))
+          `(progn
+             ,x
+             (local
+              (defthm fn2-ecns-read-contextp-guards
+                (implies (fn2-cns-read-contextp cns gen x fn2-core)
+                         (and (equal (fn2-cns-snapshot-read-code cns fn2-core) :ok)
+                              (equal (fn2-machine-generation cns fn2-core) gen)
+                              (natp x) (integerp x) (<= 0 x)
+                              (< x (fn2-reads-rows (fn2-core-reads fn2-core)))
+                              (< x (fn2-ranges-rows (fn2-core-ranges fn2-core)))
+                              (< x (fn2-seeks-rows (fn2-core-seeks fn2-core)))
+                              (< (+ (fn2-id-decides-rows (fn2-core-id-decides fn2-core)) x)
+                                 (fn2-succ-txns-rows (fn2-core-succ-txns fn2-core)))))
+                :rule-classes :forward-chaining
+                :hints (("Goal" :in-theory (union-theories '(fn2-cns-read-contextp)
+                                                           (theory 'minimal-theory))))))
+             (local
+              (defthm fn2-ecns-range-contextp-implies-read-contextp
+                (implies (fn2-cns-range-contextp cns gen x fn2-core)
+                         (fn2-cns-read-contextp cns gen x fn2-core))
+                :rule-classes :forward-chaining
+                :hints (("Goal" :in-theory (union-theories '(fn2-cns-range-contextp)
+                                                           (theory 'minimal-theory))))))
+             (local (in-theory (disable fn2-cns-read-contextp fn2-cns-range-contextp)))))
          ((and (eq (car x) 'defun)
-               (member-eq (cadr x) '(fn2-cns-range-ready fn2-cns-article-ready)))
+               (member-eq (cadr x) '(fn2-cns-range-ready fn2-cns-article-ready fn2-cns-article-next)))
           `(encapsulate ()
              (local (in-theory (disable nfix min posp floor mod
-                                        fn2-cns-read-row fn2-cns-range-scalar-keyp fn2-read-stripe)))
+                                        fn2-cns-read-row fn2-cns-range-scalar-keyp fn2-read-stripe
+                                        fn2-cns-range-ownerp fn2-cns-item-binding-answer
+                                        fn2-cns-item-fits fn2-cns-put-answer fn2-cns-fill-cap)))
              ,(cons (car x) (cons (cadr x) (cons (caddr x) (cons (cadddr x) (fn2-ecns-patch-form (nthcdr 4 x) wrld)))))))
+         ((eq (car x) 'fn2-cns-natp-outputs)
+          `(encapsulate ()
+             (local (in-theory (disable nfix min posp floor mod
+                                        fn2-cns-read-row fn2-cns-range-scalar-keyp fn2-read-stripe
+                                        fn2-cns-range-ownerp fn2-cns-item-binding-answer
+                                        fn2-cns-item-fits fn2-cns-put-answer fn2-cns-fill-cap
+                                        fn2-core-reset fn2-cns-core-copy fn2-cns-core-same fn2-cns-core-mid-span
+                                        fn2-cns-snapshot-read-code fn2-ctl-snapshot-read-code
+                                        fn2-machine-phase-read-code)))
+             ,x))
+         ((and (eq (car x) 'fn2-core-preserves)
+               (consp (cdr x))
+               (eq (cadr x) 'fn2-cns-stream-source-open))
+          `(progn
+             (encapsulate ()
+               (local (in-theory (disable nfix min posp floor mod
+                                          fn2-cns-snapshot-read-code fn2-ctl-snapshot-read-code
+                                          fn2-machine-phase-read-code
+                                          |(< x (if a b c))| |(< (if a b c) x)|)))
+               ,x)
+             (local (in-theory (disable fn2-cns-stream-source-open)))))
          ((and (eq (car x) 'fn2-core-preserves)
                (consp (cdr x)))
           `(encapsulate ()
              (local (in-theory (disable nfix min posp floor mod
                                         fn2-cns-snapshot-read-code fn2-ctl-snapshot-read-code
                                         fn2-machine-phase-read-code
+                                        fn2-cns-range-scalar-keyp fn2-cns-range-ownerp fn2-read-stripe
+                                        fn2-cns-item-binding-answer fn2-cns-item-fits fn2-cns-put-answer fn2-cns-fill-cap
                                         |(< x (if a b c))| |(< (if a b c) x)|)))
              ,x))
          ((and (equal (car x) 'defmachine-arms) (consp (cdr x)) (symbolp (cadr x)) (null (cddr x)))
@@ -385,12 +443,14 @@
          ((and (equal (car x) 'defmachine-run) (consp (cdr x)) (symbolp (cadr x)))
           (let ((k (cadr x)))
             `(make-event
-              (let* ((arm-fns (fn2-ecns-arm-fns (fn2-machine-property ',k :continuations (w state))))
-                     (ev (fn2-ecns-rewrite-core-ev (fn2-machine-run-event ',k (w state)) ',k t arm-fns))
+              (let* ((raw-ev (fn2-machine-run-event ',k (w state)))
+                     (arm-fns (fn2-ecns-arm-fns (fn2-machine-property ',k :continuations (w state))))
+                     (ev (fn2-ecns-rewrite-core-ev raw-ev ',k t arm-fns))
                      (patched (fn2-ecns-wrap-success-charge ev ',k arm-fns)))
-                (if (equal patched ev)
-                    (er soft 'assembly-callbacks-e-cns "Could not patch ~x0." ',k)
-                  (value patched))))))
+                (cond ((and (consp raw-ev) (eq (car raw-ev) 'make-event)) (value raw-ev))
+                      ((equal patched ev)
+                       (er soft 'assembly-callbacks-e-cns "Could not patch ~x0." ',k))
+                      (t (value patched)))))))
          (t (cons (fn2-ecns-patch-form (car x) wrld) (fn2-ecns-patch-form (cdr x) wrld))))))
 (defmacro fn2-ecns-fast-events (form)
   `(make-event
