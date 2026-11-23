@@ -24,10 +24,67 @@
                (consp (cadadr x))
                (eq (car (cadadr x)) 'fn2-machine-success-charge-event))
           `(encapsulate ()
-             (local (in-theory (disable fn2-commit-arm-charge-ok-p
-                                        fn2-commit-arm-next-ok-p
-                                        ,@arm-fns)))
-             ,x))
+             (local
+              (defthm fn2-r2-contract-check-charge
+                (implies (fn2-core-success-p
+                          (mv-nth 4 (fn2-machine-contract-check
+                                     (fn2-commit-arm-ok-p id phase bytes steps descriptors c1)
+                                     bytes steps descriptors runnable c1)))
+                         (fn2-commit-arm-charge-ok-p
+                          phase
+                          (car (fn2-machine-contract-check
+                                (fn2-commit-arm-ok-p id phase bytes steps descriptors c1)
+                                bytes steps descriptors runnable c1))
+                          (mv-nth 1 (fn2-machine-contract-check
+                                     (fn2-commit-arm-ok-p id phase bytes steps descriptors c1)
+                                     bytes steps descriptors runnable c1))
+                          (mv-nth 2 (fn2-machine-contract-check
+                                     (fn2-commit-arm-ok-p id phase bytes steps descriptors c1)
+                                     bytes steps descriptors runnable c1))))
+                :hints (("Goal" :in-theory
+                         (remove-equal '(:rewrite fn2-core-stopped-p-is-exec-stop)
+                          (e/d (fn2-machine-contract-check fn2-commit-arm-ok-p
+                                fn2-core-success-p fn2-core-stopped-p fn2-core-stop-reason
+                                fn2-core-stop fn2-control-record-stop fn2-control-stop
+                                update-fn2-control-stop update-fn2-control-stop-reason)
+                               (fn2-commit-arm-charge-ok-p fn2-commit-arm-next-ok-p
+                                fn2-machine-phase fn2-machine-phase-read-code)))))))
+             (local
+              (defthm fn2-r2-row-phase-is-machine-phase
+                (implies (eq (fn2-commit-snapshot-read-code id fn2-core) :ok)
+                         (equal (fn2-commit-row-phase id fn2-core)
+                                (fn2-machine-phase id fn2-core)))
+                :hints (("Goal" :in-theory
+                         (enable fn2-commit-row-phase fn2-machine-phase
+                                 fn2-commit-snapshot-read-code fn2-machine-phase-read-code)))))
+             (defthm fn2-commit-run-success-charge
+               (implies (and (fn2-corep fn2-core)
+                             (and (fn2-core-wfp fn2-core)
+                                  (fn2-machine-idp id fn2-core)
+                                  (equal (fn2-machine-kind id fn2-core) *fn2-commit-kind*))
+                             (fn2-core-success-p (mv-nth 4 (fn2-commit-run id budget fn2-core))))
+                        (fn2-commit-arm-charge-ok-p
+                         (fn2-machine-phase id fn2-core)
+                         (car (fn2-commit-run id budget fn2-core))
+                         (mv-nth 1 (fn2-commit-run id budget fn2-core))
+                         (mv-nth 2 (fn2-commit-run id budget fn2-core))))
+               :hints (("Goal" :in-theory
+                        (e/d (fn2-commit-run
+                              fn2-r2-contract-check-charge
+                              fn2-r2-row-phase-is-machine-phase
+                              fn2-core-stop-not-success)
+                             (fn2-machine-contract-check
+                              fn2-commit-arm-ok-p
+                              fn2-commit-arm-charge-ok-p
+                              fn2-commit-arm-next-ok-p
+                              fn2-commit-row-phase
+                              fn2-machine-phase
+                              fn2-commit-snapshot-read-code
+                              fn2-machine-phase-read-code
+                              fn2-core-success-p
+                              fn2-core-stop
+                              fn2-machine-refuse-phase
+                              ,@arm-fns)))))))
          (t (cons (fn2-r2-wrap-success-charge (car x) arm-fns)
                   (fn2-r2-wrap-success-charge (cdr x) arm-fns))))))
 

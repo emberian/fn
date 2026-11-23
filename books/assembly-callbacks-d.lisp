@@ -9,30 +9,21 @@
 (include-book "upload")
 (include-book "tls")
 (include-book "compress")
-(encapsulate ()
-  (make-event
-   (value `(local (in-theory (e/d ((:forward-chaining fn2-tls-config-wfp-of-fn2-core-tls-config)
-                                   (:forward-chaining fn2-compress-config-wfp-of-fn2-core-compress-config))
-                                  (nth ,@(fn2-columns-getter-runes
-                                           '(fn2-tls-config fn2-compress-config)
-                                           (w state))))))))
-  (fn2-tls-op-events)
-  (fn2-compress-op-events))
-(local
- (in-theory (enable (:forward-chaining fn2-pool-wfp-of-fn2-core-pool)
-                    (:forward-chaining fn2-input-config-wfp-of-fn2-core-input-config)
-                    (:forward-chaining fn2-extents-wfp-of-fn2-core-extents)
-                    (:forward-chaining fn2-fields-wfp-of-fn2-core-fields)
-                    (:forward-chaining fn2-b3-wfp-of-fn2-core-b3)
-                    (:forward-chaining fn2-digests-wfp-of-fn2-core-digests)
-                    (:forward-chaining fn2-ops-wfp-of-fn2-core-ops))))
+(local (defun fn2-d-core-child-type-terms (children)
+         (declare (xargs :verify-guards nil))
+         (if (atom children) nil
+           (cons `(,(fn2-columns-sym (cadar children) "P") (,(caar children) fn2-core))
+                 (fn2-d-core-child-type-terms (cdr children))))))
 (make-event
- (value `(local (in-theory (disable nth
-                                    fn2-b3-rows
-                                    fn2-digests-rows
-                                    ,@(fn2-columns-getter-runes
-                                        '(fn2-input-config fn2-extents fn2-fields)
-                                        (w state)))))))
+ (value `(local (defthm fn2-d-core-child-types-fc
+                  (implies (fn2-corep fn2-core)
+                           (and ,@(fn2-d-core-child-type-terms *fn2-core-children*)))
+                  :rule-classes :forward-chaining))))
+(make-event
+ (value `(local (in-theory (enable ,@(fn2-core-child-wfp-forward-runes *fn2-core-children*))))))
+(local (in-theory (disable fn2-digests-rows fn2-b3-rows)))
+(fn2-tls-op-events)
+(fn2-compress-op-events)
 (local
  (defthm fn2-block-hash-into-ok-digests-rows-lemma
    (implies (and (equal (mv-nth 0 (fn2-block-hash-into
