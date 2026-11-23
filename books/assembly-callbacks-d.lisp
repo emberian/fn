@@ -21,7 +21,8 @@
                   :rule-classes :forward-chaining))))
 (make-event
  (value `(local (in-theory (enable ,@(fn2-core-child-wfp-forward-runes *fn2-core-children*))))))
-(local (in-theory (disable fn2-digests-rows fn2-b3-rows)))
+(local (in-theory (disable fn2-digests-rows fn2-b3-rows fn2-pool-fill fn2-pool-base fn2-pool-data-length
+                           fn2-control-path-identityi fn2-control-path-identity-length)))
 (fn2-tls-op-events)
 (fn2-compress-op-events)
 (local
