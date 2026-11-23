@@ -6,5 +6,10 @@
 (include-book "assembly-callbacks-d")
 (include-book "cursor")
 
+(defun fn2-cursor-location-blocks (total)
+  (declare (xargs :guard t))
+  (fn2-am-blocks total))
+(in-theory (disable fn2-cursor-location-blocks))
+
 (defmachine-arms fn2-cursor :wrappers)
 (defmachine-run fn2-cursor)

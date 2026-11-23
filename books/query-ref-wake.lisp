@@ -28,17 +28,32 @@
            (and (or ,@phases)
                 ,(if stopped `(equal (,(fn2-machine-row-reader name 'stopped) owner fn2-core) 0) t)))
          (fn2-query-live-clauses (cdr names) world)))))
+(defun fn2-query-snapshot-codes (names)
+ (declare (xargs :verify-guards nil))
+ (if (atom names) nil
+  (cons (fn2-columns-sym (car names) "-SNAPSHOT-READ-CODE")
+        (fn2-query-snapshot-codes (cdr names)))))
 (make-event
  (value
   `(defun fn2-query-owner-livep (kind owner generation fn2-core)
-    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+    (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                    :guard-hints (("Goal" :in-theory (e/d ,(fn2-query-snapshot-codes (fn2-machine-names (w state)))
+                                                          (fn2-core-wfp))))))
     (and (fn2-machine-idp owner fn2-core)
+         (eq (fn2-machine-phase-read-code owner fn2-core) :ok)
          (equal (fn2-machine-kind owner fn2-core) kind)
          (equal (fn2-machine-generation owner fn2-core) generation)
          (let ((phase (fn2-machine-phase owner fn2-core)))
           (cond ,@(fn2-query-live-clauses (fn2-machine-names (w state)) (w state))
                 (t nil)))))))
 (in-theory (disable fn2-query-owner-livep))
+
+(local (in-theory (disable fn2-id-decides-rows fn2-id-decides-qwake
+                           fn2-id-decides-qk fn2-id-decides-qs fn2-id-decides-qg)))
+(local (defthm fn2-core-id-decides-type-fc
+         (implies (fn2-corep fn2-core)
+                  (fn2-id-decidesp (fn2-core-id-decides fn2-core)))
+         :rule-classes :forward-chaining))
 
 ; QWAKE is produced only by an actual last-reference release. Consume the
 ; pending notification even when its old owner has retired or been reused.
@@ -53,8 +68,7 @@
   (if (and (natp tx) (< tx (fn2-id-decides-rows fn2-id-decides)))
       (fn2-id-decides-set-qwake tx 0 fn2-id-decides) fn2-id-decides)
   fn2-core))
-(fn2-core-preserves fn2-query-ref-consume (tx fn2-core) :rows nil
- :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+(fn2-core-preserves fn2-query-ref-consume (tx fn2-core) :rows nil)
 (in-theory (disable fn2-query-ref-consume))
 
 (defun fn2-query-ref-flush (tx fn2-core)
@@ -75,6 +89,5 @@
            (if (fn2-core-stopped-p fn2-core) fn2-core
              (let ((fn2-core (fn2-core-record-enqueue owner fn2-core)))
               (fn2-query-ref-consume tx fn2-core)))))))))
-(fn2-core-preserves fn2-query-ref-flush (tx fn2-core) :rows nil
- :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+(fn2-core-preserves fn2-query-ref-flush (tx fn2-core) :rows nil)
 (in-theory (disable fn2-query-ref-flush))

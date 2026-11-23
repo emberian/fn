@@ -18,22 +18,19 @@
   (if (atom entries) nil
     (let* ((field (caar entries))
            (initializer (fn2-columns-pre "INIT-" field))
-           (reader-law (fn2-columns-sym target
-                         (concatenate 'string "-OF-"
-                           (symbol-name (fn2-product-writer field)))))
            (name (fn2-core-init-projection-name target initializer)))
       (append
        (if (or (not (getpropc initializer 'unnormalized-body nil world))
-               (not (getpropc reader-law 'theorem nil world)))
+               (not (getpropc 'fn2-core-child-meta-correct 'theorem nil world)))
            `((make-event (er soft 'fn2-core-init-projection-events
-               "Missing actual initializer ~x0 or read/write law ~x1."
-               ',initializer ',reader-law)))
+               "Missing actual initializer ~x0 or core child meta law."
+               ',initializer)))
          (and (not (getpropc name 'theorem nil world))
               `((defthm ,name
                   (equal (,target (,initializer profile fn2-core))
                          ,(fn2-core-init-projection-expected target (car entries) world))
                   :hints (("Goal" :in-theory
-                           (union-theories '(,initializer ,reader-law)
+                           (union-theories '(,initializer fn2-core-child-meta-correct)
                                            (theory 'minimal-theory))))))))
        (fn2-core-init-wrapper-projection-events target (cdr entries) world)))))
 (defun fn2-core-init-projection-runes (target entries)

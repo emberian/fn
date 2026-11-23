@@ -30,18 +30,152 @@
           (fn2-core-child-fields (cdr children)))))
 (make-event (value `(defstobj fn2-core ,@(fn2-core-child-fields *fn2-core-children*))))
 
-; Generate the rectangular read-over-write matrix once: adding a child does
-; not require hand-maintaining every old child's frame facts.
-(defun fn2-core-child-read-facts (reader children)
+; Replace the O(H^2) read-over-write matrix with one O(H) :meta rule over
+; registered core child readers and updaters.
+(defun fn2-core-child-writers (children)
+  (if (atom children) nil
+    (cons (fn2-columns-pre "UPDATE-" (caar children))
+          (fn2-core-child-writers (cdr children)))))
+(defun fn2-core-child-ev-specs (children)
   (if (endp children) nil
-    (let* ((writer (caar children))
-           (update (fn2-columns-pre "UPDATE-" writer)))
-      (cons `(defthm ,(fn2-columns-sym reader
-                       (concatenate 'string "-OF-" (symbol-name update)))
-               (equal (,reader (,update p c))
-                      ,(if (eq reader writer) 'p `(,reader c))))
-            (fn2-core-child-read-facts reader (cdr children))))))
-(defun fn2-core-child-facts (children all index)
+    (let* ((reader (caar children))
+           (writer (fn2-columns-pre "UPDATE-" reader)))
+      (list* `(,reader x) `(,writer v x)
+             (fn2-core-child-ev-specs (cdr children))))))
+(defun fn2-core-child-reader-alist-fn (children index)
+  (if (endp children) nil
+    (cons (cons (caar children) index)
+          (fn2-core-child-reader-alist-fn (cdr children) (+ 1 (nfix index))))))
+(defun fn2-core-child-updater-alist-fn (children index)
+  (if (endp children) nil
+    (cons (cons (fn2-columns-pre "UPDATE-" (caar children)) index)
+          (fn2-core-child-updater-alist-fn (cdr children) (+ 1 (nfix index))))))
+(make-event
+ (value `(progn
+           (defconst *fn2-core-child-reader-alist*
+             ',(fn2-core-child-reader-alist-fn *fn2-core-children* 0))
+           (defconst *fn2-core-child-updater-alist*
+             ',(fn2-core-child-updater-alist-fn *fn2-core-children* 0))
+           (deflabel fn2-core-child-ev-start)
+           (defevaluator fn2-core-child-ev fn2-core-child-ev-lst
+             ,(fn2-core-child-ev-specs *fn2-core-children*)))))
+(defun fn2-core-child-peel (r-sym r-idx inner term changedp)
+  (declare (xargs :guard (and (symbolp r-sym) (natp r-idx))
+                  :verify-guards t))
+  (if (and (consp inner)
+           (symbolp (car inner))
+           (consp (cdr inner))
+           (consp (cddr inner))
+           (null (cdddr inner)))
+      (let ((w-entry (mbe :logic (assoc-equal (car inner) *fn2-core-child-updater-alist*)
+                          :exec (assoc-eq (car inner) *fn2-core-child-updater-alist*))))
+        (if (and (consp w-entry) (natp (cdr w-entry)))
+            (if (equal (cdr w-entry) r-idx)
+                (cadr inner)
+              (fn2-core-child-peel r-sym r-idx (caddr inner) term t))
+          (if changedp (list r-sym inner) term)))
+    (if changedp (list r-sym inner) term)))
+(defun fn2-core-child-meta (term)
+  (declare (xargs :guard t :verify-guards t))
+  (if (and (consp term)
+           (symbolp (car term))
+           (consp (cdr term))
+           (null (cddr term)))
+      (let ((r-entry (mbe :logic (assoc-equal (car term) *fn2-core-child-reader-alist*)
+                          :exec (assoc-eq (car term) *fn2-core-child-reader-alist*))))
+        (if (and (consp r-entry) (natp (cdr r-entry)))
+            (fn2-core-child-peel (car term) (cdr r-entry) (cadr term) term nil)
+          term))
+    term))
+(make-event
+ (value `(encapsulate ()
+           (local (defthm fn2-core-child-ev-reader-is-nth
+                    (implies (and (consp x) (consp (cdr x)) (null (cddr x))
+                                  (symbolp (car x))
+                                  (assoc-equal (car x) *fn2-core-child-reader-alist*))
+                             (equal (fn2-core-child-ev x a)
+                                    (nth (cdr (assoc-equal (car x) *fn2-core-child-reader-alist*))
+                                         (fn2-core-child-ev (cadr x) a))))
+                    :hints (("Goal" :in-theory
+                             (union-theories
+                              '(assoc-equal not null car-cons cdr-cons
+                                ,@(strip-cars *fn2-core-children*))
+                              (union-theories
+                               (set-difference-theories (current-theory :here)
+                                                        (current-theory 'fn2-core-child-ev-start))
+                               (union-theories (theory 'minimal-theory)
+                                               (executable-counterpart-theory :here))))))))
+           (local (defthm fn2-core-child-ev-updater-is-update-nth
+                    (implies (and (consp x) (consp (cdr x)) (consp (cddr x)) (null (cdddr x))
+                                  (symbolp (car x))
+                                  (assoc-equal (car x) *fn2-core-child-updater-alist*))
+                             (equal (fn2-core-child-ev x a)
+                                    (update-nth (cdr (assoc-equal (car x) *fn2-core-child-updater-alist*))
+                                                (fn2-core-child-ev (cadr x) a)
+                                                (fn2-core-child-ev (caddr x) a))))
+                    :hints (("Goal" :in-theory
+                             (union-theories
+                              '(assoc-equal not null car-cons cdr-cons
+                                ,@(fn2-core-child-writers *fn2-core-children*))
+                              (union-theories
+                               (set-difference-theories (current-theory :here)
+                                                        (current-theory 'fn2-core-child-ev-start))
+                               (union-theories (theory 'minimal-theory)
+                                               (executable-counterpart-theory :here))))))))
+           (local (defthm fn2-core-child-updater-idx-natp
+                    (implies (and (symbolp w)
+                                  (assoc-equal w *fn2-core-child-updater-alist*))
+                             (natp (cdr (assoc-equal w *fn2-core-child-updater-alist*))))
+                    :hints (("Goal" :in-theory
+                             (union-theories '(assoc-equal natp car-cons cdr-cons)
+                                             (union-theories (theory 'minimal-theory)
+                                                             (executable-counterpart-theory :here)))))))
+           (local (defthm fn2-core-child-list2-elim
+                    (implies (and (consp x) (consp (cdr x)) (not (cddr x)))
+                             (equal (list (car x) (cadr x)) x))
+                    :hints (("Goal" :in-theory
+                             (union-theories '(not null car-cons cdr-cons cons-car-cdr)
+                                             (theory 'minimal-theory))))))
+           (local (defthm fn2-core-child-peel-correct
+                    (implies (and (symbolp r-sym)
+                                  (natp r-idx)
+                                  (assoc-equal r-sym *fn2-core-child-reader-alist*)
+                                  (equal (cdr (assoc-equal r-sym *fn2-core-child-reader-alist*)) r-idx)
+                                  (if changedp t (equal term (list r-sym inner))))
+                             (equal (fn2-core-child-ev
+                                     (fn2-core-child-peel r-sym r-idx inner term changedp)
+                                     a)
+                                    (nth r-idx (fn2-core-child-ev inner a))))
+                    :rule-classes nil
+                    :hints (("Goal" :induct (fn2-core-child-peel r-sym r-idx inner term changedp)
+                             :in-theory (union-theories
+                                         '(fn2-core-child-peel
+                                           fn2-core-child-ev-reader-is-nth
+                                           fn2-core-child-ev-updater-is-update-nth
+                                           fn2-core-child-updater-idx-natp
+                                           nth-update-nth
+                                           nfix natp not null
+                                           car-cons cdr-cons
+                                           (:e alistp) (:e symbol-alistp))
+                                         (theory 'minimal-theory))))))
+           (defthm fn2-core-child-meta-correct
+             (equal (fn2-core-child-ev x a)
+                    (fn2-core-child-ev (fn2-core-child-meta x) a))
+             :hints (("Goal" :use ((:instance fn2-core-child-peel-correct
+                                    (r-sym (car x))
+                                    (r-idx (cdr (assoc-equal (car x) *fn2-core-child-reader-alist*)))
+                                    (inner (cadr x))
+                                    (term x)
+                                    (changedp nil)))
+                      :in-theory (union-theories
+                                  '(fn2-core-child-meta
+                                    fn2-core-child-ev-reader-is-nth
+                                    fn2-core-child-list2-elim
+                                    not null natp
+                                    car-cons cdr-cons)
+                                  (theory 'minimal-theory))))
+             :rule-classes ((:meta :trigger-fns ,(strip-cars *fn2-core-children*)))))))
+(defun fn2-core-child-facts (children index)
   (if (endp children) nil
     (let* ((field (caar children)) (type (cadar children))
            (pred (fn2-columns-sym type "P"))
@@ -55,35 +189,20 @@
          (defthm ,(fn2-columns-sym update "-TYPE")
            (implies (and (fn2-corep fn2-core) (,pred p))
                     (fn2-corep (,update p fn2-core)))
-           :hints (("Goal"
-                    :use ((:instance fn2-core-update-field-type
+           :hints (("Goal" :use ((:instance fn2-core-update-field-type
                             (i ,index) (v p) (xs fn2-core)))
                     :in-theory
                     (union-theories '(,update fn2-core-field-p ,wrapper natp)
                                     (theory 'minimal-theory))))))
-       (fn2-core-child-read-facts field all)
-       (fn2-core-child-facts (cdr children) all (+ 1 (nfix index)))))))
+       (fn2-core-child-facts (cdr children) (+ 1 (nfix index)))))))
 (defmacro fn2-core-children-facts (&rest children)
   ; ACL2 implements a nested stobj as a fixed-length record too. Reuse
   ; the columns proof once, then specialize it with each child's slot.
   `(encapsulate ()
      (local (encapsulate ()
        ,@(fn2-columns-record-events 'fn2-core (fn2-core-child-fields children))))
-     ,@(fn2-core-child-facts children children 0)))
-; Expansion fixture catches wrong same-child and cross-child equations.
-(assert-event
- (equal (fn2-core-child-read-facts 'fn2-core-pool
-          '((fn2-core-pool fn2-pool) (fn2-core-ops fn2-ops)))
-        '((defthm fn2-core-pool-of-update-fn2-core-pool
-            (equal (fn2-core-pool (update-fn2-core-pool p c)) p))
-          (defthm fn2-core-pool-of-update-fn2-core-ops
-            (equal (fn2-core-pool (update-fn2-core-ops p c))
-                   (fn2-core-pool c))))))
+     ,@(fn2-core-child-facts children 0)))
 (make-event (value (cons 'fn2-core-children-facts *fn2-core-children*)))
-(defun fn2-core-child-writers (children)
-  (if (atom children) nil
-    (cons (fn2-columns-pre "UPDATE-" (caar children))
-          (fn2-core-child-writers (cdr children)))))
 (defun fn2-core-child-wfps (children)
   (if (atom children) nil
     (cons `(,(fn2-columns-sym (cadar children) "-WFP") ,(cadar children))
@@ -91,6 +210,24 @@
 (make-event
  (value `(in-theory (disable fn2-corep ,@(strip-cars *fn2-core-children*)
                   ,@(fn2-core-child-writers *fn2-core-children*)))))
+; Expansion and prover fixture: same-child, cross-child, nested-mixed, and unpeeled fallback.
+(assert-event
+ (let ((same (fn2-core-child-meta '(fn2-core-pool (update-fn2-core-pool p c))))
+       (cross (fn2-core-child-meta '(fn2-core-pool (update-fn2-core-ops p c))))
+       (mixed (fn2-core-child-meta '(fn2-core-pool (update-fn2-core-ops v (update-fn2-core-pool p c)))))
+       (other '(fn2-core-pool (f c))))
+   (and (equal same 'p)
+        (equal cross '(fn2-core-pool c))
+        (equal mixed 'p)
+        (equal (fn2-core-child-meta other) other))))
+(local
+ (defthm fn2-core-child-meta-read-over-write-check
+   (and (equal (fn2-core-pool (update-fn2-core-pool p c)) p)
+        (equal (fn2-core-pool (update-fn2-core-ops p c)) (fn2-core-pool c))
+        (equal (fn2-core-pool (update-fn2-core-ops v (update-fn2-core-pool p c))) p))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (union-theories '(fn2-core-child-meta-correct)
+                                              (theory 'minimal-theory))))))
 
 (make-event
  (value `(defun fn2-core-wfp (fn2-core)
@@ -109,11 +246,12 @@
       (list* `(defthm ,(fn2-columns-pre "FN2-CORE-WFP-OF-" update)
                 (implies (and (fn2-core-wfp fn2-core) (,wfp p))
                          (fn2-core-wfp (,update p fn2-core)))
-                :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+                :hints (("Goal" :in-theory (union-theories '(fn2-core-wfp fn2-core-child-meta-correct)
+                                                           (theory 'minimal-theory)))))
              `(defthm ,(fn2-columns-sym wfp (concatenate 'string "-OF-" (symbol-name field)))
                 (implies (fn2-core-wfp fn2-core) (,wfp (,field fn2-core)))
                 :rule-classes (:rewrite :forward-chaining)
-                :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+                :hints (("Goal" :in-theory (union-theories '(fn2-core-wfp) (theory 'minimal-theory)))))
              (fn2-core-child-wfp-facts (cdr children))))))
 ; The forward-chaining class of each child fact is off by default; a section
 ; whose guard proofs read child bounds from a core hypothesis (B's commit and

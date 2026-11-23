@@ -1761,7 +1761,8 @@
   (declare (xargs :verify-guards nil))
   (let* ((children (fn2-arm-frame-children-of world)) (m (fn2-arm-frame-m world)) (ctl (fn2-arm-frame-ctl world)))
     `((deftheory fn2-arm-frame-base
-        (union-theories '(mv-nth car-cons cdr-cons nth-update-nth fn2-arm-kids-refl fn2-arm-row-frame-refl fn2-arm-cols-refl
+        (union-theories '(mv-nth car-cons cdr-cons nth-update-nth fn2-core-child-meta-correct
+                          fn2-arm-kids-refl fn2-arm-row-frame-refl fn2-arm-cols-refl
                           fn2-arm-member-of-subsetp-free fn2-arm-not-member-of-subsetp subsetp-equal member-equal)
                         (union-theories (theory 'minimal-theory) (executable-counterpart-theory :here))))
       (defthm fn2-arm-core-len
@@ -1834,7 +1835,7 @@
 ;; at the id, the directory's column setter's facts.
 (defun fn2-arm-frame-directory-read-back-runes (fields)
   (declare (xargs :verify-guards nil))
-  (if (atom fields) '(fn2-machine-idp fn2-core-machines-of-update-fn2-core-machines)
+  (if (atom fields) '(fn2-machine-idp fn2-core-child-meta-correct)
     (let ((get (fn2-columns-col-name 'fn2-machine (car fields)))
           (column (fn2-columns-col-name 'fn2-machines (car fields))))
       (list* get (fn2-columns-sym get "-READ-CODE") column (fn2-columns-sym column "$AI")
@@ -1879,7 +1880,7 @@
          (phase (fn2-arm-frame-name w "-ARM-PHASE"))
          (contract (fn2-arm-frame-name w "-CONTRACT"))
          (update-table (fn2-columns-pre "UPDATE-" table))
-         (machines-of (fn2-columns-pre "FN2-CORE-MACHINES-OF-" update-table))
+         (machines-of 'fn2-core-child-meta-correct)
          (open (list* w 'fn2-machine-refuse-write (fn2-arm-frame-setter-facts kind (fn2-arm-frame-table-fields fields)))))
     `((defthm ,kids
         (implies (and (fn2-arm-kids 0 fn2-arm-free fn2-arm-c0 fn2-core) (subsetp-equal ',s fn2-arm-free))
@@ -1921,7 +1922,7 @@
                  (list* 'fn2-core-stop-arm-phase (fn2-columns-pre "FN2-ARM-PHASE-OF-UPDATE-" table)
                         (fn2-columns-pre "FN2-ARM-PHASE-VIEW-" kind) (fn2-columns-col-name kind 'phase)
                         (fn2-columns-sym (fn2-columns-col-name kind 'phase) "$AI")
-                        (fn2-columns-sym table (concatenate 'string "-OF-" (symbol-name update-table)))
+                        'fn2-core-child-meta-correct
                         'natp 'nfix 'zp 'fix
                         (append open (fn2-arm-frame-setter-facts kind (list 'phase))
                                 (and dirp (list* 'fn2-machine-idp-bounds machines-of
@@ -2181,7 +2182,7 @@
   (let ((j (fn2-arm-frame-body-setters fn kind world)) (table (fn2-columns-sym kind "-TABLE")))
     (and j (list* (fn2-columns-pre "FN2-ARM-PHASE-OF-UPDATE-" table) (fn2-columns-pre "FN2-ARM-PHASE-VIEW-" kind)
                   (fn2-columns-col-name kind 'phase) (fn2-columns-sym (fn2-columns-col-name kind 'phase) "$AI")
-                  (fn2-columns-sym table (concatenate 'string "-OF-" (symbol-name (fn2-columns-pre "UPDATE-" table))))
+                  'fn2-core-child-meta-correct
                   'natp 'nfix 'zp 'fix
                   (fn2-arm-frame-setter-facts kind (cons 'phase (fn2-arm-frame-column-fields
                                                                  j (fn2-machine-property kind :table world))))))))
@@ -2210,7 +2211,7 @@
   (let* ((fns (fn2-arm-frame-fnsyms (getpropc fn 'unnormalized-body nil world) nil))
          (keeps (fn2-arm-frame-directory-keeps-of fns (table-alist 'fn2-arm-frame-directory-keeps world))))
     (and keeps (list* (if (eq reader 'slot) 'fn2-arm-slot-of-directory-keeps 'fn2-arm-phase-of-directory-keeps)
-                      'fn2-core-machines-of-update-fn2-core-control keeps))))
+                      'fn2-core-child-meta-correct keeps))))
 ;; The kind a table child belongs to, else nil.
 (defun fn2-arm-frame-table-kind (k names world)
   (declare (xargs :verify-guards nil))

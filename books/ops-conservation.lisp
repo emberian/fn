@@ -1345,7 +1345,7 @@
                             (f (fn2-ops-phase-slots (nth 44 fn2-ops) 0 fn2-ops)) (a h)))))))
 (local
 (defthm fn2-ops-reserve-step-row
-  (implies (and (fn2-ops-row-okp h fn2-ops) (natp h) (natp kind) (< kind 14) (natp may-release))
+  (implies (and (fn2-ops-row-okp h fn2-ops) (natp h) (natp kind) (< kind *fn2-action-count*) (natp may-release))
            (fn2-ops-row-okp h
              (update-nth-array 15 h may-release
               (update-nth-array 6 h principal
@@ -1401,7 +1401,7 @@
                        (fn2-ops-clear-row (nth 70 fn2-ops) (nth (nth 70 fn2-ops) (nth 0 fn2-ops)) 4294967295 fn2-ops)))))))))))
   ((natp (nth 70 fn2-ops)) (< (nth 70 fn2-ops) (nth 44 fn2-ops))
    (equal (nth (nth 70 fn2-ops) (nth 1 fn2-ops)) 0)
-   (natp kind) (< kind 14) (natp may-release)
+   (natp kind) (< kind *fn2-action-count*) (natp may-release)
    (< (+ (nth 51 fn2-ops) (nth 50 fn2-ops)) (len (nth 45 fn2-ops))))
   :enables (fn2-op-slotp)))
 (fn2-ops-op-conservation fn2-op-reserve (kind okind oslot ogen principal may-release fn2-ops) 3 (nth 70 fn2-ops)

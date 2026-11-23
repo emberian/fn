@@ -34,6 +34,7 @@
 (fn2-oss-issue fn2-issue-receive (cap-index cap-nonce slot gen len))
 (fn2-oss-issue fn2-issue-send (cap-index cap-nonce slot gen off len may-release))
 (fn2-oss-issue fn2-issue-tls-start (cap-index cap-nonce slot gen off len))
+(fn2-core-issue-wrapper fn2-issue-compress-start (cap-index cap-nonce slot gen off len))
 (fn2-oss-issue fn2-issue-compress-start (cap-index cap-nonce slot gen off len))
 (fn2-oss-issue fn2-issue-read (offset slot gen len))
 (fn2-oss-issue fn2-issue-write (offset slot gen off len fua))
@@ -101,7 +102,7 @@
                    `((defthm ,(fn2-columns-sym name "-OPS-FRAME")
                        (equal (fn2-core-ops (,name profile core)) (fn2-core-ops core))
                        :hints (("Goal" :in-theory (union-theories
-                                                   '(,name ,(fn2-columns-pre "FN2-CORE-OPS-OF-UPDATE-" (caar children)))
+                                                   '(,name fn2-core-child-meta-correct)
                                                    (theory 'minimal-theory)))))))
               (fn2-oss-init-frames (cdr children))))))
 (make-event (cons 'progn (fn2-oss-init-frames *fn2-core-children*)))
@@ -130,11 +131,15 @@
     fn2-cursor-sub-art-read-children fn2-cursor-run-render-children
     fn2-echo-run-command-children fn2-echo-run-reply-children fn2-echo-run-closing-children
     fn2-scribe-run-write-children fn2-scribe-run-fence-children fn2-scribe-run-read-children))
-(defmacro fn2-oss-child (name formals position)
-  `(defthm ,(intern-in-package-of-symbol (concatenate 'string (symbol-name name) "-OPS-SEMANTICP") name)
-     (implies (fn2-ops-semanticp fn2-ops)
-              (fn2-ops-semanticp (mv-nth ,position (,name ,@formals))))
-     :hints (("Goal" :in-theory (e/d (,name) ,(remove-eq name *fn2-oss-ops-writers*))))))
+(defmacro fn2-oss-child (name &optional formals position)
+  `(make-event
+    (let* ((formals (or ',formals (formals ',name (w state))))
+           (position (or ',position (position-eq 'fn2-ops (getpropc ',name 'stobjs-out nil (w state))))))
+      (value
+       `(defthm ,(intern-in-package-of-symbol (concatenate 'string (symbol-name ',name) "-OPS-SEMANTICP") ',name)
+          (implies (fn2-ops-semanticp fn2-ops)
+                   (fn2-ops-semanticp (mv-nth ,position (,',name ,@formals))))
+          :hints (("Goal" :in-theory (e/d (,',name) ,(remove-eq ',name *fn2-oss-ops-writers*)))))))))
 (fn2-oss-child fn2-issue-receive-children (cap-index cap-nonce slot gen len okind oslot ogen principal fn2-pool fn2-ops fn2-control) 4)
 (fn2-oss-child fn2-issue-send-children (cap-index cap-nonce slot gen off len may-release okind oslot ogen principal fn2-pool fn2-ops fn2-control) 4)
 (fn2-oss-child fn2-issue-tls-start-children (cap-index cap-nonce slot gen off len okind oslot ogen principal fn2-pool fn2-ops fn2-control) 4)
@@ -173,12 +178,8 @@
   (id slot kind ordinal budget fn2-scribe fn2-machines fn2-pool fn2-ops fn2-control) 7)
 (fn2-oss-child fn2-scribe-run-read-children
   (id slot kind ordinal budget fn2-scribe fn2-machines fn2-pool fn2-ops fn2-control) 7)
-(fn2-oss-child fn2-cursor-sub-art-read-children
-  (id slot kind ordinal budget fn2-cursor fn2-machines fn2-pool fn2-ops fn2-control fn2-extents) 7)
-(fn2-oss-child fn2-cursor-run-render-children
-  (id slot kind ordinal budget fn2-cursor fn2-machines fn2-pool fn2-ops fn2-control fn2-extents fn2-fc
-   fn2-fields fn2-id-decides fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-cursors
-   fn2-run-paths fn2-run-cache fn2-succ-txns fn2-reads fn2-ranges fn2-range-sources fn2-seeks) 7)
+(fn2-oss-child fn2-cursor-sub-art-read-children)
+(fn2-oss-child fn2-cursor-run-render-children)
 (defmacro fn2-oss-face (name formals position)
   `(defthm ,(intern-in-package-of-symbol (concatenate 'string (symbol-name name) "-OPS-SEMANTICP") name)
      (implies (fn2-core-ops-semanticp core)

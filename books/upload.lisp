@@ -204,9 +204,13 @@
 (defun fn2-upload-chunk-fill (slot fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (n)
-    (fn2-pool-slot-fill slot fn2-pool) (nfix n)))
+    (if (and (natp slot) (< slot (fn2-pool-rows fn2-pool)))
+        (fn2-pool-slot-fill slot fn2-pool)
+      0)
+    (nfix n)))
 (defthm fn2-upload-chunk-fill-natp
   (natp (fn2-upload-chunk-fill slot fn2-core)) :rule-classes :type-prescription)
+(in-theory (disable fn2-upload-chunk-cap fn2-upload-chunk-fill))
 (defun fn2-upload-bound (cap0 cap1 fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-input-config (fn2-core-input-config fn2-core)))
@@ -610,7 +614,13 @@
 ;; A bounded block hash owns the shared synchronous block scratch only for
 ;; this call. Copy its result to the upload page before returning/yielding.
 (defun fn2-upload-block-hash (ls lg blen okind oslot ogen fn2-core)
- (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                 :guard-hints (("Goal" :use ((:instance fn2-block-hash-into-ok-digests-rows-linear
+                                              (row (fn2-b-block-read-row (fn2-b3-rows (fn2-core-b3 fn2-core))))
+                                              (lslot ls) (lgen lg) (boff *fn2-upload-page-stage*) (len blen)
+                                              (fn2-b3 (fn2-core-b3 fn2-core))
+                                              (fn2-digests (fn2-core-digests fn2-core))
+                                              (fn2-pool (fn2-core-pool fn2-core))))))))
  (stobj-let ((fn2-b3 (fn2-core-b3 fn2-core)) (fn2-digests (fn2-core-digests fn2-core))
              (fn2-pool (fn2-core-pool fn2-core))) (code fn2-b3 fn2-digests fn2-pool)
   (let ((row (fn2-b-block-read-row (fn2-b3-rows fn2-b3))))
@@ -656,7 +666,7 @@
            (code (fn2-pool-workspace-code ls lg okind oslot ogen fn2-pool))
            (counter (* 4 (nfix block))))
      (if (not (and (eq code :ok) (natp block) (fn2-digest-rowp dst fn2-digests)
-                   (<= (+ *fn2-upload-page-stage* *fn2-commit-unit-bytes*) (fn2-pool-fill ls fn2-pool))
+                   (fn2-pool-range-in ls *fn2-upload-page-stage* *fn2-commit-unit-bytes* fn2-pool)
                    (unsigned-byte-p 48 counter)))
          (mv :fault fn2-digests fn2-pool)
        (let* ((off (+ (fn2-pool-slot-base ls fn2-pool) *fn2-upload-page-stage*))
@@ -665,8 +675,7 @@
          (fn2-digest-store 32 dst ls lg (+ 32 *fn2-upload-page-hash*) okind oslot ogen fn2-digests fn2-pool)
          (mv (if (eq copied :ok) :ok :fault) fn2-digests fn2-pool)))))
     (mv code fn2-core)))))
-(fn2-core-preserves fn2-upload-block-cv (ls lg blen block okind oslot ogen fn2-core) :position 1 :rows nil
- :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+(fn2-core-preserves fn2-upload-block-cv (ls lg blen block okind oslot ogen fn2-core) :position 1 :rows nil)
 ;; The block's entry after the manifest's MFILL octets (the packing rule):
 ;; (mv code mfill fn2-core).
 (defun fn2-upload-block-entry (row ls lg block blen unit epoch alloc mfill okind oslot ogen fn2-core)
@@ -680,7 +689,7 @@
                       ls lg at okind oslot ogen fn2-fields fn2-pool)
     (mv (if (eq code :ok) :ok :fault) (nfix (- (nfix end) *fn2-upload-page-manifest*)) fn2-core))))
 (fn2-core-preserves fn2-upload-block-entry (row ls lg block blen unit epoch alloc mfill okind oslot ogen fn2-core)
-  :position 2 :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+  :position 2 :rows nil)
 ;; An accepted article's payload extent (its upload's reservation) becomes
 ;; allocated, owned by the article (the transaction kind, EVENT).
 (defun fn2-upload-extent-commit (e epoch counter event fn2-core)

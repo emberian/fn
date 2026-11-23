@@ -801,18 +801,10 @@
   (if (atom outs) nil
     (cons (append (car outs) (list (if (fn2-dh-owner-obs-p (car (car outs))) ohyps hyps) name))
           (fn2-dh-facts-of (cdr outs) hyps ohyps name))))
-(defun fn2-dh-core-reads (accs update)
+(defun fn2-dh-core-runes ()
+  ; core child read-over-write across every core child's update
   (declare (xargs :mode :program))
-  (if (atom accs) nil
-    (cons (fn2-columns-sym (car accs) (concatenate 'string "-OF-" (symbol-name update)))
-          (fn2-dh-core-reads (cdr accs) update))))
-(defun fn2-dh-core-runes (children accs)
-  ; the reads of the ops, the pool and the owner tables through every core child's update
-  (declare (xargs :mode :program))
-  (if (atom children) nil
-    (let ((update (fn2-columns-pre "UPDATE-" (caar children))))
-      (append (fn2-dh-core-reads (list* 'fn2-core-ops 'fn2-core-pool accs) update)
-              (fn2-dh-core-runes (cdr children) accs)))))
+  '(fn2-core-child-meta-correct))
 (defun fn2-dh-fact-names (facts fn world)
   ; the lemma of each fact (a primitive's per observation, the chain's one)
   (declare (xargs :mode :program))
@@ -844,8 +836,8 @@
                                '(,fn ,@(fn2-dh-callee-runes (remove-eq fn (all-fnnames body)) world)
                                      ,@(and touches (list* 'update-nth-array (fn2-dh-owner-theory owners)))
                                      ,@(and (member-eq 'fn2-core (getpropc fn 'stobjs-in nil world))
-                                            (let ((cs (unquote (getpropc '*fn2-core-children* 'const nil world))))
-                                              (fn2-dh-core-runes cs (fn2-dh-owner-accs owners)))))
+                                            (getpropc 'fn2-core-child-meta-correct 'theorem nil world)
+                                            (fn2-dh-core-runes)))
                                ,(if touches
                                     '(union-theories (theory 'fn2-dh-owners-rules) (theory 'fn2-dh-base))
                                   '(theory 'fn2-dh-base)))

@@ -4828,7 +4828,7 @@
            (fn2-env-op s fn2-core)))
   :hints (("Goal" :do-not-induct t
            :in-theory '(fn2-env-post-step fn2-env-op-is-ops-op fn2-env-ops-op-of-post-result
-                        fn2-core-ops-of-update-fn2-core-ops (:e equal)))))
+                        fn2-core-child-meta-correct (:e equal)))))
 (in-theory (disable fn2-env-op-is-ops-op))
 ;; J5 ACROSS :POST-RESULT. The readers of every child but the ops table
 ;; are framed (FN2-ENV-OPS-FRAME); op S after the post is op S, or the posted

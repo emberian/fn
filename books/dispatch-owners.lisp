@@ -48,7 +48,7 @@
         ((eq acc (car owner-accs)) (fn2-dh-init-frame-forms1 init acc (cdr owner-accs)))
         (t (cons `(defthm ,(fn2-columns-sym (car owner-accs) (concatenate 'string "-OF-" (symbol-name init)))
                     (equal (,(car owner-accs) (,init profile fn2-core)) (,(car owner-accs) fn2-core))
-                    :hints (("Goal" :in-theory '(,init ,(fn2-columns-sym (car owner-accs) (concatenate 'string "-OF-UPDATE-" (symbol-name acc)))))))
+                    :hints (("Goal" :in-theory '(,init fn2-core-child-meta-correct))))
                  (fn2-dh-init-frame-forms1 init acc (cdr owner-accs))))))
 (defun fn2-dh-init-frame-forms (accs owner-accs)
   ; each core child's init leaves every other owner table
@@ -93,7 +93,7 @@
        (and chains `((make-event (value (cons 'progn (fn2-dh-chain-forms-m (fn2-dh-postorder-m ',chains :owners (w state)) nil :owners))))))
        `((defthm ,(fn2-columns-sym init "-OWNERS")
            (fn2-dh-col-ok *fn2-commit-kind* ',(nth 1 e) (,acc (,init profile fn2-core)))
-           :hints (("Goal" :in-theory '(,init ,(fn2-columns-sym acc (concatenate 'string "-OF-UPDATE-" (symbol-name acc)))
+           :hints (("Goal" :in-theory '(,init fn2-core-child-meta-correct
                                         ,@mids ,@(fn2-dh-init-leaf-runes leaves s) (:e equal))))))
        (fn2-dh-owner-child-init-forms (cdr owners) world)))))
 (make-event (value (cons 'progn (fn2-dh-owner-child-init-forms (fn2-dh-owners (w state)) (w state)))))
