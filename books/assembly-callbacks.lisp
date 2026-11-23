@@ -93,6 +93,7 @@
             (and (not (fn2-core-stopped-p fn2-core))
                  (equal (fn2-core-stop-reason fn2-core) 0)))
    :hints (("Goal" :in-theory (enable fn2-core-success-p)))))
+(local (in-theory (disable fn2-ac-core-success-p-dest)))
 (local
  (defthm fn2-ac-recovery-row-phase-when-ok
    (implies (equal (fn2-recovery-machine-snapshot-read-code id fn2-core) :ok)
@@ -115,14 +116,14 @@
                  (list :cases (fn2-ac-phase-cases '(fn2-machine-phase id fn2-core)
                                 (max 0 (1- (len (fn2-machine-property 'fn2-recovery-machine :states world)))))
                        :in-theory (list 'e/d
-                                        '(fn2-recovery-machine-run fn2-recovery-machine-arm-ok-p)
+                                        '(fn2-recovery-machine-run fn2-recovery-machine-arm-ok-p fn2-ac-core-success-p-dest)
                                         (fn2-ac-success-charge-disables 'fn2-recovery-machine world))))
                 ((and (fn2-ac-mentions-sym-p 'fn2-boot-run clause)
                       (fn2-ac-mentions-sym-p 'fn2-boot-arm-charge-ok-p clause))
                  (list :cases (fn2-ac-phase-cases '(fn2-machine-phase id fn2-core)
                                 (max 0 (1- (len (fn2-machine-property 'fn2-boot :states world)))))
                        :in-theory (list 'e/d
-                                        '(fn2-boot-run fn2-boot-arm-ok-p)
+                                        '(fn2-boot-run fn2-boot-arm-ok-p fn2-ac-core-success-p-dest)
                                         (fn2-ac-success-charge-disables 'fn2-boot world))))
                 ((and (or (fn2-ac-mentions-sym-p 'fn2-recovery-machine-run clause)
                           (fn2-ac-mentions-sym-p 'fn2-boot-run clause))

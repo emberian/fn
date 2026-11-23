@@ -18,6 +18,30 @@
                   :rule-classes :forward-chaining))))
 (make-event
  (value `(local (in-theory (enable ,@(fn2-core-child-wfp-forward-runes *fn2-core-children*))))))
+(local
+ (defthm fn2-ecns-cns-snapshot-ok-implies-idp
+   (implies (equal (fn2-cns-snapshot-read-code cns fn2-core) :ok)
+            (and (fn2-machine-idp cns fn2-core)
+                 (equal (fn2-machine-kind cns fn2-core) *fn2-cns-kind*)
+                 (equal (fn2-machine-generation-read-code cns fn2-core) :ok)
+                 (< (fn2-machine-slot cns fn2-core) (fn2-cns-rows (fn2-cns-table fn2-core)))
+                 (natp cns) (integerp cns) (<= 0 cns)
+                 (< cns (fn2-machines-rows (fn2-core-machines fn2-core)))))
+   :rule-classes (:rewrite :forward-chaining)
+   :hints (("Goal" :in-theory (enable fn2-cns-snapshot-read-code fn2-machine-idp
+                                      fn2-machine-phase-read-code fn2-machine-generation-read-code)))))
+(local
+ (defthm fn2-ecns-ctl-snapshot-ok-implies-idp
+   (implies (equal (fn2-ctl-snapshot-read-code ctl fn2-core) :ok)
+            (and (fn2-machine-idp ctl fn2-core)
+                 (equal (fn2-machine-kind ctl fn2-core) *fn2-ctl-kind*)
+                 (equal (fn2-machine-generation-read-code ctl fn2-core) :ok)
+                 (< (fn2-machine-slot ctl fn2-core) (fn2-ctl-rows (fn2-ctl-table fn2-core)))
+                 (natp ctl) (integerp ctl) (<= 0 ctl)
+                 (< ctl (fn2-machines-rows (fn2-core-machines fn2-core)))))
+   :rule-classes (:rewrite :forward-chaining)
+   :hints (("Goal" :in-theory (enable fn2-ctl-snapshot-read-code fn2-machine-idp
+                                      fn2-machine-phase-read-code fn2-machine-generation-read-code)))))
 (local (in-theory (disable fn2-reads-rows fn2-fields-rows fn2-fc-rows fn2-id-decides-rows
                            fn2-digests-rows fn2-b3-rows fn2-extents-rows fn2-cns-sources-rows)))
 (local (defun fn2-ecns-mentions-sym-p (sym x)
@@ -108,6 +132,7 @@
             (and (not (fn2-core-stopped-p fn2-core))
                  (equal (fn2-core-stop-reason fn2-core) 0)))
    :hints (("Goal" :in-theory (enable fn2-core-success-p)))))
+(local (in-theory (disable fn2-ecns-core-success-p-dest)))
 (local
  (defthm fn2-ecns-row-phase-when-ok
    (and (implies (equal (fn2-ctl-snapshot-read-code id fn2-core) :ok)
@@ -128,19 +153,50 @@
                  (and fns (list :in-theory (list 'e/d fns nil))))))))
 (local (add-override-hints
         '((cond ((not (equal id '((0) nil . 0))) keyword-alist)
+                ;; The nested key reads and successor writes duplicate their
+                ;; intermediate cores during guard and preservation preprocessing.
+                ((and (consp ctx)
+                      (member-eq (cdr ctx)
+                                 '(fn2-cns-article-next-natp-1 fn2-cns-article-next-natp-2
+                                   fn2-cns-article-next-natp-3 fn2-cns-article-next-natp-4
+                                   fn2-cns-article-next-natp-5 fn2-cns-article-next-natp-6
+                                   fn2-cns-article-next-natp-7 fn2-cns-article-next-natp-8)))
+                 '(:do-not '(preprocess)
+                   :in-theory (union-theories '(fn2-cns-article-next fn2-cns-item-answer-types natp)
+                                (union-theories (executable-counterpart-theory :here)
+                                                (theory 'minimal-theory)))))
+                ((and (consp ctx) (eq (cdr ctx) 'fn2-cns-decode-port-at-types))
+                 '(:do-not '(preprocess)
+                   :in-theory (union-theories '(fn2-cns-decode-port-at natp unsigned-byte-p integer-range-p nfix)
+                                (union-theories (executable-counterpart-theory :here)
+                                                (theory 'minimal-theory)))))
+                ((and (consp ctx) (eq (cdr ctx) 'fn2-cns-decode-port-types))
+                 '(:do-not '(preprocess)
+                   :in-theory (union-theories '(fn2-cns-decode-port fn2-cns-decode-port-at-types natp)
+                                (union-theories (executable-counterpart-theory :here)
+                                                (theory 'minimal-theory)))))
+                ((and (consp ctx)
+                      (member-eq (cdr ctx)
+                                 '(fn2-auth-find-current fn2-auth-find-current-preserves-type
+                                   fn2-auth-find-current-preserves-wfp
+                                   fn2-authority-depend fn2-authority-depend-preserves-type
+                                   fn2-authority-depend-preserves-wfp
+                                   fn2-cns-article-next-preserves-type
+                                   fn2-cns-article-next-preserves-wfp)))
+                 (append '(:do-not '(preprocess)) keyword-alist))
                 ((and (fn2-ecns-mentions-sym-p 'fn2-ctl-run clause)
                       (fn2-ecns-mentions-sym-p 'fn2-ctl-arm-charge-ok-p clause))
                  (list :cases (fn2-ecns-phase-cases '(fn2-machine-phase id fn2-core)
                                 (max 0 (1- (len (fn2-machine-property 'fn2-ctl :states world)))))
                        :in-theory (list 'e/d
-                                        '(fn2-ctl-run fn2-ctl-arm-ok-p)
+                                        '(fn2-ctl-run fn2-ctl-arm-ok-p fn2-ecns-core-success-p-dest)
                                         (fn2-ecns-success-charge-disables 'fn2-ctl world))))
                 ((and (fn2-ecns-mentions-sym-p 'fn2-cns-run clause)
                       (fn2-ecns-mentions-sym-p 'fn2-cns-arm-charge-ok-p clause))
                  (list :cases (fn2-ecns-phase-cases '(fn2-machine-phase id fn2-core)
                                 (max 0 (1- (len (fn2-machine-property 'fn2-cns :states world)))))
                        :in-theory (list 'e/d
-                                        '(fn2-cns-run fn2-cns-arm-ok-p)
+                                        '(fn2-cns-run fn2-cns-arm-ok-p fn2-ecns-core-success-p-dest)
                                         (fn2-ecns-success-charge-disables 'fn2-cns world))))
                 ((and (or (fn2-ecns-mentions-sym-p 'fn2-ctl-run clause)
                           (fn2-ecns-mentions-sym-p 'fn2-cns-run clause))
@@ -161,4 +217,55 @@
                 (t keyword-alist)))))
 (fn2-auth-read-events)
 (fn2-authority-depend-events)
-(fn2-cns-events)
+
+; Install the leaf's guard facts as soon as both context predicates exist.
+(local
+ (defun fn2-ecns-insert-context-guards (events)
+   (declare (xargs :guard (true-listp events)))
+   (cond
+    ((endp events) nil)
+    ((let ((event (car events)))
+       (case-match event (('defun 'fn2-cns-range-contextp . &) t)))
+     (list*
+      (car events)
+      '(local
+        (defthm fn2-ecns-read-contextp-guards
+          (implies (fn2-cns-read-contextp cns gen x fn2-core)
+                   (and (equal (fn2-cns-snapshot-read-code cns fn2-core) :ok)
+                        (equal (fn2-machine-generation cns fn2-core) gen)
+                        (equal (fn2-cns-row-xrow cns fn2-core) x)
+                        (natp x) (integerp x) (<= 0 x)
+                        (< x (fn2-reads-rows (fn2-core-reads fn2-core)))
+                        (< x (nth *fn2-ranges-rows* (fn2-core-ranges fn2-core)))
+                        (< x (nth *fn2-seeks-rows* (fn2-core-seeks fn2-core)))
+                        (< (+ (fn2-id-decides-rows (fn2-core-id-decides fn2-core)) x)
+                           (nth *fn2-succ-txns-rows* (fn2-core-succ-txns fn2-core)))
+                        (equal (fn2-seeks-phase x (fn2-core-seeks fn2-core))
+                               *fn2-seek-phase-idle*)))
+          :rule-classes :forward-chaining
+          :hints (("Goal" :in-theory (union-theories '(fn2-cns-read-contextp natp
+                                                       fn2-ranges-rows fn2-seeks-rows
+                                                       fn2-succ-txns-rows)
+                                                     (theory 'minimal-theory))))))
+      '(local
+        (defthm fn2-ecns-range-contextp-implies-read-contextp
+          (implies (fn2-cns-range-contextp cns gen x fn2-core)
+                   (and (fn2-cns-read-contextp cns gen x fn2-core)
+                        (equal (fn2-succ-txns-lphase
+                                (+ (fn2-id-decides-rows (fn2-core-id-decides fn2-core)) x)
+                                (fn2-core-succ-txns fn2-core))
+                               *fn2-succ-lookup-idle*)))
+          :rule-classes :forward-chaining
+          :hints (("Goal" :in-theory (union-theories '(fn2-cns-range-contextp)
+                                                     (theory 'minimal-theory))))))
+      '(local (in-theory (disable fn2-cns-read-contextp fn2-cns-range-contextp)))
+      (cdr events)))
+    (t (let ((tail (fn2-ecns-insert-context-guards (cdr events))))
+         (and tail (cons (car events) tail)))))))
+(make-event
+ (mv-let (erp expansion)
+   (macroexpand1-cmp '(fn2-cns-events) 'assembly-callbacks-e-cns (w state) (default-state-vars nil))
+   (let ((events (and (not erp) (eq (car expansion) 'progn)
+                      (fn2-ecns-insert-context-guards (cdr expansion)))))
+     (if events (value (cons 'progn events))
+       (er soft 'assembly-callbacks-e-cns "Missing FN2-CNS-RANGE-CONTEXTP in FN2-CNS-EVENTS.")))))
