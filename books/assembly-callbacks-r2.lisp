@@ -5,6 +5,24 @@
 (in-package "ACL2")
 
 (include-book "commit-arms")
+(local
+ (defun fn2-r2-wrap-success-charge (x)
+   (declare (xargs :mode :program))
+   (cond ((atom x) x)
+         ((and (eq (car x) 'make-event)
+               (consp (cdr x))
+               (consp (cadr x))
+               (eq (caadr x) 'value)
+               (consp (cdadr x))
+               (consp (cadadr x))
+               (eq (car (cadadr x)) 'fn2-machine-success-charge-event))
+          `(encapsulate ()
+             (local (in-theory (disable fn2-commit-arm-charge-ok-p
+                                        fn2-commit-arm-next-ok-p)))
+             ,x))
+         (t (cons (fn2-r2-wrap-success-charge (car x))
+                  (fn2-r2-wrap-success-charge (cdr x)))))))
+
 (make-event
  (let* ((body (fn2-commit-event-forms-2b))
         (pos (position-equal '(fn2-checkpoint-retirement-install-events) body))
@@ -246,6 +264,18 @@
                              '(fn2-retirement-control fn2-fields fn2-extents)
                              (w state)))))))
               ,full-install))))
-   (if pos
-       (value (append (take pos body) (cons replacement (nthcdr (+ 1 pos) body))))
-     (er soft 'assembly-callbacks-r2 "Could not locate (fn2-checkpoint-retirement-install-events) in fn2-commit-event-forms-2b."))))
+        (body2 (and pos (append (take pos body) (cons replacement (nthcdr (+ 1 pos) body)))))
+        (rpos (and body2 (position-equal '(defmachine-run fn2-commit) body2)))
+        (run-patched
+         '(make-event
+           (let* ((ev (fn2-machine-run-event 'fn2-commit (w state)))
+                  (patched (fn2-r2-wrap-success-charge ev)))
+             (if (equal patched ev)
+                 (er soft 'assembly-callbacks-r2 "Could not locate fn2-machine-success-charge-event in fn2-machine-run-event.")
+               (value patched))))))
+   (cond ((not pos)
+          (er soft 'assembly-callbacks-r2 "Could not locate (fn2-checkpoint-retirement-install-events) in fn2-commit-event-forms-2b."))
+         ((not rpos)
+          (er soft 'assembly-callbacks-r2 "Could not locate (defmachine-run fn2-commit) in fn2-commit-event-forms-2b."))
+         (t
+          (value (append (take rpos body2) (cons run-patched (nthcdr (+ 1 rpos) body2))))))))
