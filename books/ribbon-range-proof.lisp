@@ -6,6 +6,7 @@
 (include-book "range-seek-step-proof")
 (include-book "runs-built-cache-proof")
 (include-book "runs-overview-builder-proof")
+(include-book "runs-overview-cursor-id-proof")
 
 ; FN2-RIBBON-NO-FALSE-NEGATIVE is not discharged here and has no known
 ; counterexample. Evaluated, it holds for one empty key; 256 distinct keys
