@@ -1,0 +1,59 @@
+{
+  "source": "0c9bf6ea0301980bfe95d2c993082ef70fd2706f",
+  "toolchain": "8aeb1bea18968c6cd33ac633a80ebf67e4924504db112fd27eb11f16a27b2a8c",
+  "books": {
+    "books/article-limit-text": {
+      "key": "1b9018109e200b8081554df284edb9c825c9abf88cb14a345966e96cd9f790fe",
+      "sha256": "390c6ae567893804032e6699dca1af3c360756745b075d40104a3c819e3af64c",
+      "parents": [],
+      "entry": "/home/fn/.cache/fn-certs/1b9018109e200b8081554df284edb9c825c9abf88cb14a345966e96cd9f790fe/6448b0b93f6327b0",
+      "cert_sha256": "344f11550fdcc3862c1d3cd8d7d0452f229c692188b1685f1206b9fe17823559",
+      "fasl_sha256": "be99683d06c8f48c5e07478f28a98c2319a2b7b49c100e90ce4319be9aa29593"
+    },
+    "tests/article-limit-text-unit": {
+      "key": "f5561b840518dda24619343195997df2a9e46f291d3232a6c4da063dea352d91",
+      "sha256": "18b7bc852e6ed81c5240f3a809909bc33ece8e77f37b0f4bb4d349a9146b0dd4",
+      "parents": [
+        "books/article-limit-text"
+      ],
+      "entry": "/home/fn/.cache/fn-certs/f5561b840518dda24619343195997df2a9e46f291d3232a6c4da063dea352d91/6448b0b93f6327b0",
+      "cert_sha256": "4b1d67cf1f134147aa75ba851733f5ef1f8d65c04ec00ff72c7d45c1ff065609",
+      "fasl_sha256": "5c40c888adf9bf787bfc3d7fef63fd54ea6791ffe84386e3f35f57da2d0a6682"
+    }
+  },
+  "manifest": "/build/lanes/native-article-text-0c9/build/acl2/certify-20261115T231807Z-1948450/manifest.json",
+  "manifest_sha256": "fb0ce2596ddfe7134b0092b77043dec3107ef380fbeb55b2e77c1b2c44f3ef6c",
+  "scope": {
+    "source": "0c9bf6ea0301980bfe95d2c993082ef70fd2706f",
+    "wrapper_pid": 1948409,
+    "wrapper_pgid": 1948408,
+    "cgroup": "/sys/fs/cgroup/user.slice/user-1000.slice/user@1000.service/app.slice/native-article-text-0c9.service",
+    "memory_max": 2147483648,
+    "memory_swap_max": 0,
+    "started_at": 1794784685.5969863,
+    "deadline": 1794784925.5969863,
+    "outer_seconds": 300,
+    "projects": "/build/lanes/native-article-text-0c9/acl2-projects",
+    "customization": "NONE",
+    "book_hash": "NIL",
+    "literal_heap_mb": 4096
+  },
+  "handles": {
+    "server": {
+      "pid": 1948420,
+      "pgid": 1948420,
+      "start_ticks": "144765020",
+      "cgroup": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/native-article-text-0c9.service"
+    },
+    "acl2": {
+      "pid": 1948421,
+      "pgid": 1948421,
+      "start_ticks": "144765038",
+      "cgroup": "0::/user.slice/user-1000.slice/user@1000.service/app.slice/native-article-text-0c9.service"
+    }
+  },
+  "owned_processes_gone": true,
+  "record_status": "passed",
+  "record_seconds": 0.244,
+  "scope_limit": "two-book actual bounded decimal parser only; projector/rolling/native unqualified"
+}

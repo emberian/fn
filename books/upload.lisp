@@ -2,7 +2,7 @@
 ;; row 3). The design is docs/d-machines-nntp.md section 14.3. An upload
 ;; row is taken by a connection that opens an article block (POST after 340,
 ;; IHAVE after 335, TAKETHIS at once) with its window: two chunk slots of the
-;; chunk class and the BLAKE3 hasher row 3 + its slot (B-S1). The
+;; chunk class and distinct original/stored BLAKE3 contexts (B-S1). The
 ;; connection's feed writes the unstuffed source into the chunks
 ;; (upload-feed.lisp) and reports what it wrote (fn2-upload-input); the
 ;; upload's own runs hash it and scan its header (upload-scan.lisp), at most
@@ -12,6 +12,7 @@
 ;; its arms are declared and materialized by assembly-callbacks-d-upload.lisp.
 (in-package "ACL2")
 (include-book "upload-kind")
+(include-book "upload-page-geometry")
 (include-book "article-manifest")
 (fn2-book-layer :d)
 
@@ -23,30 +24,49 @@
 ;; extent). Its size is derived from the stored octets (fn2-upload-page-bytes).
 ;; The full stored digest stays before the stage, after the generated field.
 ;; The location vector follows it; raw uploads also stage one complete unit.
-(defconst *fn2-upload-page-stored-source* (* 64 (ceiling *fn2-upload-mid-line-max* 64)))
-(defconst *fn2-upload-page-location-hashes* (+ *fn2-upload-page-stored-source* 64))
-(defconst *fn2-upload-page-stage*
-  (+ *fn2-upload-page-location-hashes* (* 64 (ceiling *fn2-article-location-hashes-max* 64))))
-(defconst *fn2-upload-page-hash* (+ *fn2-upload-page-stage* *fn2-commit-unit-bytes*))
-(defconst *fn2-upload-page-manifest* (+ *fn2-upload-page-hash* 64))
+
+;; The two distinct identities share the already-reserved 64-byte area.
+;; SOURCE is copied here before B3 is reused for the stored-byte digest.
+
+
+
+
+
+
 ;; The octets the manifest's header and one entry touch (each encoded with
 ;; the 32-octet digests it names; an entry after the zeros that pad its unit).
-(defconst *fn2-upload-head-bytes* (+ 32 *fn2-am-header-max*))
-(defconst *fn2-upload-entry-bytes* (+ 64 (* 2 *fn2-am-entry-max*)))
-(defun fn2-upload-page-bytes (total)
-  (declare (xargs :guard t))
-  (if (fn2-am-manifestp total)
-      (+ *fn2-upload-page-manifest* (* *fn2-commit-unit-bytes* (fn2-am-units total)))
-    *fn2-upload-page-manifest*))
+
+
+
+
+ ;; A block operation reads one storage unit and stores one pool digest.
+;; A short CV copies that digest, so its read/write bound is smaller.
+(defconst *fn2-upload-block-work-bytes*
+ (+ *fn2-commit-unit-bytes* *fn2-upload-digest-octets*))
+(defconst *fn2-upload-digest-copy-bytes* (* 2 *fn2-upload-digest-octets*))
+(assert-event (and (<= *fn2-commit-unit-bytes* *fn2-upload-run-bytes*)
+                  (<= *fn2-upload-digest-octets* *fn2-upload-run-bytes*)
+                  (<= *fn2-upload-digest-copy-bytes* *fn2-upload-run-bytes*)))
+
+ ;; One-pass Path validation uses two reads per Path octet. Trimming
+;; reads disjoint whitespace ends plus at most two boundary octets; transit comparison replaces the Path
+;; branch. The bounded MID grammar uses at most three MID spans plus four
+;; delimiter reads. Runtime range bounds below protect this under core WFP.
+(defconst *fn2-upload-verdict-work-bytes*
+ (+ (* 3 *fn2-upload-line-max*) (* 3 *fn2-format-message-id-max*) 6))
+(assert-event (equal *fn2-upload-verdict-work-bytes* 3750))
+(assert-event (<= *fn2-upload-verdict-work-bytes* *fn2-upload-run-bytes*))
 
 ;; The words the store's refusals give (also the transaction's).
+(defconst *fn2-upload-word-refused* (fn2-upload-word-code :refused))
 (defconst *fn2-upload-word-unaffordable* (fn2-upload-word-code :unaffordable))
 (defconst *fn2-upload-word-not-stored* (fn2-upload-word-code :not-stored))
+(defconst *fn2-upload-word-uncertain* (fn2-upload-word-code :uncertain))
 
 (defcost fn2-conn-feed-run :bytes *fn2-conn-feed-cost*
   :answers (:terminator :need-more :budget :bounds :fault)
   :faults (:bounds :fault)
-  :tables (fn2-core-pool)
+  :tables (fn2-core-pool fn2-core-machines fn2-core-machine-tables fn2-upload-table)
   :doc "Feed RX into the upload's chunk (upload-feed.lisp).")
 (defcost fn2-upload-gen-of :doc "An upload row's generation.")
 ;; Declared costs of the upload's outside calls (each a thin wrapper below).
@@ -55,9 +75,9 @@
 (defcost fn2-upload-hash-begin :tables (fn2-core-b3 fn2-core-digests) :doc "Start the hasher row.")
 (defcost fn2-upload-hash-end :tables (fn2-core-digests) :doc "Finalize the digest into the hasher row's result slot.")
 (defcost fn2-upload-scan-step :bytes *fn2-upload-scan-bytes* :doc "Advance the header scan over chunk 0.")
-(defcost fn2-upload-verdict-step :bytes 512 :doc "The definite verdict over the scanned header.")
+(defcost fn2-upload-verdict-step :bytes *fn2-upload-verdict-work-bytes* :doc "The definite verdict over the scanned header.")
 (defcost fn2-upload-chunk-cap :doc "A chunk's capacity.")
-(defcost fn2-upload-bound :doc "The article bound (the input configuration, at most two chunks).")
+(defcost fn2-upload-bound :doc "The configured article bound; physical windows are reused independently.")
 ; Its writes go through the kind-dispatching fn2-machine-write-word and
 ; -write-outcome-ready, which write the word columns of the connection, upload
 ; and transaction tables by the id's kind: those are its children.
@@ -65,6 +85,9 @@
   :doc "Post an outcome word to the connection that awaits it (generation and request checked); wake it.")
 (defcost fn2-cns-post-outcome :answers (:ok :dropped) :tables (fn2-cns-table fn2-core-machines)
   :doc "Post an append's outcome (its word and commit position) to the consumer request that awaits it (generation, request and phase checked); wake it.")
+(defcost fn2-upload-owner-principal :answers (:ok :state)
+  :doc "The generation-checked control connection's bound principal, or the NNTP connection's durable account identity.")
+
 (defcost fn2-upload-post-owner :answers (:ok :dropped) :tables (fn2-conn-table fn2-cns-table fn2-core-machines)
   :doc "Post an outcome to the upload's owner: a consumer request (fn2-cns-post-outcome) or a connection (fn2-conn-post-word).")
 (defcost fn2-upload-advance :bytes *fn2-upload-run-bytes* :steps *fn2-work-transition*
@@ -76,6 +99,9 @@
 (defcost fn2-txn-gen-of :doc "A transaction row's generation.")
 (defcost fn2-upload-conn-live-p :doc "Whether the connection still feeds this upload.")
 (defcost fn2-upload-txn-live-p :doc "Whether the upload's transaction still names it.")
+(defcost fn2-upload-start-discard :answers (:ok :fault) :faults (:fault)
+ :tables (fn2-core-machines fn2-core-machine-tables fn2-core-pool fn2-conn-table fn2-cns-table)
+ :doc "A checked definite upload verdict makes the actual owner drain framing before any storage claim.")
 (defcost fn2-upload-wake :tables (fn2-core-machines) :doc "Wake the upload's transaction.")
 (defcost fn2-upload-payload-reserve :answers (:ok :no-space :fault) :faults (:fault) :tables (fn2-core-extents)
   :doc "Reserve the extent the source is stored in (B's allocator): (mv code extent epoch counter).")
@@ -84,7 +110,11 @@
 (defcost fn2-upload-store-span :doc "The next storage write's pool range, offset and length: (mv slot gen off len).")
 (defcost fn2-upload-lease-class :doc "The pool class of the store page for stored octets of a length (nil: none).")
 ;; The source manifest's operations (stored octets longer than one extent).
-(defcost fn2-upload-hasher :doc "The upload row's hasher row (3 + its slot), whose format stripe the manifest's fields use.")
+(defcost fn2-upload-hasher :doc "The upload's original-source context from the shared B geometry; its stripe holds manifest fields.")
+(defcost fn2-upload-stored-hasher :doc "The actual upload's distinct stored-stream hash context.")
+(defcost fn2-upload-save-source :answers (:ok :bounds) :bytes *fn2-upload-digest-octets*
+  :tables (fn2-core-pool)
+  :doc "Save this actual upload's SOURCE identity in its owned page before B3 reuse.")
 (defcost fn2-upload-manifest-begin :answers (:ok :fault) :faults (:fault) :bytes *fn2-upload-head-bytes*
   :tables (fn2-core-pool fn2-core-fields)
   :doc "Encode the manifest's header at the (zeroed) store page's manifest: (mv code mfill).")
@@ -93,14 +123,14 @@
 (defcost fn2-upload-stored-hash :answers (:ok :fault) :faults (:fault) :bytes *fn2-commit-unit-bytes*
   :tables (fn2-core-b3 fn2-core-digests fn2-core-pool)
   :doc "Absorb one bounded storage span into the full stored-representation digest, finalizing only on the last block.")
-(defcost fn2-upload-location-hash :answers (:ok :fault) :faults (:fault) :bytes *fn2-commit-unit-bytes*
+(defcost fn2-upload-location-hash :answers (:ok :fault) :faults (:fault) :bytes *fn2-upload-block-work-bytes*
   :tables (fn2-core-b3 fn2-core-digests fn2-core-pool)
   :doc "Hash one exact location unit into the ordered trusted digest vector.")
-(defcost fn2-upload-block-hash :answers (:ok :fault) :faults (:fault) :bytes *fn2-commit-unit-bytes*
+(defcost fn2-upload-block-hash :answers (:ok :fault) :faults (:fault) :bytes *fn2-upload-block-work-bytes*
   :tables (fn2-core-b3 fn2-core-digests fn2-core-pool)
   :doc "The staged block's BLAKE3 into the store page.")
-(defcost fn2-upload-block-cv :answers (:ok :fault) :faults (:fault) :bytes *fn2-commit-unit-bytes*
-  :tables (fn2-core-digests fn2-core-pool)
+(defcost fn2-upload-block-cv :answers (:ok :fault) :faults (:fault) :bytes *fn2-upload-block-work-bytes*
+  :tables (fn2-core-b3 fn2-core-digests fn2-core-pool)
   :doc "The staged block's chaining value (its BLAKE3 for a short final block) into the store page.")
 (defcost fn2-upload-block-entry :answers (:ok :fault) :faults (:fault) :bytes *fn2-upload-entry-bytes*
   :tables (fn2-core-pool fn2-core-fields)
@@ -125,10 +155,13 @@
 (defmacro fn2-upload-op-events ()
  '(progn
 (defun fn2-upload-hasher (id fn2-core)
-  ;; the hasher row of the upload row ID: 3 + its slot (B-S1: rows 0-1 the
-  ;; commit kind's, row 2 recovery's checker)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (if (eq (fn2-upload-snapshot-read-code id fn2-core) :ok) (+ 3 (nfix (fn2-machine-slot id fn2-core))) 0))
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (if (eq (fn2-upload-snapshot-read-code id fn2-core) :ok)
+     (fn2-b-upload-source-hash-row (fn2-machine-slot id fn2-core)) 0))
+(defun fn2-upload-stored-hasher (id fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (if (eq (fn2-upload-snapshot-read-code id fn2-core) :ok)
+     (fn2-b-upload-stored-hash-row (fn2-machine-slot id fn2-core)) 0))
 (defun fn2-upload-hash-begin (row fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-b3 (fn2-core-b3 fn2-core)) (fn2-digests (fn2-core-digests fn2-core)))
@@ -168,6 +201,12 @@
 (defthm fn2-upload-chunk-cap-natp
   (natp (fn2-upload-chunk-cap slot fn2-core))
   :rule-classes :type-prescription)
+(defun fn2-upload-chunk-fill (slot fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (n)
+    (fn2-pool-slot-fill slot fn2-pool) (nfix n)))
+(defthm fn2-upload-chunk-fill-natp
+  (natp (fn2-upload-chunk-fill slot fn2-core)) :rule-classes :type-prescription)
 (defun fn2-upload-bound (cap0 cap1 fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-input-config (fn2-core-input-config fn2-core)))
@@ -175,7 +214,7 @@
     (if (and (fn2-input-config-wfp fn2-input-config) (natp (fn2-input-config-rows fn2-input-config))
              (< 0 (fn2-input-config-rows fn2-input-config)))
         (fn2-input-config-article-max 0 fn2-input-config) 0)
-    (min (nfix max) (nfix (- (+ (nfix cap0) (nfix cap1)) (+ 1 *fn2-upload-digest-octets*))))))
+    (fn2-upload-input-bound max cap0 cap1)))
 (defun fn2-upload-scan-step (slot gen off field visible fields lines seen mo ml no nl po pl id ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
@@ -227,34 +266,34 @@
       (mv :ok fn2-core))))
 (fn2-core-preserves fn2-conn-post-word (conn conn-gen request word fn2-core) :position 1 :rows nil)
 ;; A consumer request's append (e-surface.md 3.3) awaits its outcome in
-;; :append: the word (accepted, uncertain, or the refusal's word) and, for
-;; an accepted article, its commit position, recorded once on the row,
-;; which is woken to answer. A request that moved on drops it, as a
-;; connection's does.
-(defun fn2-cns-post-outcome (cns cns-gen request word position fn2-core)
+;; :append. WORD is the article disposition. POSTED is the article's
+;; commit disposition on success, or the evidence commit disposition
+;; for a conflict. Only a committed result carries a position.
+(defun fn2-cns-post-outcome (cns cns-gen request word position posted fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (if (not (and (eq (fn2-cns-snapshot-read-code cns fn2-core) :ok) (unsigned-byte-p 8 word)
                 (unsigned-byte-p 60 position)
+                (member-equal posted (list *fn2-cns-posted-accepted* *fn2-cns-posted-uncertain* *fn2-cns-posted-refused*))
                 (equal (fn2-machine-generation cns fn2-core) cns-gen)
                 (equal (fn2-cns-row-request cns fn2-core) request)
                 (equal (fn2-cns-row-phase cns fn2-core) *fn2-cns-state-append*)
                 (equal (fn2-cns-row-posted cns fn2-core) *fn2-cns-posted-none*)))
       (mv :dropped fn2-core)
-    (let* ((fn2-core (fn2-machine-write-posted
-                      cns (cond ((equal word (fn2-upload-word-code :accepted)) *fn2-cns-posted-accepted*)
-                                ((equal word (fn2-upload-word-code :uncertain)) *fn2-cns-posted-uncertain*)
-                                (t *fn2-cns-posted-refused*))
-                      fn2-core))
+    (let* ((fn2-core (fn2-machine-write-posted cns posted fn2-core))
            (fn2-core (fn2-machine-write-posted-word cns word fn2-core))
            (fn2-core (fn2-machine-write-cpos cns position fn2-core))
            (fn2-core (fn2-machine-set-wake-id cns fn2-core)))
       (mv :ok fn2-core))))
-(fn2-core-preserves fn2-cns-post-outcome (cns cns-gen request word position fn2-core) :position 1 :rows nil)
+(fn2-core-preserves fn2-cns-post-outcome (cns cns-gen request word position posted fn2-core) :position 1 :rows nil)
 ;; The owner's post: a consumer request's outcome, else a connection's word.
 (defun fn2-upload-post-owner (conn conn-gen request word position fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (if (eq (fn2-cns-snapshot-read-code conn fn2-core) :ok)
-      (fn2-cns-post-outcome conn conn-gen request word position fn2-core)
+      (fn2-cns-post-outcome conn conn-gen request word position
+        (cond ((equal word (fn2-upload-word-code :accepted)) *fn2-cns-posted-accepted*)
+              ((equal word (fn2-upload-word-code :uncertain)) *fn2-cns-posted-uncertain*)
+              (t *fn2-cns-posted-refused*))
+        fn2-core)
     (fn2-conn-post-word conn conn-gen request word fn2-core)))
 (fn2-core-preserves fn2-upload-post-owner (conn conn-gen request word position fn2-core) :position 1 :rows nil)
 (in-theory (disable fn2-cns-post-outcome))
@@ -263,16 +302,31 @@
 ;; single body with every stage inline costs minutes to prove).
 ;; Hash one step of [hashed, filled): (mv code hashed fn2-core).
 (defun fn2-upload-hash-run (id gen row c0 g0 c1 g1 cap0 hashed filled fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp cap0) (natp hashed) (natp filled))))
+  (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp cap0) (natp hashed) (natp filled))) (ignorable cap0))
   (b* (((unless (< hashed filled)) (mv :ok hashed fn2-core))
+       ((unless (and (eq (fn2-upload-snapshot-read-code id fn2-core) :ok)
+                     (equal (fn2-machine-generation id fn2-core) gen)))
+        (mv :bounds hashed fn2-core))
        ((mv hcode fn2-core) (if (equal hashed 0) (fn2-upload-hash-begin row fn2-core) (mv :ok fn2-core)))
        ((unless (eq hcode :ok)) (mv hcode hashed fn2-core))
-       (in0 (< hashed cap0))
-       (room (if in0 (- cap0 hashed) (- filled hashed)))
+       ;; Global source cursors never reset. The resident body window's
+       ;; origin is derived from actual FED and its current fill, while C0
+       ;; retains only the protocol header even in a larger physical class.
+       (header (fn2-upload-chunk-fill c0 fn2-core))
+       (body (fn2-upload-chunk-fill c1 fn2-core))
+       ((unless (and (<= body filled) (<= header (- filled body))))
+        (mv :bounds hashed fn2-core))
+       (body-base (- filled body))
+       (in0 (< hashed header))
+       ((unless (or in0 (<= body-base hashed))) (mv :bounds hashed fn2-core))
+       (off (if in0 hashed (- hashed body-base)))
+       (room (if in0 (- header hashed) (- filled hashed)))
        (hlen (min *fn2-upload-hash-bytes* (min (- filled hashed) room)))
        ((mv scode consumed fn2-core)
-        (fn2-upload-hash-step row (if in0 c0 c1) (if in0 g0 g1) (if in0 hashed (- hashed cap0)) hlen id gen fn2-core)))
-    (if (or (eq scode :ok) (eq scode :more)) (mv :ok (+ hashed (nfix consumed)) fn2-core) (mv scode hashed fn2-core))))
+        (fn2-upload-hash-step row (if in0 c0 c1) (if in0 g0 g1) off hlen id gen fn2-core))
+       ((unless (and (member-eq scode '(:ok :more)) (natp consumed) (<= consumed hlen)))
+        (mv :bounds hashed fn2-core)))
+    (mv :ok (+ hashed consumed) fn2-core)))
 (fn2-core-preserves fn2-upload-hash-run (id gen row c0 g0 c1 g1 cap0 hashed filled fn2-core) :position 2 :rows nil)
 ;; Advance the header scan over chunk 0 and store its state: (mv status hs fn2-core).
 (defun fn2-upload-scan-run (id gen c0 g0 fn2-core)
@@ -323,7 +377,10 @@
 ;; model's order); OK nil when the row cannot be read.
 (defun fn2-upload-word-now (id gen c0 g0 cap0 cap1 filled fn2-core)
   (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp filled))))
-  (if (not (eq (fn2-upload-snapshot-read-code id fn2-core) :ok)) (mv nil 0 0)
+  (if (not (and (eq (fn2-upload-snapshot-read-code id fn2-core) :ok)
+                (<= (fn2-upload-row-ml id fn2-core) *fn2-upload-line-max*)
+                (<= (fn2-upload-row-pl id fn2-core) *fn2-upload-line-max*)))
+      (mv nil 0 0)
     (b* ((seen (fn2-upload-row-seen id fn2-core))
          (rule (case (fn2-upload-row-rule id fn2-core) (0 :post) (1 :ihave) (otherwise :takethis)))
          (conn (fn2-upload-row-conn id fn2-core))
@@ -458,22 +515,42 @@
       (fn2-upload-page-zero (min left *fn2-commit-unit-bytes*) pfill ls lg okind oslot ogen fn2-core)
       (mv (cond ((not (eq code :ok)) :fault) ((< *fn2-commit-unit-bytes* left) :more) (t :ok)) fn2-core))))
 (fn2-core-preserves fn2-upload-page-zero-to (to ls lg okind oslot ogen fn2-core) :position 1 :rows nil)
-;; The manifest begun (the page zeroed to its start first, by
-;; fn2-upload-page-zero-to): the header (TOTAL stored octets, the source
-;; identity where the verdict appended it) encoded at
-;; *fn2-upload-page-manifest*: (mv code mfill fn2-core), MFILL the manifest's
-;; octets. Fields at the window's format stripe (row ROW).
-(defun fn2-upload-manifest-begin (row ls lg total c0 g0 c1 g1 hashed okind oslot ogen fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (and (fn2-core-wfp fn2-core) (natp hashed))))
+;; SOURCE must be saved from the actual completed upload before this hash
+;; context is reused. The page's two digest halves have distinct meanings.
+(defun fn2-upload-save-source (id gen fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (b* (((unless (and (eq (fn2-upload-snapshot-read-code id fn2-core) :ok)
+                    (equal (fn2-machine-generation id fn2-core) gen)
+                    (equal (fn2-upload-row-phase id fn2-core) *fn2-upload-state-stored-hash*)
+                    (equal (fn2-upload-row-mstep id fn2-core) 1)
+                    (equal (fn2-upload-row-stored-hashed id fn2-core) 0)
+                    (equal (fn2-upload-row-lease id fn2-core) *fn2-upload-lease-held*)
+                    (equal (fn2-upload-row-word id fn2-core) 0)))
+       (mv :bounds fn2-core))
+      (c0 (fn2-upload-row-c0-slot id fn2-core)) (g0 (fn2-upload-row-c0-gen id fn2-core))
+      (c1 (fn2-upload-row-c1-slot id fn2-core)) (g1 (fn2-upload-row-c1-gen id fn2-core))
+      (hashed (fn2-upload-row-hashed id fn2-core))
+      (ls (fn2-upload-row-lslot id fn2-core)) (lg (fn2-upload-row-lgen id fn2-core))
+      ((mv in1 off) (fn2-upload-digest-at hashed (fn2-upload-chunk-cap c0 fn2-core)))
+      ((mv code fn2-core)
+       (fn2-core-copy-range (if in1 c1 c0) (if in1 g1 g0) off
+                            ls lg *fn2-upload-page-source* *fn2-upload-digest-octets*
+                            *fn2-upload-kind* id gen fn2-core)))
+  (mv (if (eq code :ok) :ok :bounds) fn2-core)))
+(fn2-core-preserves fn2-upload-save-source (id gen fn2-core) :position 1 :rows nil)
+(in-theory (disable fn2-upload-save-source))
+;; The manifest header consumes the retained original SOURCE identity,
+;; independently of the stored-byte digest in the adjacent first half.
+(defun fn2-upload-manifest-begin (row ls lg total okind oslot ogen fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (b* ((pfill (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (n) (fn2-gram-fill ls fn2-pool) n))
-       ((unless (equal pfill *fn2-upload-page-manifest*)) (mv :fault 0 fn2-core))
-       ((mv in1 doff) (fn2-upload-digest-at hashed (fn2-upload-chunk-cap c0 fn2-core))))
+       ((unless (equal pfill *fn2-upload-page-manifest*)) (mv :fault 0 fn2-core)))
     (stobj-let ((fn2-fields (fn2-core-fields fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
       (code end fn2-fields fn2-pool)
-      (fn2-am-put-header (* 128 (nfix row)) total (if in1 c1 c0) (if in1 g1 g0) doff ls lg *fn2-upload-page-manifest*
-                         okind oslot ogen fn2-fields fn2-pool)
+      (fn2-am-put-header (* 128 (nfix row)) total ls lg *fn2-upload-page-source*
+                         ls lg *fn2-upload-page-manifest* okind oslot ogen fn2-fields fn2-pool)
       (mv (if (eq code :ok) :ok :fault) (nfix (- (nfix end) *fn2-upload-page-manifest*)) fn2-core))))
-(fn2-core-preserves fn2-upload-manifest-begin (row ls lg total c0 g0 c1 g1 hashed okind oslot ogen fn2-core) :position 2 :rows nil
+(fn2-core-preserves fn2-upload-manifest-begin (row ls lg total okind oslot ogen fn2-core) :position 2 :rows nil
   :hints (("Goal" :in-theory (enable fn2-core-wfp))))
 ;; Block DONE / unit of the stored octets copied to the page's stage, piece
 ;; by piece (the generated field, chunk 0, chunk 1; FUEL pieces at most):
@@ -530,27 +607,22 @@
         (fn2-upload-digest-store row ls lg *fn2-upload-page-stored-source* oslot ogen fn2-core)))
     (mv (if (eq code :ok) :ok :fault) fn2-core)))
 (fn2-core-preserves fn2-upload-stored-hash (row slot gen off done blen last ls lg okind oslot ogen fn2-core) :position 1 :rows nil)
-;; The staged block's BLAKE3 into the page at *fn2-upload-page-hash* (the
-;; window's hasher row ROW; after the verdict the source's digest is already
-;; appended to it): (mv code fn2-core).
-(defun fn2-upload-block-hash-run (row ls lg blen okind oslot ogen fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)) (ignorable okind))
-  (b* (((mv code fn2-core) (fn2-upload-hash-begin row fn2-core))
-       ((unless (eq code :ok)) (mv code fn2-core))
-       ((mv code fn2-core)
-        (if (and (natp blen) (<= blen *fn2-commit-unit-bytes*))
-            (fn2-upload-hash-span 8 row ls lg *fn2-upload-page-stage* blen oslot ogen fn2-core)
-          (mv :bounds fn2-core)))
-       ((unless (eq code :ok)) (mv :bounds fn2-core))
-       ((mv code fn2-core) (fn2-upload-hash-end row fn2-core))
-       ((unless (eq code :ok)) (mv code fn2-core)))
-    (fn2-upload-digest-store row ls lg *fn2-upload-page-hash* oslot ogen fn2-core)))
-(fn2-core-preserves fn2-upload-block-hash-run (row ls lg blen okind oslot ogen fn2-core) :position 1 :rows nil)
-(defun fn2-upload-block-hash (row ls lg blen okind oslot ogen fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (mv-let (code fn2-core) (fn2-upload-block-hash-run row ls lg blen okind oslot ogen fn2-core)
-    (mv (if (eq code :ok) :ok :fault) fn2-core)))
-(fn2-core-preserves fn2-upload-block-hash (row ls lg blen okind oslot ogen fn2-core) :position 1 :rows nil)
+;; A bounded block hash owns the shared synchronous block scratch only for
+;; this call. Copy its result to the upload page before returning/yielding.
+(defun fn2-upload-block-hash (ls lg blen okind oslot ogen fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (stobj-let ((fn2-b3 (fn2-core-b3 fn2-core)) (fn2-digests (fn2-core-digests fn2-core))
+             (fn2-pool (fn2-core-pool fn2-core))) (code fn2-b3 fn2-digests fn2-pool)
+  (let ((row (fn2-b-block-read-row (fn2-b3-rows fn2-b3))))
+   (mv-let (code fn2-b3 fn2-digests)
+    (fn2-block-hash-into row ls lg *fn2-upload-page-stage* blen okind oslot ogen fn2-b3 fn2-digests fn2-pool)
+    (if (not (eq code :ok)) (mv :fault fn2-b3 fn2-digests fn2-pool)
+     (mv-let (copied fn2-pool)
+      (fn2-digest-store 32 (fn2-digest-slot row *fn2-b3-result*) ls lg *fn2-upload-page-hash*
+                        okind oslot ogen fn2-digests fn2-pool)
+      (mv (if (eq copied :ok) :ok :fault) fn2-b3 fn2-digests fn2-pool)))))
+  (mv code fn2-core)))
+(fn2-core-preserves fn2-upload-block-hash (ls lg blen okind oslot ogen fn2-core) :position 1 :rows nil)
 (defun fn2-upload-location-hash (row ls lg off blen unit okind oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)) (ignorable okind))
   (b* (((unless (and (natp unit) (< unit *fn2-commit-write-resources*)
@@ -566,31 +638,35 @@
     (mv (if (eq code :ok) :ok :fault) fn2-core)))
 (fn2-core-preserves fn2-upload-location-hash (row ls lg off blen unit okind oslot ogen fn2-core)
   :position 1 :rows nil)
-;; The staged block's chaining value at chunk counter 4 BLOCK (a whole unit)
-;; into the page 32 octets after its BLAKE3; a short final block is no
-;; complete subtree and its BLAKE3 (still the hasher row's result) goes there
-;; again (article-manifest.lisp): (mv code fn2-core).
-(defun fn2-upload-block-cv (row ls lg blen block okind oslot ogen fn2-core)
-  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)) (ignorable okind))
-  (b* ((fn2-core
-        (if (equal blen *fn2-commit-unit-bytes*)
-            (stobj-let ((fn2-digests (fn2-core-digests fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
-              (fn2-digests)
-              (let ((dst (fn2-digest-slot (nfix row) *fn2-b3-result*))
-                    (off (+ (if (and (natp ls) (< ls (fn2-pool-rows fn2-pool))) (nfix (fn2-pool-slot-base ls fn2-pool)) 0)
-                            *fn2-upload-page-stage*))
-                    (counter (* 4 (nfix block))))
-                (if (and (natp row) (fn2-digest-rowp dst fn2-digests) (fn2-pool-wfp fn2-pool)
-                         (<= (+ off *fn2-commit-unit-bytes*) (fn2-pool-data-length fn2-pool))
-                         (unsigned-byte-p 48 counter))
-                    (fn2-b3-subtree-cv-into dst off *fn2-commit-unit-bytes* counter fn2-digests fn2-pool)
-                  fn2-digests))
-              fn2-core)
-          fn2-core))
-       ((mv code fn2-core) (fn2-upload-digest-store row ls lg (+ 32 *fn2-upload-page-hash*) oslot ogen fn2-core)))
-    (mv (if (eq code :ok) :ok :fault) fn2-core)))
-(fn2-core-preserves fn2-upload-block-cv (row ls lg blen block okind oslot ogen fn2-core) :position 1 :rows nil
-  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+;; CV production also completes in one call. A short block uses the hash
+;; already retained in its page, never a shared scratch result across yields.
+(defun fn2-upload-block-cv (ls lg blen block okind oslot ogen fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (if (not (and (posp blen) (<= blen *fn2-commit-unit-bytes*) (natp block)))
+     (mv :fault fn2-core)
+  (if (not (equal blen *fn2-commit-unit-bytes*))
+     (mv-let (code fn2-core)
+      (fn2-core-copy-range ls lg *fn2-upload-page-hash* ls lg (+ 32 *fn2-upload-page-hash*)
+                           32 okind oslot ogen fn2-core)
+      (mv (if (eq code :ok) :ok :fault) fn2-core))
+   (stobj-let ((fn2-b3 (fn2-core-b3 fn2-core)) (fn2-digests (fn2-core-digests fn2-core))
+               (fn2-pool (fn2-core-pool fn2-core))) (code fn2-digests fn2-pool)
+    (let* ((row (fn2-b-block-read-row (fn2-b3-rows fn2-b3)))
+           (dst (fn2-digest-slot row *fn2-b3-result*))
+           (code (fn2-pool-workspace-code ls lg okind oslot ogen fn2-pool))
+           (counter (* 4 (nfix block))))
+     (if (not (and (eq code :ok) (natp block) (fn2-digest-rowp dst fn2-digests)
+                   (<= (+ *fn2-upload-page-stage* *fn2-commit-unit-bytes*) (fn2-pool-fill ls fn2-pool))
+                   (unsigned-byte-p 48 counter)))
+         (mv :fault fn2-digests fn2-pool)
+       (let* ((off (+ (fn2-pool-slot-base ls fn2-pool) *fn2-upload-page-stage*))
+              (fn2-digests (fn2-b3-subtree-cv-into dst off *fn2-commit-unit-bytes* counter fn2-digests fn2-pool)))
+        (mv-let (copied fn2-pool)
+         (fn2-digest-store 32 dst ls lg (+ 32 *fn2-upload-page-hash*) okind oslot ogen fn2-digests fn2-pool)
+         (mv (if (eq copied :ok) :ok :fault) fn2-digests fn2-pool)))))
+    (mv code fn2-core)))))
+(fn2-core-preserves fn2-upload-block-cv (ls lg blen block okind oslot ogen fn2-core) :position 1 :rows nil
+ :hints (("Goal" :in-theory (enable fn2-core-wfp))))
 ;; The block's entry after the manifest's MFILL octets (the packing rule):
 ;; (mv code mfill fn2-core).
 (defun fn2-upload-block-entry (row ls lg block blen unit epoch alloc mfill okind oslot ogen fn2-core)
@@ -633,9 +709,9 @@
                 (mv code next lo len unit epoch alloc fn2-core)))
              ((unless (and (eq code :ok) (natp next) (natp unit) (< *fn2-upload-page-manifest* next))) (mv :bounds fn2-core))
              ((mv code fn2-core)
-              (cond ((not (equal (mod unit *fn2-commit-write-resources*) 0)) (mv :ok fn2-core))
-                    (commit (fn2-upload-extent-commit (floor unit *fn2-commit-write-resources*) epoch alloc event fn2-core))
-                    (t (fn2-upload-payload-settle (floor unit *fn2-commit-write-resources*) epoch alloc fn2-core))))
+              (cond ((not (equal (mod unit *fn2-storage-extent-units*) 0)) (mv :ok fn2-core))
+                    (commit (fn2-upload-extent-commit (floor unit *fn2-storage-extent-units*) epoch alloc event fn2-core))
+                    (t (fn2-upload-payload-settle (floor unit *fn2-storage-extent-units*) epoch alloc fn2-core))))
              ((unless (eq code :ok)) (mv code fn2-core)))
           (fn2-upload-manifest-extents (- fuel 1) commit event base ls lg (- next *fn2-upload-page-manifest*) lim mfill
                                        okind oslot ogen fn2-core))))))
@@ -747,7 +823,7 @@
   :hints (("Goal" :in-theory (disable nfix))))
 (in-theory (disable fn2-upload-payload-reserve fn2-upload-payload-settle fn2-upload-store-span
                     fn2-upload-lease-class fn2-upload-put-mid fn2-upload-page-zero fn2-upload-page-zero-to fn2-upload-manifest-begin
-                    fn2-upload-stage-loop fn2-upload-stage fn2-upload-hash-span fn2-upload-stored-hash fn2-upload-block-hash-run fn2-upload-block-hash fn2-upload-location-hash fn2-upload-block-entry
+                    fn2-upload-stage-loop fn2-upload-stage fn2-upload-hash-span fn2-upload-stored-hash fn2-upload-block-hash fn2-upload-location-hash fn2-upload-block-entry
                     fn2-upload-extent-commit fn2-upload-manifest-extents fn2-upload-manifest-head fn2-upload-extents-run fn2-upload-extents-of
                     fn2-upload-block-cv fn2-upload-manifest-walk fn2-upload-manifest-units fn2-upload-settle-unit
                     fn2-upload-extents-close-run fn2-upload-extents-close))
@@ -774,6 +850,40 @@
   :position 1 :rows nil)
 (in-theory (disable fn2-upload-hash-run fn2-upload-scan-run fn2-upload-finish))
 
+(defun fn2-upload-start-discard (id gen fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (b* (((unless (and (eq (fn2-upload-snapshot-read-code id fn2-core) :ok)
+                    (equal (fn2-machine-generation id fn2-core) gen)
+                    (not (equal (fn2-upload-row-word id fn2-core) 0))
+                    (equal (fn2-upload-row-pending id fn2-core) 0)
+                    (or (equal (fn2-upload-row-lease id fn2-core) *fn2-upload-lease-none*)
+                        (and (equal (fn2-upload-row-lease id fn2-core) *fn2-upload-lease-held*)
+                             (or (equal (fn2-upload-row-stream-active id fn2-core) 0)
+                                 (and (equal (fn2-upload-row-stream-active id fn2-core) 1)
+                                      (member-equal (fn2-upload-row-phase id fn2-core)
+                                        (list *fn2-upload-state-stream-init* *fn2-upload-state-stream-write*
+                                              *fn2-upload-state-stream-receiving*))))
+                             (let ((ls (fn2-upload-row-lslot id fn2-core))
+                                   (lg (fn2-upload-row-lgen id fn2-core)))
+                              (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (ok)
+                               (eq (fn2-pool-workspace-code ls lg *fn2-upload-kind* id gen fn2-pool) :ok) ok))))))
+       (mv :fault fn2-core))
+      (owner (fn2-upload-row-conn id fn2-core)) (ogen (fn2-upload-row-conn-gen id fn2-core))
+      (live (or (and (eq (fn2-conn-snapshot-read-code owner fn2-core) :ok)
+                     (equal (fn2-machine-generation owner fn2-core) ogen)
+                     (equal (fn2-conn-row-upload owner fn2-core) id)
+                     (equal (fn2-conn-row-upload-gen owner fn2-core) gen))
+                (and (eq (fn2-cns-snapshot-read-code owner fn2-core) :ok)
+                     (equal (fn2-machine-generation owner fn2-core) ogen)
+                     (equal (fn2-cns-row-upload owner fn2-core) id)
+                     (equal (fn2-cns-row-upload-gen owner fn2-core) gen))))
+      ((unless live) (mv :fault fn2-core))
+      ;; Reason 4 retains the checked upload verdict while framing drains;
+      ;; issued ambiguity never reaches these preissue/receiving phases.
+      (fn2-core (fn2-machine-write-feed-discard owner 4 fn2-core)))
+   (mv :ok fn2-core)))
+(fn2-core-preserves fn2-upload-start-discard (id gen fn2-core) :position 1 :rows nil)
+
 ;; One run of the upload's work (section 14.3): hash at most
 ;; *fn2-upload-hash-bytes* of what the connection fed, advance the header
 ;; scan, and once the terminator was framed and everything is hashed, give
@@ -798,7 +908,8 @@
        ((unless (equal discard 0))
         (b* (((unless terminated)
               (mv (if (equal ph *fn2-upload-state-discard*) :idle :discard) fn2-core))
-             (w (fn2-upload-word-code (if (equal discard 1) :framing :too-large)))
+             (w (if (equal discard 4) (fn2-upload-row-word id fn2-core)
+                  (fn2-upload-word-code (case discard (1 :framing) (2 :too-large) (otherwise :header-octets)))))
              ((unless (equal txn *fn2-none*)) (let ((fn2-core (fn2-upload-hand-over id w 0 txn fn2-core))) (mv :sealed fn2-core)))
              ((mv & fn2-core) (fn2-upload-post-owner conn conn-gen request w 0 fn2-core)))
           (mv :draining fn2-core)))
@@ -807,6 +918,15 @@
        (fn2-core (fn2-machine-write-hashed id hashed fn2-core))
        ((mv st hs fn2-core) (fn2-upload-scan-run id gen c0 g0 fn2-core))
        ((when (eq st :fault)) (mv :stop fn2-core))
+       ;; Definite header refusal drains framing without occupying C1. It
+       ;; starts before any storage lease or I/O, preserving verdict order.
+       ((when (not (member-equal hs (list *fn2-upload-head-scanning* *fn2-upload-head-done*))))
+        (b* (((mv ok word inj) (fn2-upload-word-now id gen c0 g0 cap0 cap1 filled fn2-core))
+             ((unless (and ok (not (equal word 0)))) (mv :stop fn2-core))
+             (fn2-core (fn2-machine-write-word id word fn2-core))
+             (fn2-core (fn2-machine-write-inj id inj fn2-core))
+             ((mv code fn2-core) (fn2-upload-start-discard id gen fn2-core)))
+          (mv (if (eq code :ok) :discard :stop) fn2-core)))
        ;; the header is complete: the transaction first (its claim serializes
        ;; same-Message-ID offers before the body is stored)
        ((when (and (equal hs *fn2-upload-head-done*) (equal txn *fn2-none*))) (mv :identity fn2-core))

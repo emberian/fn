@@ -5,6 +5,7 @@
 
 (defmacro fn2-machine-access-events ()
  '(progn
+(make-event (value (fn2-machine-partition-runtime-class-event (w state))))
 (defun fn2-core-origin-values (fn2-core)
  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
  (stobj-let ((fn2-origin (fn2-core-origin fn2-core))) (lineage domain incarnation)
@@ -193,19 +194,45 @@
 (defun fn2-machine-waiting-p (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (not (equal (fn2-machine-wait-head fn2-core) *fn2-none*)))
-; Whether the pool has COUNT free rows of each (CLASS . COUNT) in NEEDS.
+; Resolve each declared class against this pool before checking a taken
+; partition. Distinct byte sizes can select the same physical class.
+(defun fn2-machine-pool-resolve-needs (needs fn2-pool)
+  (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
+  (cond ((null needs) (mv t nil))
+        ((or (atom needs) (not (consp (car needs))) (not (natp (cdar needs)))) (mv nil nil))
+        (t (let* ((spec (caar needs))
+                  (class (cond ((natp spec) spec)
+                               ((and (consp spec) (eq (car spec) :bytes)
+                                     (consp (cdr spec)) (null (cddr spec))
+                                     (natp (cadr spec)))
+                                (fn2-pool-class-for (cadr spec) fn2-pool))
+                               (t nil))))
+             (if (not (and (natp class) (< class (fn2-pool-nclasses fn2-pool))))
+                 (mv nil nil)
+               (mv-let (ok rest) (fn2-machine-pool-resolve-needs (cdr needs) fn2-pool)
+                 (if ok (mv t (cons (cons class (cdar needs)) rest)) (mv nil nil))))))))
+(defun fn2-machine-pool-class-need (class needs)
+  (declare (xargs :guard t))
+  (if (atom needs) 0
+    (+ (if (and (consp (car needs)) (equal class (caar needs)))
+           (nfix (cdar needs)) 0)
+       (fn2-machine-pool-class-need class (cdr needs)))))
+(defun fn2-machine-pool-resolved-has-p (needs all fn2-pool)
+  (declare (xargs :stobjs fn2-pool
+                  :guard (fn2-pool-wfp fn2-pool)))
+  (if (atom needs) (null needs)
+    (and (consp (car needs)) (natp (caar needs)) (natp (cdar needs))
+         (< (caar needs) (fn2-pool-nclasses fn2-pool))
+         (<= (fn2-machine-pool-class-need (caar needs) all)
+             (fn2-pool-reservable-count (caar needs) fn2-pool))
+         (fn2-machine-pool-resolved-has-p (cdr needs) all fn2-pool))))
 (defun fn2-machine-pool-has-p (needs fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (if (atom needs) t
-    (and (consp (car needs)) (natp (caar needs)) (natp (cdar needs))
-         (let ((class (caar needs)) (count (cdar needs)))
-           (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
-             (yes)
-             (and (< class (fn2-pool-nclasses fn2-pool))
-                  (< class (fn2-pool-class-counts-length fn2-pool))
-                  (<= count (fn2-pool-class-countsi class fn2-pool)))
-             yes))
-         (fn2-machine-pool-has-p (cdr needs) fn2-core))))
+  (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
+    (yes)
+    (mv-let (ok resolved) (fn2-machine-pool-resolve-needs needs fn2-pool)
+      (and ok (fn2-machine-pool-resolved-has-p resolved resolved fn2-pool)))
+    yes))
 ; The first partition with a parked taker, a free credit and (for a taken
 ; kind, A-S7) the pool rows its take reserves, or nil.
 (defun fn2-machine-admission-ready-ord (o fn2-core)
@@ -214,13 +241,16 @@
   (if (or (not (natp o)) (>= o *fn2-machine-admitted-max*)) nil
     (if (and (not (equal (fn2-machine-admission-head o fn2-core) *fn2-none*))
              (< 0 (fn2-machine-admission-credits o fn2-core))
-             (fn2-machine-pool-has-p (fn2-machine-partition-classes o) fn2-core))
+             (fn2-machine-pool-has-p (fn2-machine-partition-runtime-classes o fn2-core) fn2-core))
         o
       (fn2-machine-admission-ready-ord (+ 1 o) fn2-core))))
 (defthm fn2-machine-admission-ready-ord-range
   (implies (fn2-machine-admission-ready-ord o fn2-core)
            (and (natp (fn2-machine-admission-ready-ord o fn2-core))
-                (< (fn2-machine-admission-ready-ord o fn2-core) *fn2-machine-admitted-max*))))
+                (< (fn2-machine-admission-ready-ord o fn2-core) *fn2-machine-admitted-max*)))
+  :hints (("Goal" :induct (fn2-machine-admission-ready-ord o fn2-core)
+                  :in-theory (disable fn2-machine-pool-has-p
+                                      fn2-machine-partition-classes))))
 (defun fn2-machine-admission-ready-p (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (if (fn2-machine-admission-ready-ord 0 fn2-core) t nil))
@@ -478,6 +508,24 @@
 (in-theory (disable fn2-machine-scribe-id))
 
 
+; Reattach the listener with its generated child facts. The rest of the
+; core stays opaque while the row loop proves its own preservation.
+(defun fn2-listener-install-fact (install args plan suffix predicate)
+  (declare (xargs :mode :program))
+  (let ((plan-fact (fn2-columns-sym plan suffix)))
+    `(defthm ,(fn2-columns-sym install suffix)
+       (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+                (,predicate (,install ,@args fn2-core)))
+       :hints (("Goal"
+                :in-theory (disable fn2-corep fn2-core-wfp ,plan-fact
+                                    fn2-listener-table update-fn2-listener-table)
+                :use ((:instance ,plan-fact
+                        (fn2-listener (fn2-listener-table fn2-core))
+                        (left (fn2-listener-rows (fn2-listener-table fn2-core))))))))))
+(defmacro fn2-listener-install-preserves (install args plan)
+  `(progn ,(fn2-listener-install-fact install args plan "-TYPE" 'fn2-corep)
+          ,(fn2-listener-install-fact install args plan "-WFP" 'fn2-core-wfp)))
+
 ; Initialization policy belongs to listeners and is copied to each admitted
 ; connection. No echo/discard policy lives in the shared directory.
 (defun fn2-listener-mode-rows (left mode fn2-listener)
@@ -501,17 +549,7 @@
   (if (not (unsigned-byte-p 1 mode)) (fn2-machine-refuse-write fn2-core)
     (stobj-let ((fn2-listener (fn2-listener-table fn2-core))) (fn2-listener)
       (fn2-listener-mode-rows (fn2-listener-rows fn2-listener) mode fn2-listener) fn2-core)))
-(defthm fn2-listener-set-mode-all-type
-  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-           (fn2-corep (fn2-listener-set-mode-all mode fn2-core)))
-  :hints (("Goal" :use ((:instance fn2-listener-mode-rows-type
-                         (fn2-listener (fn2-listener-table fn2-core))
-                         (left (fn2-listener-rows (fn2-listener-table fn2-core)))))
-                  :in-theory (enable fn2-core-wfp))))
-(defthm fn2-listener-set-mode-all-wfp
-  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-           (fn2-core-wfp (fn2-listener-set-mode-all mode fn2-core)))
-  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+(fn2-listener-install-preserves fn2-listener-set-mode-all (mode) fn2-listener-mode-rows)
 (in-theory (disable fn2-listener-set-mode-all))
 ; The admitted kind every listener admits into (D 4.5), from the profile, and
 ; the kind its :local peers are admitted into (the profile's
@@ -543,17 +581,7 @@
       (fn2-machine-refuse-write fn2-core)
     (stobj-let ((fn2-listener (fn2-listener-table fn2-core))) (fn2-listener)
       (fn2-listener-target-rows (fn2-listener-rows fn2-listener) target local fn2-listener) fn2-core)))
-(defthm fn2-listener-set-target-all-type
-  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-           (fn2-corep (fn2-listener-set-target-all target local fn2-core)))
-  :hints (("Goal" :use ((:instance fn2-listener-target-rows-type
-                         (fn2-listener (fn2-listener-table fn2-core))
-                         (left (fn2-listener-rows (fn2-listener-table fn2-core)))))
-                  :in-theory (enable fn2-core-wfp))))
-(defthm fn2-listener-set-target-all-wfp
-  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-           (fn2-core-wfp (fn2-listener-set-target-all target local fn2-core)))
-  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+(fn2-listener-install-preserves fn2-listener-set-target-all (target local) fn2-listener-target-rows)
 (in-theory (disable fn2-listener-set-target-all))
 
 ; Each listener's principal slot (D7's S1), from the profile key
@@ -583,17 +611,7 @@
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-listener (fn2-listener-table fn2-core))) (fn2-listener)
     (fn2-listener-principal-rows (fn2-listener-rows fn2-listener) slots fn2-listener) fn2-core))
-(defthm fn2-listener-set-principals-type
-  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-           (fn2-corep (fn2-listener-set-principals slots fn2-core)))
-  :hints (("Goal" :use ((:instance fn2-listener-principal-rows-type
-                         (fn2-listener (fn2-listener-table fn2-core))
-                         (left (fn2-listener-rows (fn2-listener-table fn2-core)))))
-                  :in-theory (enable fn2-core-wfp))))
-(defthm fn2-listener-set-principals-wfp
-  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
-           (fn2-core-wfp (fn2-listener-set-principals slots fn2-core)))
-  :hints (("Goal" :in-theory (enable fn2-core-wfp))))
+(fn2-listener-install-preserves fn2-listener-set-principals (slots) fn2-listener-principal-rows)
 (in-theory (disable fn2-listener-set-principals))
 
 (fn2-resolve :access)

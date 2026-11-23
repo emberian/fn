@@ -25,7 +25,8 @@ restart fixture separately exercises persisted genesis and the boot machine."
             (setf (fn2-nhost-storage host)
                   (fn2-device-start fd size backend (length (fn2-nhost-ops host))
                     (lambda () (fn2-native-mux-signal (fn2-nhost-mux host)))
-                    (lambda (label) (fn2-n-boundary host label))))
+                    (lambda (label job)
+                      (fn2-n-boundary host label (fn2-device-job-slot job) (fn2-device-job-gen job)))))
             (setf transferred t))
         (unless transferred (fn2-native-close fd))))))
 
@@ -56,7 +57,7 @@ WIRE per connection; ENVELOPE over the trace replayed from the seeded store (a r
              (caps (cadr (fn2-ss-replay *fn2-ns-trace* *fn2-ss-profile* *fn2-ss-seeds* nil)))
              (cap (find port caps :key (lambda (c) (nth 1 (cdr c)))))
              (cl (find port clients :key (lambda (c) (nth 4 c)))))
-        (format t "@@FN2SS envelope-detail ~d rx=~s eof=~s tx-len=~d sent=~s received-len=~d closed=~s@@~%"
+        (format t "@@FN2SS envelope-detail ~d rx=~s eof=~s consumed-source-len=~d sent=~s received-len=~d closed=~s@@~%"
                 port (map 'string #'code-char (reverse (nth 2 (cdr cap)))) (nth 4 (cdr cap))
                 (length (nth 3 (cdr cap))) (map 'string #'code-char (nth 1 cl)) (length (nth 2 cl)) (nth 3 cl))))
     (dolist (c clients)

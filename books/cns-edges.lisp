@@ -28,10 +28,10 @@
 ; the stack at once, so no bucket below the top is ever stuck.
 ;
 ; The link race (D's review 3, K4b): LINK answers :behind, linking nothing,
-; when the bucket's BPOS is at or above FROM: a publish touching the bucket
-; since the waiter's read (whose frontier is FROM - 1) has already run its
-; hook, and the waiter reads again instead of parking. A publish after the
-; link finds the edge. So no publish between the read and the park is lost.
+; when the bucket's BPOS exceeds the global commit tip the waiter's read
+; observed, even if FROM is lower. This catches publishes between read and
+; link without spinning on an older publish by a colliding principal.
+; A publish after the link finds the edge.
 (in-package "ACL2")
 (include-book "columns")
 (include-book "columns-guard-hints")
@@ -146,16 +146,16 @@
          (update-fn2-cns-fresh (+ 1 e) fn2-cns-edges))
         (t fn2-cns-edges)))
 (fn2-cns-edges-row-preserves fn2-cns-take-row (e fn2-cns-edges) :position nil :rows t :raw-rows t)
-(defun fn2-cns-edge-link (stream waiter gen from fn2-cns-edges)
+(defun fn2-cns-edge-link (stream waiter gen from seen fn2-cns-edges)
   ; (mv code e fn2-cns-edges): :ok with the edge; :behind (a publish touching
   ; the bucket since the read: read again); :exhausted (every row in use)
   (declare (xargs :stobjs fn2-cns-edges :guard (fn2-cns-edges-wfp fn2-cns-edges)))
   (let ((b (fn2-cns-bucket stream fn2-cns-edges)))
     (cond ((not (and (fn2-cns-ix b) (unsigned-byte-p 60 stream) (unsigned-byte-p 32 waiter)
-                     (not (equal waiter *fn2-cns-none*)) (unsigned-byte-p 60 gen) (unsigned-byte-p 60 from)
+                     (not (equal waiter *fn2-cns-none*)) (unsigned-byte-p 60 gen) (unsigned-byte-p 60 from) (unsigned-byte-p 60 seen)
                      (unsigned-byte-p 32 (+ 1 (fn2-cns-used-count fn2-cns-edges)))))
            (mv :exhausted *fn2-cns-none* fn2-cns-edges))
-          ((<= from (fn2-cns-edges-bpos b fn2-cns-edges)) (mv :behind *fn2-cns-none* fn2-cns-edges))
+          ((< seen (fn2-cns-edges-bpos b fn2-cns-edges)) (mv :behind *fn2-cns-none* fn2-cns-edges))
           (t
            (let ((e (fn2-cns-alloc-row fn2-cns-edges)) (tail (fn2-cns-edges-btail b fn2-cns-edges))
                  (count (+ 1 (fn2-cns-used-count fn2-cns-edges))))
@@ -168,7 +168,7 @@
                       (fn2-cns-edges (fn2-cns-edges-set-btail b e fn2-cns-edges))
                       (fn2-cns-edges (update-fn2-cns-used-count count fn2-cns-edges)))
                  (mv :ok e fn2-cns-edges))))))))
-(fn2-cns-edges-row-preserves fn2-cns-edge-link (stream waiter gen from fn2-cns-edges) :position 2 :rows t :raw-rows t)
+(fn2-cns-edges-row-preserves fn2-cns-edge-link (stream waiter gen from seen fn2-cns-edges) :position 2 :rows t :raw-rows t)
 (defun fn2-cns-edge-unlink (e fn2-cns-edges)
   ; release edge E: out of its bucket's chain (its cursor moved past it, the
   ; bucket off the stack if the cursor runs out), onto the free list

@@ -4,9 +4,11 @@
 ; principal) the entry's commit position grows with the key, so a range
 ; read over one stream stops exactly at a position (range.lisp).
 (in-package "ACL2")
+(include-book "upload-window-geometry")
 (include-book "runs-schema")
 (include-book "commit-format")
-(defconst *fn2-article-location-hashes-max* (* 32 *fn2-commit-write-resources*))
+
+(include-book "upload-page-geometry")
 (fn2-book-layer :c)
 
 ; Article metadata, latest-only: the article's birth event, its state, the
@@ -40,7 +42,7 @@
 ; Overview, keyed (group, number) from first materialization; the stored
 ; overview line (subject, from, date, message-id, references, bytes,
 ; lines, without the number) is the exact octets the reader serves.
-(defconst *fn2-overview-octets-max* 1024)
+
 (defrunschema fn2-overview :id 3
  :key ((group (:id group)) (number (:id group-number)))
  :value ((article (:id article)) (position (:id position)) (line (:octets 1024)))
@@ -68,11 +70,20 @@
 ; of (principal, operation), a record of the batch that carried it. A retry
 ; with the same operation identity reads the original outcome; the request
 ; digest refuses a contradictory reuse. OUTCOME is the operation's reply code,
-; EVENT the member's commit position.
-(defrunschema fn2-outcome :id 9
- :key ((principal (:id principal)) (operation (:id operation)))
- :value ((request :digest) (outcome :u16) (event (:id event)))
- :merge :unique)
+; EVENT the member's commit position. A caller can choose a number that
+; is also a server-assigned event. Keep both records independently addressable.
+; The verb belongs to the value so a supplied operation ID is shared across
+; verbs. An accepted article carries its exact committed Message-ID, and a
+; grant-set carries an empty MID.
+(make-event
+ `(defrunschema fn2-outcome :id 9
+   :key ((principal (:id principal)) (operation (:id operation))
+         (id-source (:enum fn2-outcome-id-source (:assigned :supplied))))
+   :value ((request :digest) (outcome :u16) (event (:id event))
+           (verb (:enum fn2-outcome-verb (:append :grant-set)))
+           (mid (:octets ,*fn2-format-message-id-max*))
+           (numbers (:octets ,*fn2-overview-octets-max*)))
+   :merge :unique))
 
 ; Consumer names (E's consumer port): a principal's registered wire name
 ; (at most 64 octets) to the consumer identifier that keys

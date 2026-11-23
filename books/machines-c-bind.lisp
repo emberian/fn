@@ -254,21 +254,79 @@
   (let ((fn2-succ-slots (fn2-succ-slots-put s (phase *fn2-succ-slot-phase-empty*) (set 0) (events 0) (outs 0) (found 0) (size 0) (oset 0) (unchanged 0))))
    (fn2-succ-release-slots (- k 1) (+ 1 s) fn2-succ-slots))))
 (fn2-succ-slots-preserves fn2-succ-release-slots (k s fn2-succ-slots) :position nil :raw-rows t)
-(defun fn2-succ-release (tx fn2-succ-txns fn2-succ-slots fn2-id-decides)
- (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-decides) :guard t))
- (b* (((unless (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-succ-slots-wfp fn2-succ-slots) (fn2-id-decides-wfp fn2-id-decides)))
-       (mv :state fn2-succ-txns fn2-succ-slots fn2-id-decides))
+; Query windows are independent of scratch fields. A mask bit is consumed
+; only by the matching successful pool decrement; SAME handle twice owns
+; two references and therefore releases twice. Owner wake is latched until
+; the core's checked generation/live-row helper consumes it.
+(defun fn2-id-query-release (tx fn2-id-decides fn2-pool)
+ (declare (xargs :stobjs (fn2-id-decides fn2-pool) :guard t))
+ (b* (((unless (and (fn2-id-decides-wfp fn2-id-decides) (fn2-pool-wfp fn2-pool)
+                    (natp tx) (< tx (fn2-id-decides-rows fn2-id-decides))
+                    (<= (fn2-id-decides-qmask tx fn2-id-decides) 3)))
+       (mv :state fn2-id-decides fn2-pool))
+      ((mv code last fn2-pool)
+       (if (logbitp 0 (fn2-id-decides-qmask tx fn2-id-decides))
+           (fn2-pool-query-release (fn2-id-decides-q1slot tx fn2-id-decides)
+                                  (fn2-id-decides-q1gen tx fn2-id-decides) fn2-pool)
+         (mv :ok nil fn2-pool)))
+      ((unless (eq code :ok)) (mv code fn2-id-decides fn2-pool))
+      (fn2-id-decides (fn2-id-decides-put tx
+       (qmask (logand 2 (fn2-id-decides-qmask tx fn2-id-decides)))
+       (qwake (if last 1 (fn2-id-decides-qwake tx fn2-id-decides)))))
+      ((mv code last fn2-pool)
+       (if (logbitp 1 (fn2-id-decides-qmask tx fn2-id-decides))
+           (fn2-pool-query-release (fn2-id-decides-q2slot tx fn2-id-decides)
+                                  (fn2-id-decides-q2gen tx fn2-id-decides) fn2-pool)
+         (mv :ok nil fn2-pool)))
+      ((unless (eq code :ok)) (mv code fn2-id-decides fn2-pool))
+      (fn2-id-decides (fn2-id-decides-put tx (qmask 0)
+       (qwake (if last 1 (fn2-id-decides-qwake tx fn2-id-decides))))))
+  (mv :ok fn2-id-decides fn2-pool)))
+; The checked mask supplies the type-set and linear facts used by setters.
+(local (defthm fn2-id-query-mask-natp
+ (implies (and (natp mask) (<= mask 3)) (natp (logand 2 mask)))
+ :rule-classes :type-prescription
+ :hints (("Goal" :cases ((equal mask 0) (equal mask 1)
+                         (equal mask 2) (equal mask 3))))))
+(local (defthm fn2-id-query-mask-bound
+ (implies (and (natp mask) (<= mask 3)) (< (logand 2 mask) 256))
+ :rule-classes :linear
+ :hints (("Goal" :cases ((equal mask 0) (equal mask 1)
+                         (equal mask 2) (equal mask 3))))))
+; Updating the query mask does not alter the independent wake column.
+(local (defthm fn2-id-query-qwake-of-set-qmask
+ (equal (fn2-id-decides-qwake tx (fn2-id-decides-set-qmask i v fn2-id-decides))
+        (fn2-id-decides-qwake tx fn2-id-decides))
+ :hints (("Goal" :in-theory (e/d (fn2-id-decides-qwake)
+                               (fn2-id-decides-set-qmask nth))))))
+(local (defthm fn2-id-query-qwake-of-set-qwake
+ (equal (fn2-id-decides-qwake tx (fn2-id-decides-set-qwake tx v fn2-id-decides)) v)
+ :hints (("Goal" :in-theory (e/d (fn2-id-decides-qwake)
+                               (fn2-id-decides-set-qwake nth))))))
+(fn2-idc-fn-shape fn2-id-query-release (tx fn2-id-decides fn2-pool)
+ (fn2-id-decides fn2-pool) (fn2-id-decides fn2-pool) t
+ (fn2-pool-query-release fn2-id-decides-qmask fn2-id-decides-qwake fn2-id-decides-q1slot
+  fn2-id-decides-q1gen fn2-id-decides-q2slot fn2-id-decides-q2gen))
+
+(defun fn2-succ-release (tx fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool)
+ (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool) :guard t
+  :guard-hints ((fn2-columns-call-guard-hint 'fn2-succ-release
+                 '(fn2-id-query-release) nil world))))
+ (b* (((unless (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-succ-slots-wfp fn2-succ-slots) (fn2-id-decides-wfp fn2-id-decides) (fn2-pool-wfp fn2-pool)))
+       (mv :state fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool))
       ((unless (and (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)) (< tx (fn2-id-decides-rows fn2-id-decides))))
-       (mv :bounds fn2-succ-txns fn2-succ-slots fn2-id-decides))
-      ((when (equal (fn2-succ-txns-phase tx fn2-succ-txns) *fn2-succ-phase-bound*)) (mv :state fn2-succ-txns fn2-succ-slots fn2-id-decides))
+       (mv :bounds fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool))
+      ((when (equal (fn2-succ-txns-phase tx fn2-succ-txns) *fn2-succ-phase-bound*)) (mv :state fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool))
+      ((mv rc fn2-id-decides fn2-pool) (fn2-id-query-release tx fn2-id-decides fn2-pool))
+      ((unless (eq rc :ok)) (mv rc fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool))
       (fn2-succ-slots (fn2-succ-release-slots *fn2-succ-slots* (* tx *fn2-succ-slots*) fn2-succ-slots))
       (fn2-succ-txns (fn2-succ-txns-put tx (phase *fn2-succ-phase-idle*) (batch 0) (event 0) (ri 0)
                                         (rstate *fn2-succ-resolve-fresh*) (rbound 0)
                                         (lphase *fn2-succ-lookup-idle*) (lbound 0) (lrow 0) (lver 0)))
       (fn2-id-decides (fn2-id-decides-set-phase tx *fn2-id-decide-phase-idle* fn2-id-decides)))
-  (mv :ok fn2-succ-txns fn2-succ-slots fn2-id-decides)))
-(fn2-idc-fn-shape fn2-succ-release (tx fn2-succ-txns fn2-succ-slots fn2-id-decides) (fn2-succ-txns fn2-succ-slots fn2-id-decides)
- (fn2-succ-txns fn2-succ-slots fn2-id-decides) t (fn2-succ-txns-phase fn2-succ-release-slots))
+  (mv :ok fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool)))
+(fn2-idc-fn-shape fn2-succ-release (tx fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool) (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool)
+ (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool) t (fn2-id-query-release fn2-succ-txns-phase fn2-succ-release-slots))
 
 ; ---------------------------------------------------------------------------
 ; Publication of batch B (B, after the root swap, before any member result):
@@ -403,7 +461,10 @@
       (equal *fn2-addr-entry-field-position* 1)
       (equal *fn2-addr-entry-field-article* 2)
       (equal *fn2-outcome-entry-field-operation* 1)
-      (equal *fn2-outcome-entry-field-event* 4)
+      (equal *fn2-outcome-entry-field-id-source* 2)
+      (equal *fn2-outcome-entry-field-event* 5)
+      (equal *fn2-outcome-entry-field-verb* 6)
+      (equal *fn2-outcome-entry-field-mid* 7)
       (equal *fn2-identity-history-entry-field-position* 8)
       (equal *fn2-identity-history-entry-field-evidence* 9)
       (equal *fn2-identity-history-entry-field-article* 10)
@@ -509,18 +570,24 @@
 ; only replay publishes, and no transaction reads a replayed row after its
 ; batch's publish (no outcome is owed for it), so the rows of the batches
 ; already published are free again before the next member binds.
-(defun fn2-succ-replay-sweep (k tx fn2-succ-txns fn2-succ-slots fn2-id-decides)
- (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-decides) :measure (nfix k)
-  :guard (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-succ-slots-wfp fn2-succ-slots) (fn2-id-decides-wfp fn2-id-decides) (natp tx))
+(defun fn2-succ-replay-sweep (k tx fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool)
+ (declare (xargs :stobjs (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool) :measure (nfix k)
+  :guard (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-succ-slots-wfp fn2-succ-slots) (fn2-id-decides-wfp fn2-id-decides) (fn2-pool-wfp fn2-pool) (natp tx))
   :guard-hints (("Goal" :in-theory (disable fn2-succ-release)))))
- (b* (((unless (and (posp k) (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)))) (mv :ok fn2-succ-txns fn2-succ-slots fn2-id-decides))
+ (b* (((unless (and (posp k) (natp tx) (< tx (fn2-succ-txns-rows fn2-succ-txns)))) (mv :ok fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool))
       ((unless (equal (fn2-succ-txns-phase tx fn2-succ-txns) *fn2-succ-phase-published*))
-       (fn2-succ-replay-sweep (- k 1) (+ 1 tx) fn2-succ-txns fn2-succ-slots fn2-id-decides))
-      ((mv code fn2-succ-txns fn2-succ-slots fn2-id-decides) (fn2-succ-release tx fn2-succ-txns fn2-succ-slots fn2-id-decides))
-      ((unless (eq code :ok)) (mv code fn2-succ-txns fn2-succ-slots fn2-id-decides)))
-  (fn2-succ-replay-sweep (- k 1) (+ 1 tx) fn2-succ-txns fn2-succ-slots fn2-id-decides)))
-(fn2-idc-fn-shape fn2-succ-replay-sweep (k tx fn2-succ-txns fn2-succ-slots fn2-id-decides)
- (fn2-succ-txns fn2-succ-slots fn2-id-decides) (fn2-succ-txns fn2-succ-slots fn2-id-decides) t
+       (fn2-succ-replay-sweep (- k 1) (+ 1 tx) fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool))
+      ; A published replay row has already completed its live query. Never
+      ; drop a live reference or a pending wake inside this low sweep.
+      ((unless (and (< tx (fn2-id-decides-rows fn2-id-decides))
+                    (equal (fn2-id-decides-qmask tx fn2-id-decides) 0)
+                    (equal (fn2-id-decides-qwake tx fn2-id-decides) 0)))
+       (mv :state fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool))
+      ((mv code fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool) (fn2-succ-release tx fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool))
+      ((unless (eq code :ok)) (mv code fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool)))
+  (fn2-succ-replay-sweep (- k 1) (+ 1 tx) fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool)))
+(fn2-idc-fn-shape fn2-succ-replay-sweep (k tx fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool)
+ (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool) (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool) t
  (fn2-succ-txns-phase fn2-succ-release))
 
 ; Replay one member of BATCH at commit position EVENT into TX (an :idle row,
@@ -771,8 +838,8 @@
  :bytes 8192
  :tables (fn2-core-succ-txns fn2-core-id-engine fn2-core-overlays fn2-core-overlay-index fn2-core-fields fn2-core-pool)
  :doc "Insert every staged row into its batch's private overlays (octet arguments copied, at most 4 KiB per slot).")
-(defcost fn2-successor-release :child fn2-successor-release-child :answers (:bounds :ok :state)
- :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-id-decides)
+(defcost fn2-successor-release :enqueues 1 :child fn2-successor-release-child :answers (:bounds :ok :stale :state)
+ :tables (fn2-core-succ-txns fn2-core-succ-slots fn2-core-id-decides fn2-core-pool fn2-core-machines fn2-core-control fn2-core-sched fn2-core-trace)
  :doc "Free a transaction's write slots and its decision at its outcome.")
 (defcost fn2-successor-applied :answers (:bounds :kind :ok :state) :child fn2-succ-applied
  :doc "Whether a staged fold slot applied (:applied) or its :when failed under :unless-when :unchanged (:unchanged).")
@@ -908,15 +975,37 @@
                        (list '':value (car spec))
                      (list (if (keywordp (car spec)) `',(car spec) (car spec)) (cadr spec))))))
       (append args (fn2-succ-expand-fspecs (cdr adescs) fspecs)))))
+; Each descriptor denotes a caller-owned input. Fold assignments are absent
+; from this list, so computed arguments are never required from the caller.
+(defun fn2-succ-fspec-error (adescs fspecs names)
+  (declare (xargs :verify-guards nil))
+  (if (atom adescs) nil
+    (let* ((name (cadar adescs))
+           (type (caddar adescs))
+           (positions (member-eq name names))
+           (args (cdr (assoc-eq name fspecs)))
+           (arity (len args)))
+      (cond ((not positions) (list :missing name))
+            ((member-eq name (cdr positions)) (list :duplicate name))
+            ((not (and (true-listp args)
+                       (if (fn2-succ-octets-type-p type)
+                           (or (= arity 4) (and (eq type :digest) (= arity 3)))
+                         (or (= arity 1) (= arity 2)))))
+             (list :arity name))
+            (t (fn2-succ-fspec-error (cdr adescs) fspecs names))))))
 (defun fn2-succ-expand-put-macro (fn-name adescs has-octets tx slot rest)
   (declare (xargs :verify-guards nil))
   (let* ((core-arg (car (last rest)))
          (items (butlast rest 1))
          (owner (cadr (member-eq :owner items)))
-         (fspecs (fn2-succ-collect-fspecs items)))
-    `(,fn-name ,tx ,slot ,@(fn2-succ-expand-fspecs adescs fspecs)
-               ,@(and has-octets (list (car owner) (cadr owner) (caddr owner)))
-               ,core-arg)))
+         (fspecs (fn2-succ-collect-fspecs items))
+         (issue (fn2-succ-fspec-error adescs fspecs (strip-cars fspecs))))
+    (if issue
+        (hard-error fn-name "Invalid generated put field: ~x0."
+                    (list (cons #\0 issue)))
+      `(,fn-name ,tx ,slot ,@(fn2-succ-expand-fspecs adescs fspecs)
+                 ,@(and has-octets (list (car owner) (cadr owner) (caddr owner)))
+                 ,core-arg))))
 (defun fn2-succ-schema-specs-fold (sname sid evs assigns-fn fields)
   (declare (xargs :verify-guards nil) (ignore assigns-fn))
   (if (atom evs) nil
@@ -972,14 +1061,16 @@
 ; after fn2-identity-core-events). The stripe base of a transaction is the
 ; identity decision's (fn2-idc-stripe); a transaction past the rows is
 ; :bounds before anything is read.
-(defmacro fn2-succ-wrap (name args children outs call &optional (code 'code) prefix)
+(defmacro fn2-succ-wrap (name args children outs call &optional (code 'code) prefix after)
  `(progn
    (defun ,name (,@args fn2-core)
     (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
     (stobj-let ,children
      (,@prefix ,code ,@outs)
      ,call
-     (mv ,@prefix ,code fn2-core)))
+      ,(if after
+         `(let ((fn2-core ,after)) (mv ,@prefix ,code fn2-core))
+       `(mv ,@prefix ,code fn2-core))))
    (fn2-core-preserves ,name (,@args fn2-core) :position ,(+ 1 (len prefix)) :rows nil :hints (("Goal" :in-theory (enable fn2-core-wfp))))))
 (defmacro fn2-successor-prepare-events ()
  '(progn
@@ -1129,9 +1220,9 @@
        (mv c fn2-succ-txns fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool))))
    (fn2-succ-wrap fn2-successor-release (tx)
     ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-succ-slots (fn2-core-succ-slots fn2-core))
-     (fn2-id-decides (fn2-core-id-decides fn2-core)))
-    (fn2-succ-txns fn2-succ-slots fn2-id-decides)
-    (fn2-succ-release tx fn2-succ-txns fn2-succ-slots fn2-id-decides))
+     (fn2-id-decides (fn2-core-id-decides fn2-core)) (fn2-pool (fn2-core-pool fn2-core)))
+    (fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool)
+    (fn2-succ-release tx fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool) code nil (fn2-query-ref-flush tx fn2-core))
    (fn2-succ-wrap fn2-succ-core-publish (batch)
     ((fn2-succ-txns (fn2-core-succ-txns fn2-core)) (fn2-overlays (fn2-core-overlays fn2-core))
      (fn2-id-engine (fn2-core-id-engine fn2-core)))
@@ -1200,8 +1291,8 @@
     (b* (((unless (and (fn2-succ-txns-wfp fn2-succ-txns) (fn2-succ-slots-wfp fn2-succ-slots) (fn2-id-decides-wfp fn2-id-decides)
                        (fn2-accountsp fn2-accounts) (fn2-accounts-wfp fn2-accounts)))
           (mv :state fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool fn2-accounts))
-         ((mv code fn2-succ-txns fn2-succ-slots fn2-id-decides)
-          (fn2-succ-replay-sweep (fn2-succ-txns-rows fn2-succ-txns) 0 fn2-succ-txns fn2-succ-slots fn2-id-decides))
+         ((mv code fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool)
+          (fn2-succ-replay-sweep (fn2-succ-txns-rows fn2-succ-txns) 0 fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-pool))
          ((unless (and (eq code :ok) (posp batch)))
           (mv code fn2-succ-txns fn2-succ-slots fn2-id-decides fn2-id-engine fn2-overlays fn2-overlay-index fn2-fields fn2-pool fn2-accounts))
          ;; a transaction row (one with write slots), never a read row's

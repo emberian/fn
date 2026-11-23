@@ -51,7 +51,7 @@ def «UPDATE-FN2-MACHINES-ACTIVE-COUNTI» («I» : Val) («V» : Val) («FN2-MAC
   («UPDATE-NTH-ARRAY» (Val.int 19) «I» «V» «FN2-MACHINES»)
 
 def «CHAR» («S» : Val) («N» : Val) : Val :=
-  (Native.nth «N» (Prim.coerce «S» (Val.sym "LIST")))
+  (Native.nth «N» (Prim.coerce «S» (Val.sym "COMMON-LISP::LIST")))
 
 def «FN2-POOL-RANGE-IN» («SLOT» : Val) («OFF» : Val) («LEN» : Val) («FN2-POOL» : Val) : Val :=
   (if ((«NATP» «OFF»)).truthy then (if ((«NATP» «LEN»)).truthy then (if ((«NOT» (Prim.lt («FN2-POOL-FILL» «SLOT» «FN2-POOL») (Prim.plus «OFF» «LEN»)))).truthy then («NOT» (Prim.lt («FN2-POOL-DATA-LENGTH» «FN2-POOL») (Prim.plus («FN2-POOL-BASE» «SLOT» «FN2-POOL») (Prim.plus «OFF» «LEN»)))) else Val.nil) else Val.nil) else Val.nil)

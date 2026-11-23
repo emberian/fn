@@ -1,0 +1,177 @@
+{
+  "status": "source-only-whole-lift-unadmitted",
+  "old_ref": "4c46607449f33dc604d944d81ea614661eba04e3",
+  "new_ref": "969065e2f",
+  "current_raw_sha256": "2b8c32ea4f65ab5fe5be512f7d6511b1a58b45ff707e3da31923461d8bae9b9e",
+  "fragment_book_sha256": "251861111de3bf4d8e2e4dbd4d40f68b7a9d1cf728b52fa47c1049007bb91d7c",
+  "whole_fixture_sha256": "f893333a374057f38bb29c052bc16c413869ea5b8b3e83f18fc8e4933bad12eb",
+  "dependency_policy": "Actual qualified RAW book and qualified universal fragment book; do not replay an author-only RAW prefix or passing fragments",
+  "fragments": [
+    {
+      "function": "fn2-cns-source-issue-children",
+      "continuing_source_binding": 19,
+      "cached_getter_bindings": {
+        "phase": 1,
+        "stage": 2
+      },
+      "cached_hypotheses": [
+        "phase",
+        "stage"
+      ],
+      "other_body_bindings_and_return_unchanged": true,
+      "preceding_continuing_mv_outputs_exclude_sources": true,
+      "scope": "whole returned sources carrier of the actual extracted fragment; not the complete function return/effect tuple",
+      "old_clone": "fn2-cns-source-issue-children-enum-frozen-old",
+      "whole_theorem": "fn2-cns-source-issue-children-enum-old-new-whole-result-equality",
+      "formal_arguments": [
+        "s",
+        "cns",
+        "cnsgen",
+        "ctl",
+        "ctlgen",
+        "request",
+        "kind",
+        "principal",
+        "fn2-cns-sources",
+        "fn2-cns-source-operations",
+        "fn2-extents",
+        "fn2-alloc-edges",
+        "fn2-pool",
+        "fn2-ops",
+        "fn2-control",
+        "fn2-checkpoints"
+      ],
+      "stobjs": [
+        "fn2-cns-sources",
+        "fn2-cns-source-operations",
+        "fn2-extents",
+        "fn2-alloc-edges",
+        "fn2-pool",
+        "fn2-ops",
+        "fn2-control",
+        "fn2-checkpoints"
+      ],
+      "continuing_result_tuple": [
+        "mv",
+        ":ok",
+        "op",
+        "opgen",
+        "fn2-cns-sources",
+        "fn2-cns-source-operations",
+        "fn2-pool",
+        "fn2-ops",
+        "fn2-control",
+        "fn2-extents",
+        "fn2-alloc-edges"
+      ],
+      "old_source_guard_preserved": true,
+      "current_guard_formals_body_equal_frozen_new": true,
+      "clone_body_sha256": "f1c1fe42ea0a5a2237ca17744b1f5a6bf46e7f8414d55ea7244e3fdb78afd107",
+      "current_body_sha256": "55d49767bb644dc1af9a645468f76891980b848673a5b9a548c6a40004b1c99e",
+      "input_hypotheses": [
+        "(fn2-cns-sourcesp fn2-cns-sources)",
+        "(fn2-cns-sources-wfp fn2-cns-sources)"
+      ],
+      "row_discharge": "Actual owner predicate implies NATP row and row < ROWS on continuing branch",
+      "effects_scope": "Complete ACL2 MV return including every returned carrier and scalar; not native host/I/O effect correspondence"
+    },
+    {
+      "function": "fn2-cns-source-harvest",
+      "continuing_source_binding": 4,
+      "cached_getter_bindings": {
+        "stage": 3
+      },
+      "cached_hypotheses": [
+        "stage"
+      ],
+      "other_body_bindings_and_return_unchanged": true,
+      "preceding_continuing_mv_outputs_exclude_sources": true,
+      "scope": "whole returned sources carrier of the actual extracted fragment; not the complete function return/effect tuple",
+      "old_clone": "fn2-cns-source-harvest-enum-frozen-old",
+      "whole_theorem": "fn2-cns-source-harvest-enum-old-new-whole-result-equality",
+      "formal_arguments": [
+        "op",
+        "opgen",
+        "cell",
+        "event",
+        "outcome",
+        "reason",
+        "count",
+        "aux0",
+        "aux1",
+        "fn2-cns-sources",
+        "fn2-cns-source-operations"
+      ],
+      "stobjs": [
+        "fn2-cns-sources",
+        "fn2-cns-source-operations"
+      ],
+      "continuing_result_tuple": [
+        "mv",
+        ":ok",
+        "fn2-cns-sources",
+        "fn2-cns-source-operations"
+      ],
+      "old_source_guard_preserved": true,
+      "current_guard_formals_body_equal_frozen_new": true,
+      "clone_body_sha256": "d72d0e0af7674a2ee65fa6e183c303073d8ff4f04fa71098ac6e8ac86837dbdb",
+      "current_body_sha256": "11a670bf9555b0100eda3b35d13abf4444fe68eea621b6d218fed4d9bc77f95f",
+      "input_hypotheses": [
+        "(fn2-cns-sourcesp fn2-cns-sources)",
+        "(fn2-cns-sources-wfp fn2-cns-sources)",
+        "(fn2-cns-source-operationsp fn2-cns-source-operations)",
+        "(fn2-cns-source-operations-wfp fn2-cns-source-operations)"
+      ],
+      "row_discharge": "Actual input operations P/WFP and checked op bounds imply NATP source-row via public typed getter; source-row bound is the actual continuing guard",
+      "effects_scope": "Complete ACL2 MV return including every returned carrier and scalar; not native host/I/O effect correspondence"
+    },
+    {
+      "function": "fn2-cns-source-next-children",
+      "continuing_source_binding": 18,
+      "cached_getter_bindings": {},
+      "cached_hypotheses": [],
+      "other_body_bindings_and_return_unchanged": true,
+      "preceding_continuing_mv_outputs_exclude_sources": true,
+      "scope": "whole returned sources carrier of the actual extracted fragment; not the complete function return/effect tuple",
+      "old_clone": "fn2-cns-source-next-children-enum-frozen-old",
+      "whole_theorem": "fn2-cns-source-next-children-enum-old-new-whole-result-equality",
+      "formal_arguments": [
+        "s",
+        "cns",
+        "cnsgen",
+        "ctl",
+        "ctlgen",
+        "request",
+        "slot",
+        "gen",
+        "off",
+        "maximum",
+        "ctlkind",
+        "fn2-cns-sources",
+        "fn2-pool"
+      ],
+      "stobjs": [
+        "fn2-cns-sources",
+        "fn2-pool"
+      ],
+      "continuing_result_tuple": [
+        "mv",
+        ":ok",
+        "n",
+        "nil",
+        "fn2-cns-sources",
+        "fn2-pool"
+      ],
+      "old_source_guard_preserved": true,
+      "current_guard_formals_body_equal_frozen_new": true,
+      "clone_body_sha256": "b71ea6b2323349d14eab6e013fafeab4ec4a962bd74860329926d83e10aba50a",
+      "current_body_sha256": "240927cb605bfacae6741688cbfc15f1dc20da602100fe7db042fefea470db67",
+      "input_hypotheses": [
+        "(fn2-cns-sourcesp fn2-cns-sources)",
+        "(fn2-cns-sources-wfp fn2-cns-sources)"
+      ],
+      "row_discharge": "Actual owner predicate implies NATP row and row < ROWS on continuing branch",
+      "effects_scope": "Complete ACL2 MV return including every returned carrier and scalar; not native host/I/O effect correspondence"
+    }
+  ]
+}

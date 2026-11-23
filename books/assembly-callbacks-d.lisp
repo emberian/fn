@@ -9,10 +9,81 @@
 (include-book "upload")
 (include-book "tls")
 (include-book "compress")
-(fn2-tls-op-events)
-(fn2-compress-op-events)
-(fn2-upload-op-events)
+(encapsulate ()
+  (make-event
+   (value `(local (in-theory (e/d ((:forward-chaining fn2-tls-config-wfp-of-fn2-core-tls-config)
+                                   (:forward-chaining fn2-compress-config-wfp-of-fn2-core-compress-config))
+                                  (nth ,@(fn2-columns-getter-runes
+                                           '(fn2-tls-config fn2-compress-config)
+                                           (w state))))))))
+  (fn2-tls-op-events)
+  (fn2-compress-op-events))
+(local
+ (in-theory (enable (:forward-chaining fn2-pool-wfp-of-fn2-core-pool)
+                    (:forward-chaining fn2-input-config-wfp-of-fn2-core-input-config)
+                    (:forward-chaining fn2-extents-wfp-of-fn2-core-extents)
+                    (:forward-chaining fn2-fields-wfp-of-fn2-core-fields)
+                    (:forward-chaining fn2-b3-wfp-of-fn2-core-b3)
+                    (:forward-chaining fn2-digests-wfp-of-fn2-core-digests)
+                    (:forward-chaining fn2-ops-wfp-of-fn2-core-ops))))
+(make-event
+ (value `(local (in-theory (disable nth
+                                    ,@(fn2-columns-getter-runes
+                                        '(fn2-input-config fn2-extents fn2-fields)
+                                        (w state)))))))
+(local
+ (defun fn2-subst-tree (new old x)
+   (declare (xargs :mode :program))
+   (cond ((equal x old) new)
+         ((atom x) x)
+         (t (cons (fn2-subst-tree new old (car x))
+                  (fn2-subst-tree new old (cdr x)))))))
+(make-event
+ (mv-let (erp exp state)
+   (macroexpand1-cmp '(fn2-upload-op-events) 'assembly-callbacks-d (w state) (default-state-vars nil))
+   (if erp
+       (er soft 'assembly-callbacks-d "macroexpand1-cmp failed on fn2-upload-op-events")
+     (let ((patched (fn2-subst-tree
+                     '(if (and (natp slot) (< slot (fn2-pool-rows fn2-pool)))
+                          (fn2-pool-slot-fill slot fn2-pool)
+                        0)
+                     '(fn2-pool-slot-fill slot fn2-pool)
+                     exp)))
+       (if (equal patched exp)
+           (er soft 'assembly-callbacks-d "Could not patch fn2-pool-slot-fill in fn2-upload-op-events")
+         (value `(progn ,patched
+                        (in-theory (disable fn2-upload-chunk-fill)))))))))
 (fn2-book-layer :d)
+;; The effective durable principal of consumer request CNS of generation
+;; GEN (section 1): its control connection's, the owner's or the one it
+;; bound (0 when the profile has no owner principal); :state when the
+;; request or its connection has moved on.
+(defun fn2-cns-principal (cns gen fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (if (not (and (eq (fn2-cns-snapshot-read-code cns fn2-core) :ok)
+                (equal (fn2-machine-generation cns fn2-core) gen)))
+      (mv :state 0)
+    (let ((ctl (fn2-cns-row-ctl cns fn2-core)))
+      (if (and (eq (fn2-ctl-snapshot-read-code ctl fn2-core) :ok)
+               (equal (fn2-machine-generation ctl fn2-core) (fn2-cns-row-ctl-gen cns fn2-core)))
+          (mv :ok (nfix (fn2-ctl-row-principal ctl fn2-core)))
+        (mv :state 0)))))
+(defthm fn2-cns-principal-natp (natp (mv-nth 1 (fn2-cns-principal cns gen fn2-core))) :rule-classes :type-prescription)
+(in-theory (disable fn2-cns-principal))
+;; The effective durable principal for an upload (section 1): a
+;; consumer request's (CONN a fn2-cns row of generation CONN-GEN) is its
+;; control connection's, the owner's or the one it bound; a connection's
+;; is its account slot PSLOT's (D7's id; an NNTP reader's the anonymous
+;; principal). :state when the request or its connection has moved on.
+(defun fn2-upload-owner-principal (conn conn-gen pslot fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (if (eq (fn2-cns-snapshot-read-code conn fn2-core) :ok)
+     (mv-let (c pid) (fn2-cns-principal conn conn-gen fn2-core)
+       (if (and (eq c :ok) (posp pid)) (mv :ok pid) (mv :state 0)))
+   (fn2-principal-of-slot pslot fn2-core)))
+(defthm fn2-upload-owner-principal-natp (natp (mv-nth 1 (fn2-upload-owner-principal conn conn-gen pslot fn2-core)))
+ :hints (("Goal" :in-theory (enable fn2-principal-of-slot))) :rule-classes :type-prescription)
+(in-theory (disable fn2-upload-owner-principal))
 (defcost fn2-conn-greet-op :bytes 512
   :answers (:ok :bounds) :faults (:bounds) :tables (fn2-core-pool)
   :doc "Render the greeting, or the capacity 400, into TX.")
@@ -153,15 +224,16 @@
 (fn2-core-preserves fn2-conn-feed-pool (left start mode discard rslot rgen oslot ogen slot sgen u ugen fn2-core)
   :position 5 :rows nil)
 (in-theory (disable fn2-conn-feed-pool))
-(defun fn2-upload-feed-pool (left start end mode discard raw rslot rgen rk rs rg slot sgen u ugen fn2-core)
+(defun fn2-upload-feed-pool (left start end mode discard raw rslot rgen rk rs rg slot sgen limit stop-header u ugen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-pool (fn2-core-pool fn2-core)))
-    (status start2 mode2 discard2 copied fn2-pool)
-    (fn2-upload-feed-slice (max 1 (nfix left)) (nfix start) (nfix end) (nfix mode) discard raw rslot rgen rk rs rg
-                          slot sgen *fn2-upload-kind* u ugen fn2-pool)
-    (mv status start2 mode2 discard2 copied fn2-core)))
-(fn2-core-preserves fn2-upload-feed-pool (left start end mode discard raw rslot rgen rk rs rg slot sgen u ugen fn2-core)
-  :position 5 :rows nil)
+    (status start2 mode2 discard2 copied lines fn2-pool)
+    (fn2-upload-feed-counted (max 1 (nfix left)) (nfix start) (nfix end) (nfix mode) discard raw
+                             rslot rgen rk rs rg slot sgen *fn2-upload-kind* u ugen
+                             limit stop-header fn2-pool)
+    (mv status start2 mode2 discard2 copied lines fn2-core)))
+(fn2-core-preserves fn2-upload-feed-pool (left start end mode discard raw rslot rgen rk rs rg slot sgen limit stop-header u ugen fn2-core)
+  :position 6 :rows nil)
 (in-theory (disable fn2-upload-feed-pool))
 ;; Feed [start, end) of the owner's range RSLOT (read under RK RS RG) into
 ;; upload U's current chunk (the first while it has room), at most
@@ -169,26 +241,70 @@
 ;; article bound (so a too-large block is refused, never buffered). RAW:
 ;; the octets are the article itself (a consumer's append), not a
 ;; dot-stuffed block. (mv status start mode why copied fn2-core), WHY 1 a
-;; framing error, 2 too large.
+;; framing error, 2 article too large, 3 header limit reached.
 (defun fn2-upload-feed-run (start end mode why fed raw rslot rgen rk rs rg u ugen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (b* (((unless (and (eq (fn2-upload-snapshot-read-code u fn2-core) :ok)
                      (equal (fn2-machine-generation u fn2-core) ugen)
                      (natp start) (natp mode) (natp fed) (natp why)))
         (mv :bounds 0 0 0 0 fn2-core))
+       (phase (fn2-upload-row-phase u fn2-core))
+       ((unless (member-equal phase
+                   (list *fn2-upload-state-head* *fn2-upload-state-identity*
+                         *fn2-upload-state-receiving* *fn2-upload-state-validating*
+                         *fn2-upload-state-discard* *fn2-upload-state-stream-receiving*)))
+        (mv :budget start mode why 0 fn2-core))
+       (owner (fn2-upload-row-conn u fn2-core))
+       (owner-gen (fn2-upload-row-conn-gen u fn2-core))
+       (owner-ok
+        (cond ((equal rk *fn2-conn-kind*)
+               (and (equal owner rs) (equal owner-gen rg)
+                    (eq (fn2-conn-snapshot-read-code owner fn2-core) :ok)
+                    (equal (fn2-machine-generation owner fn2-core) rg)
+                    (equal (fn2-conn-row-upload owner fn2-core) u)
+                    (equal (fn2-conn-row-upload-gen owner fn2-core) ugen)))
+              ((equal rk *fn2-ctl-kind*)
+               (and (eq (fn2-cns-snapshot-read-code owner fn2-core) :ok)
+                    (equal (fn2-machine-generation owner fn2-core) owner-gen)
+                    (equal (fn2-cns-row-upload owner fn2-core) u)
+                    (equal (fn2-cns-row-upload-gen owner fn2-core) ugen)
+                    (equal (fn2-cns-row-ctl owner fn2-core) rs)
+                    (equal (fn2-cns-row-ctl-gen owner fn2-core) rg)))
+              (t nil)))
+       ((unless owner-ok) (mv :bounds start mode why 0 fn2-core))
        (c0 (fn2-upload-row-c0-slot u fn2-core)) (g0 (fn2-upload-row-c0-gen u fn2-core))
        (c1 (fn2-upload-row-c1-slot u fn2-core)) (g1 (fn2-upload-row-c1-gen u fn2-core))
+       ((mv tail-code header-complete)
+        (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (code complete)
+          (fn2-feed-header-complete-p c0 g0 *fn2-upload-kind* u ugen fn2-pool)
+          (mv code complete)))
+       ((unless (eq tail-code :ok)) (mv :bounds start mode why 0 fn2-core))
        (cap0 (fn2-upload-chunk-cap c0 fn2-core)) (cap1 (fn2-upload-chunk-cap c1 fn2-core))
        (bound (fn2-upload-bound cap0 cap1 fn2-core))
-       (in0 (< fed cap0))
+       (in0 (not header-complete))
+       (limit (if in0 *fn2-upload-header-octets* *fn2-upload-body-window-bytes*))
        (discard (not (equal why 0)))
        (left (if discard *fn2-conn-feed-bytes* (min *fn2-conn-feed-bytes* (nfix (- (+ 1 bound) fed)))))
-       ((mv status start2 mode2 discard2 copied fn2-core)
-        (fn2-upload-feed-pool left start end mode discard raw rslot rgen rk rs rg (if in0 c0 c1) (if in0 g0 g1) u ugen fn2-core))
+       ;; Every input iteration emits at most one LF. Refuse a malformed
+       ;; near-overflow counter before any confirmed pool write.
+       ((unless (unsigned-byte-p 32 (+ (fn2-upload-row-source-lines u fn2-core) left)))
+        (mv :bounds start mode why 0 fn2-core))
+       ((mv status start2 mode2 discard2 copied lines fn2-core)
+        (fn2-upload-feed-pool left start end mode discard raw rslot rgen rk rs rg (if in0 c0 c1) (if in0 g0 g1)
+                              limit in0 u ugen fn2-core))
+       ((when (eq status :fault)) (mv :fault start2 mode2 why (nfix copied) fn2-core))
+       (source-lines (+ (fn2-upload-row-source-lines u fn2-core) (nfix lines)))
+       ((unless (unsigned-byte-p 32 source-lines))
+        (mv :fault start2 mode2 why (nfix copied) fn2-core))
+       (fn2-core (fn2-machine-write-source-lines u source-lines fn2-core))
        (fed2 (+ fed (nfix copied)))
-       (too-large (and (not discard2) (or (< bound fed2) (and (eq status :full) (not in0)))))
-       (why2 (cond (discard why) (too-large 2) (discard2 1) (t 0))))
-    (mv (if (eq status :full) :budget status) start2 mode2 why2 (nfix copied) fn2-core)))
+       (too-large (and (not discard2) (< bound fed2)))
+       (why2 (cond (discard why) (too-large 2) (discard2 1)
+                   ((and in0 (or (eq status :full)
+                                 (and (eq status :terminator) (<= limit fed2)))) 3)
+                   (t 0))))
+    (mv (if (member-eq status '(:full :header)) :budget status)
+        start2 mode2 why2 (nfix copied) fn2-core)))
 (fn2-core-preserves fn2-upload-feed-run (start end mode why fed raw rslot rgen rk rs rg u ugen fn2-core) :position 5 :rows nil)
 (in-theory (disable fn2-upload-feed-run))
 (defun fn2-conn-feed-run (start mode why fed rslot rgen u ugen oslot ogen fn2-core)

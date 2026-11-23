@@ -59,6 +59,22 @@
           ((mv & fn2-core) (fn2-successor-release 0 fn2-core)))
        fn2-core)))
   (local
+   (defun fn2-sle-seed-registration (fn2-core)
+     (declare (xargs :stobjs fn2-core :verify-guards nil))
+     (b* (((mv & fn2-core) (fn2-successor-release 0 fn2-core))
+          ((mv put fn2-core) (fn2-consumer-cursor-rebase 0 0 (principal *fnc-fixture-owner-pid*) (consumer 1) (expected-epoch 0) (expected-position 0) (next-epoch 1) (query 1) (start 0) (new-view 0) fn2-core))
+          ((unless (eq put :ok)) fn2-core)
+          ((mv resolve fn2-core) (fn2-cns-resolve-loop 32 0 fn2-core))
+          ((unless (eq resolve :ok)) fn2-core)
+          ((mv stage & fn2-core) (fn2-successor-stage 0 fn2-core))
+          ((unless (eq stage :ok)) fn2-core)
+          ((mv bind fn2-core) (fn2-successor-bind 0 1 1 fn2-core))
+          ((unless (eq bind :ok)) fn2-core)
+          ((mv publish fn2-core) (fn2-succ-core-publish 1 fn2-core))
+          ((unless (eq publish :ok)) fn2-core)
+          ((mv & fn2-core) (fn2-successor-release 0 fn2-core)))
+       fn2-core)))
+  (local
    (defun fn2-sle-cat (frames)
      (declare (xargs :verify-guards nil))
      (if (atom frames) nil (append (car frames) (fn2-sle-cat (cdr frames))))))
@@ -81,24 +97,27 @@
               ;; pause and resume (kind 1, each answered by its posture in
               ;; kind 2), a read of consumer 1's cursor at 0 arriving in two
               ;; receives (the first a prefix: the frame waits for the rest;
-              ;; nothing recorded; B has published 3 but no addr entry of the
-              ;; principal's is there, so its stream frontier is 0 and the page
-              ;; holds no item and proposes 0, e-surface.md 3.2),
+              ;; no registration is recorded even though B has published 3;
+              ;; READ and an equal ACK proposal must refuse the missing consumer),
               ;; then stop (closed, no reply)
               (pause (fnc-control 2)) (resume (fnc-control 3))
-              (read (fnc-read (fnc-issued 1 0 0 1 0) 8))
+              (cursor (fnc-issued 1 *fnc-fixture-owner-pid* 1 1 0))
+              (read (fnc-read cursor 8))
+              (ack (fnc-ack cursor 0))
               (stop (fnc-control 5))
-              (clients (list (list (append pause resume read stop)
-                                   (list (len pause) (len resume) 20 (- (len read) 20) (len stop)) nil nil)))
+              (clients (list (list (append pause resume read ack stop)
+                                   (list (len pause) (len resume) 20 (- (len read) 20) (len ack) (len stop)) nil nil)))
               ((mv status clients & fn2-core) (fn2-cw-loop 200 0 1 clients nil fn2-core))
               (res (car (fn2-cw-results clients)))
               (wire (car res))
               (closed (cadr res)))
            (mv (and (eq status :quiet)
                     (equal (fn2-core-stop-reason fn2-core) 0)
-                    (equal (fnc-replies '(control control read) wire)
-                           '((:posture 1) (:posture 0) (:accepted "" (0 0 0 nil))))
-                    (equal (len (fnc-replies '(control control read read) wire)) 3)
+                    (equal (fnc-replies '(control control read ack) wire)
+                           '((:posture 1) (:posture 0)
+                             (:refused "unknown-consumer" nil)
+                             (:refused "unknown-consumer" nil)))
+                    (equal (len (fnc-replies '(control control read ack read) wire)) 4)
                     (eq closed t))
                fn2-core))
          ok))))
@@ -108,25 +127,26 @@
      (with-local-stobj fn2-core
        (mv-let (ok fn2-core)
          (b* ((fn2-core (fn2-init-executor *fn2-sle-turn-profile* :echo nil fn2-core))
+              (fn2-core (fn2-sle-seed-registration fn2-core))
               (fn2-core (fn2-listener-take-credit *fn2-ctl-admission-ordinal* fn2-core))
               ((mv acode fn2-core) (fn2-machine-admit-fn2-ctl 0 77 3 0 fn2-core))
               ((unless (eq acode :ok)) (mv nil fn2-core))
               ((mv wake fn2-core) (fn2-machine-take-wake fn2-core))
               (fn2-core (fn2-exec-wake wake fn2-core))
-              (wait (fnc-wait (fnc-issued 1 0 0 1 0) 8 30))
+              (wait (fnc-wait (fnc-issued 1 *fnc-fixture-owner-pid* 1 1 0) 8 30))
               (clients (list (list wait (list (len wait)) nil nil)))
               ((mv status1 clients & fn2-core) (fn2-cw-loop 100 0 1 clients nil fn2-core))
               (wire1 (car (car (fn2-cw-results clients))))
               ((unless (and (eq status1 :quiet) (null wire1) (equal (fn2-core-stop-reason fn2-core) 0)))
                (mv nil fn2-core))
-              ;; an addr entry of the principal's published at 1 (stream 0,
-              ;; no article row: a gap) wakes the wait and moves its frontier
-              (fn2-core (fn2-sle-seed-article 0 0 1 1 fn2-core))
+              ;; The owner's addr entry at 2 wakes the wait and advances its
+              ;; frontier. There is no article row, so the item is a gap.
+              (fn2-core (fn2-sle-seed-article *fnc-fixture-owner-pid* 0 1 2 fn2-core))
               ((mv status2 clients & fn2-core) (fn2-cw-loop 100 0 1 clients nil fn2-core))
               (wire2 (car (car (fn2-cw-results clients)))))
            (mv (and (eq status2 :quiet)
                     (equal (fn2-core-stop-reason fn2-core) 0)
-                    (equal (fnc-replies '(wait) wire2) '((:accepted "" (0 1 1 ((:gap 1 "" nil)))))))
+                    (equal (fnc-replies '(wait) wire2) '((:accepted "" (0 2 1 ((:gap 2 "" nil)))))))
                fn2-core))
          ok))))
   (local
@@ -150,32 +170,40 @@
               ;; status, read-after-ack, stop): each frame its own chunk. The
               ;; wait parks while fn2-ctl is in :waiting, so Phase 1 stops at
               ;; :quiet right after it parks, before the remaining chunks.
-              (c (fnc-issued 1 0 1 1 0))
+              (c (fnc-issued 1 *fnc-fixture-owner-pid* 1 1 0))
               (frames (list (fnc-register 1 1) (fnc-wait c 8 30) (fnc-read c 8) (fnc-ack c 2) (fnc-ack c 2)
-                            (fnc-ack c 1) (fnc-ack c 9) (fnc-position 1) (fnc-status 1) (fnc-read c 8)
+                            (fnc-ack c 1) (fnc-ack c 9) (fnc-position 1) (fnc-status 1) (fnc-read (fnc-at c 2) 8)
                             (fnc-control 5)))
               (clients (list (list (fn2-sle-cat frames) (fn2-sle-lens frames) nil nil)))
               ((mv status1 clients & fn2-core) (fn2-cw-loop 200 0 1 clients nil fn2-core))
               (wire1 (car (car (fn2-cw-results clients))))
+              (id (fn2-machine-global-id *fn2-cns-kind* 0 *fn2-sle-turn-profile*))
+              (edge-count (stobj-let ((fn2-cns-edges (fn2-core-cns-edges fn2-core))) (count)
+                            (fn2-cns-used-count fn2-cns-edges) count))
               ((unless (and (eq status1 :quiet)
                             (equal (fn2-core-stop-reason fn2-core) 0)
+                            (equal (fn2-machine-phase id fn2-core) *fn2-cns-state-park*)
+                            (equal (fn2-machine-wait-reason id fn2-core) *fn2-wait-wait-row*)
+                            (equal edge-count 1)
                             (equal (fnc-replies '(register) wire1) '((:accepted "" 0)))
                             ;; the register's cursor is the issued one (version 1, epoch 1, at 0)
                             (equal (fnc-reply-cursor 'register wire1) c)))
                (mv nil fn2-core))
-              ;; Phase 2: post/publish article 1 at commit position 2 on stream 0, waking parked wait,
-              ;; which then answers the wait and drains the remaining verbs through stop.
-              ;; Its addr entry's stream (1, the group it is filed through) is not
-              ;; its principal (0): the wake is the principal's own addr stream.
+              ;; Phase 2: publish the owner's address entry at commit position 2.
+              ;; Its stream is group 1. The wake uses the durable owner in the key
+              ;; and the waiter drains the remaining verbs through stop.
               ;; No article row stands behind the seeded entry, so its item is a
               ;; gap (the article reclaimed) with no Message-ID.
-              (fn2-core (fn2-sle-seed-article 0 1 1 2 fn2-core))
+              (fn2-core (fn2-sle-seed-article *fnc-fixture-owner-pid* 1 1 2 fn2-core))
               ((mv status2 clients & fn2-core) (fn2-cw-loop 800 0 1 clients nil fn2-core))
               (res2 (car (fn2-cw-results clients)))
               (wire2 (car res2))
-              (closed2 (cadr res2)))
+              (closed2 (cadr res2))
+              (remaining (stobj-let ((fn2-cns-edges (fn2-core-cns-edges fn2-core))) (count)
+                           (fn2-cns-used-count fn2-cns-edges) count)))
            (mv (and (eq status2 :quiet)
                     (equal (fn2-core-stop-reason fn2-core) 0)
+                    (equal remaining 0)
                     (equal (fnc-replies '(register wait read ack ack ack ack position status read) wire2)
                            '((:accepted "" 0)
                              (:accepted "" (0 2 1 ((:gap 2 "" nil))))
@@ -247,7 +275,7 @@
   ;; with no Message-ID) runs the upload and the transaction a POST runs; the
   ;; reply is accepted at the article's commit position, and an NNTP reader
   ;; then reads the same article by GROUP, by number and by the generated
-  ;; Message-ID <op-0-9@fn2.invalid>.
+  ;; Message-ID <op-4294967297-9@fn2.invalid>.
   (local
    (defconst *fn2-sle-append-profile*
      (put-assoc-equal :cns 1 (put-assoc-equal :control-connections 1
@@ -256,7 +284,7 @@
    (defconst *fn2-sle-append-article*
      '("From: mini@example.invalid" "Subject: r1" "Newsgroups: local.test" "" "report r1")))
   (local
-   (defconst *fn2-sle-append-mid* "<op-0-9@fn2.invalid>"))
+   (defconst *fn2-sle-append-mid* "<op-4294967297-9@fn2.invalid>"))
   (local
    (defun fn2-sle-append-wire ()
      (declare (xargs :verify-guards nil))
@@ -357,6 +385,7 @@
        (mv-let (ok fn2-core)
          (b* ((profile (put-assoc-equal :cns 1 *fn2-sle-turn-profile*))
               (fn2-core (fn2-init-executor profile :echo nil fn2-core))
+              (fn2-core (fn2-sle-seed-registration fn2-core))
               (id (fn2-machine-global-id *fn2-cns-kind* 0 profile))
               (initial-generation (fn2-machine-generation id fn2-core))
               (fn2-core (fn2-listener-take-credit *fn2-ctl-admission-ordinal* fn2-core))
@@ -366,8 +395,8 @@
               (fn2-core (fn2-exec-wake wake fn2-core))
               ;; Two requests share the only CNS row. The second frame stays
               ;; behind the first while the carrier waits for its reply.
-              (first (fnc-wait (fnc-issued 1 0 0 1 0) 8 1))
-              (second (fnc-wait (fnc-issued 1 0 0 1 0) 8 2))
+              (first (fnc-wait (fnc-issued 1 *fnc-fixture-owner-pid* 1 1 0) 8 1))
+              (second (fnc-wait (fnc-issued 1 *fnc-fixture-owner-pid* 1 1 0) 8 2))
               (clients (list (list (append first second) (list (len first) (len second)) nil nil)))
               ((mv parked clients & fn2-core) (fn2-cw-loop 200 0 1 clients nil fn2-core))
               (first-state (fn2-sle-timer-state id fn2-core))
@@ -401,6 +430,68 @@
                     (equal (cdr final-state) (list *fn2-no-deadline* 0 0)))
                fn2-core))
          ok))))
+  ;; Keep both consumers and an upload transaction live. The APPEND client
+  ;; is introduced only after the actual waiting client's edge is observed.
+  (local
+   (defun fn2-sle-test-parked-wait-and-append ()
+     (declare (xargs :verify-guards nil))
+     (with-local-stobj fn2-core
+       (mv-let (ok fn2-core)
+         (b* ((profile (put-assoc-equal :t 3
+                          (put-assoc-equal :cns 2
+                            (put-assoc-equal :control-connections 2 *fn2-sle-append-profile*))))
+              (fn2-core (fn2-init-executor profile :echo nil fn2-core))
+              ((mv & fn2-core)
+               (stobj-let ((fn2-extents (fn2-core-extents fn2-core))) (code fn2-extents)
+                 (fn2-alloc-begin-epoch 1 fn2-extents) (mv code fn2-extents)))
+              (fn2-core (fn2-listener-take-credit *fn2-ctl-admission-ordinal* fn2-core))
+              ((mv acode fn2-core) (fn2-machine-admit-fn2-ctl 0 77 3 0 fn2-core))
+              ((unless (eq acode :ok)) (mv nil fn2-core))
+              ((mv wake fn2-core) (fn2-machine-take-wake fn2-core))
+              (fn2-core (fn2-exec-wake wake fn2-core))
+              (registration (fnc-register 1 1))
+              (expected (fnc-issued 1 *fnc-fixture-owner-pid* 1 1 0))
+              (wait (fnc-wait expected 8 30))
+              (clients (list (list (append registration wait)
+                                   (list (len registration) (len wait)) nil nil)))
+              ((mv parked clients store fn2-core) (fn2-cw-loop 8000 0 1 clients nil fn2-core))
+              (received (car (car (fn2-cw-results clients))))
+              (ctl (fn2-machine-global-id *fn2-ctl-kind* 0 profile))
+              (request (fn2-ctl-row-cns ctl fn2-core))
+              (edge (fn2-cns-row-edge request fn2-core))
+              (generation (fn2-machine-generation request fn2-core))
+              (held (stobj-let ((fn2-cns-edges (fn2-core-cns-edges fn2-core))) (bound)
+                      (and (fn2-cns-ix edge)
+                           (equal (fn2-cns-edges-used edge fn2-cns-edges) 1)
+                           (equal (fn2-cns-edges-waiter edge fn2-cns-edges) request)
+                           (equal (fn2-cns-edges-gen edge fn2-cns-edges) generation)
+                           (equal (fn2-cns-edges-from edge fn2-cns-edges) 1)) bound))
+              ((unless (and (eq parked :quiet) held
+                            (equal (fn2-machine-phase request fn2-core) *fn2-cns-state-park*)
+                            (equal (fn2-machine-wait-reason request fn2-core) *fn2-wait-wait-row*)
+                            (equal (fnc-replies '(register wait) received) '((:accepted "" 0)))
+                            (equal (fnc-reply-cursor 'register received) expected)))
+               (mv nil fn2-core))
+              (fn2-core (fn2-listener-take-credit *fn2-ctl-admission-ordinal* fn2-core))
+              ((mv acode fn2-core) (fn2-machine-admit-fn2-ctl 1 77 3 0 fn2-core))
+              ((unless (eq acode :ok)) (mv nil fn2-core))
+              ((mv wake fn2-core) (fn2-machine-take-wake fn2-core))
+              (fn2-core (fn2-exec-wake wake fn2-core))
+              (append-frame (fn2-sle-append-wire))
+              (clients (append clients (list (list append-frame (list (len append-frame)) nil nil))))
+              ((mv done clients & fn2-core) (fn2-cw-loop 8000 0 2 clients store fn2-core))
+              (results (fn2-cw-results clients))
+              (a (fnc-replies '(append) (car (cadr results))))
+              (w (cadr (fnc-replies '(register wait) (car (car results)))))
+              (page (caddr w))
+              (item (car (nth 3 page))))
+           (mv (and (eq done :quiet) (equal (fn2-core-stop-reason fn2-core) 0)
+                    (equal a '((:accepted "" (2 1))))
+                    (eq (car w) :accepted) (equal (take 3 page) '(0 2 1))
+                    (equal (take 3 item) (list :record 2 *fn2-sle-append-mid*)))
+               fn2-core))
+         ok))))
+  (local (assert-event (fn2-sle-test-parked-wait-and-append)))
   (local (assert-event (fn2-sle-test-turn-append)))
   (local (assert-event (fn2-sle-test-turn-read-and-stop)))
   (local (assert-event (fn2-sle-test-turn-wait-wake)))
@@ -762,7 +853,7 @@
                     (mv nil fn2-cns-edges fn2-machines fn2-control))
                    ;; Stale edge with generation 1 does not wake row 2 when row 2 is at generation 9.
                    (fn2-machines (fn2-machines-set-wait-reason 2 *fn2-wait-wait-row* fn2-machines))
-                   ((mv code0 edge0 fn2-cns-edges) (fn2-cns-edge-link 0 2 1 3 fn2-cns-edges))
+                   ((mv code0 edge0 fn2-cns-edges) (fn2-cns-edge-link 0 2 1 3 2 fn2-cns-edges))
                    ((unless (and (eq code0 :ok) (natp edge0)))
                     (mv nil fn2-cns-edges fn2-machines fn2-control))
                    (fn2-cns-edges (fn2-cns-wake-stream 0 3 fn2-cns-edges))
@@ -772,7 +863,7 @@
                     (mv nil fn2-cns-edges fn2-machines fn2-control))
                    (fn2-cns-edges (fn2-cns-edge-unlink edge0 fn2-cns-edges))
                    ;; Matching generation 1 wakes row 2 and clears its :wait-row wait reason.
-                   ((mv code edge fn2-cns-edges) (fn2-cns-edge-link 0 2 1 5 fn2-cns-edges))
+                   ((mv code edge fn2-cns-edges) (fn2-cns-edge-link 0 2 1 5 4 fn2-cns-edges))
                    ((unless (and (eq code :ok) (natp edge)))
                     (mv nil fn2-cns-edges fn2-machines fn2-control))
                    ;; Before publish at >= 5, no waiter is ready.

@@ -4,10 +4,20 @@
 
 (sb-alien:define-alien-routine ("fn2_tls_config" fn2-tls-%config) sb-sys:system-area-pointer
  (certificate sb-alien:c-string) (key sb-alien:c-string) (minimum sb-alien:int))
+(sb-alien:define-alien-routine ("fn2_tls_server_config_mtls" fn2-tls-%server-config-mtls) sb-sys:system-area-pointer
+ (certificate sb-alien:c-string) (key sb-alien:c-string)
+ (client-ca-file sb-alien:c-string) (verify-client sb-alien:int) (minimum sb-alien:int))
 (sb-alien:define-alien-routine ("fn2_tls_config_free" fn2-tls-%config-free) sb-alien:void
  (config sb-sys:system-area-pointer))
+(sb-alien:define-alien-routine ("fn2_tls_client_config" fn2-tls-%client-config) sb-sys:system-area-pointer
+ (ca-file sb-alien:c-string) (verify-peer sb-alien:int) (minimum sb-alien:int))
+(sb-alien:define-alien-routine ("fn2_tls_ctx_use_client_credentials" fn2-tls-%ctx-use-client-credentials) sb-alien:int
+ (config sb-sys:system-area-pointer) (certificate sb-alien:c-string) (key sb-alien:c-string))
 (sb-alien:define-alien-routine ("fn2_tls_new" fn2-tls-%new) sb-sys:system-area-pointer
  (config sb-sys:system-area-pointer) (capacity sb-alien:unsigned-long))
+(sb-alien:define-alien-routine ("fn2_tls_new_client" fn2-tls-%new-client) sb-sys:system-area-pointer
+ (config sb-sys:system-area-pointer) (capacity sb-alien:unsigned-long)
+ (server-name sb-alien:c-string) (verify-host sb-alien:c-string))
 (sb-alien:define-alien-routine ("fn2_tls_free" fn2-tls-%free) sb-alien:void
  (handle sb-sys:system-area-pointer))
 (sb-alien:define-alien-routine ("fn2_tls_handshake" fn2-tls-%handshake) sb-alien:int
@@ -26,9 +36,18 @@
 (sb-alien:define-alien-routine ("fn2_tls_write" fn2-tls-%write) sb-alien:int
  (handle sb-sys:system-area-pointer) (bytes sb-sys:system-area-pointer)
  (length sb-alien:unsigned-long) (count (* sb-alien:unsigned-long)))
+(sb-alien:define-alien-routine ("fn2_tls_verify_result" fn2-tls-%verify-result) sb-alien:int
+ (handle sb-sys:system-area-pointer) (verify-err (* sb-alien:long)))
+(sb-alien:define-alien-routine ("fn2_tls_peer_cert_sha256" fn2-tls-%peer-cert-sha256) sb-alien:int
+ (handle sb-sys:system-area-pointer) (out sb-sys:system-area-pointer) (out-cap sb-alien:unsigned-long))
+(sb-alien:define-alien-routine ("fn2_tls_peer_spki_sha256" fn2-tls-%peer-spki-sha256) sb-alien:int
+ (handle sb-sys:system-area-pointer) (out sb-sys:system-area-pointer) (out-cap sb-alien:unsigned-long))
+(sb-alien:define-alien-routine ("fn2_tls_peer_spki_der" fn2-tls-%peer-spki-der) sb-alien:int
+ (handle sb-sys:system-area-pointer) (out sb-sys:system-area-pointer) (out-cap sb-alien:unsigned-long))
 
 (defstruct fn2-native-tls
  input output seed transport
+ (client-p nil) (client-config nil) (server-name nil) (verify-host nil)
  ;; The external library's requested readiness; KICK schedules a bounded
  ;; first call or a call that can consume already-buffered transport data.
  (interest 1) (kick t))
@@ -43,6 +62,39 @@
 (defun fn2-native-tls-handle (tls)
  ;; The physical pointer conversion has no independent ownership decision.
  (sb-sys:int-sap (fn2-tls-transport-handle (fn2-native-tls-transport tls))))
+
+(defun fn2-native-tls-verify-status (tls)
+ "Return (values verifiedp verify-err) for TLS's active SSL session."
+ (let ((handle (fn2-native-tls-handle tls)))
+  (when (zerop (sb-sys:sap-int handle))
+   (return-from fn2-native-tls-verify-status (values nil -1)))
+  (sb-alien:with-alien ((verify-err sb-alien:long -1))
+   (let ((ok (fn2-tls-%verify-result handle (sb-alien:addr verify-err))))
+    (values (= ok 1) verify-err)))))
+
+(defun fn2-native-tls-peer-digest (tls &optional (kind :spki))
+ "Return the 32-byte SHA-256 digest of peer :SPKI or :CERT, or NIL."
+ (let ((handle (fn2-native-tls-handle tls)))
+  (when (zerop (sb-sys:sap-int handle))
+   (return-from fn2-native-tls-peer-digest nil))
+  (let ((out (make-array 32 :element-type '(unsigned-byte 8) :initial-element 0)))
+   (sb-sys:with-pinned-objects (out)
+    (let ((rc (ecase kind
+               ((:cert :cert-sha256) (fn2-tls-%peer-cert-sha256 handle (sb-sys:vector-sap out) 32))
+               ((:spki :spki-sha256) (fn2-tls-%peer-spki-sha256 handle (sb-sys:vector-sap out) 32)))))
+     (and (= rc 32) out))))))
+
+(defun fn2-native-tls-peer-spki-der (tls)
+ "Return the DER-encoded SubjectPublicKeyInfo of the peer certificate, or NIL."
+ (let ((handle (fn2-native-tls-handle tls)))
+  (when (zerop (sb-sys:sap-int handle))
+   (return-from fn2-native-tls-peer-spki-der nil))
+  (let ((len (fn2-tls-%peer-spki-der handle (sb-sys:int-sap 0) 0)))
+   (when (and (plusp len) (<= len 16384))
+    (let ((out (make-array len :element-type '(unsigned-byte 8) :initial-element 0)))
+     (sb-sys:with-pinned-objects (out)
+      (and (= (fn2-tls-%peer-spki-der handle (sb-sys:vector-sap out) len) len)
+           out)))))))
 
 (defun fn2-native-tls-close (tls cap-index nonce host)
  "Retire the matching capability and consume its reserved free action once."
@@ -112,7 +164,16 @@
     (7 (fn2-n-boundary host "tls-handshake")
        (values (fn2-tls-%handshake handle) 0))
     (8 (fn2-n-boundary host "tls-start")
-       (let ((allocated (fn2-tls-%new (fn2-nhost-tls-config host) offset)))
+       (let ((allocated
+              (if (fn2-native-tls-client-p tls)
+                  (let ((cfg (or (fn2-native-tls-client-config tls)
+                                 (fn2-nhost-tls-client-config host))))
+                    (if cfg
+                        (fn2-tls-%new-client cfg offset
+                                             (or (fn2-native-tls-server-name tls) "")
+                                             (or (fn2-native-tls-verify-host tls) ""))
+                      (sb-sys:int-sap 0)))
+                (fn2-tls-%new (fn2-nhost-tls-config host) offset))))
         (values (sb-sys:sap-int allocated) 0)))
     (9 (fn2-n-boundary host "tls-free")
        (fn2-tls-%free handle)
@@ -168,6 +229,14 @@
      (setf (fn2-native-tls-transport tls) next-transport (fn2-nop-tls-record op) next-record)
      (unless (member observed '(:ok :blocked))
       (error "fn2 TLS: selected record observation refused: ~S" observed))
+     (multiple-value-bind (effect relative-offset effect-count)
+         (fn2-tls-record-public-input-prefix serial action offset moved next-record)
+      (case effect
+       (:input-prefix
+        (fn2-n-record host (list :input-prefix slot (fn2-nop-gen op)
+          relative-offset effect-count (fn2-n-octets host address effect-count))))
+       (:none nil)
+       (otherwise (error "fn2 TLS: accepted input effect refused: ~S" effect))))
      (values :progress 0 0))))))
 
 (defun fn2-native-tls-child-step (host slot tls fd upper input output)
@@ -189,3 +258,34 @@
       (unless (member observed '(:ok :blocked))
        (error "fn2 TLS: selected child observation refused: ~S" observed))
       (values :progress 0)))))))
+
+
+(defun fn2-native-tls-mark-closed (host slot tls)
+ ;; Core authorization binds even a never-started sibling before the carrier
+ ;; disappears; a private child is settled by its upper codec instead.
+ (let ((op (aref (fn2-nhost-ops host) slot)))
+  (multiple-value-bind (code record)
+      (fn2-host-tls-mark-closed slot (fn2-nop-gen op)
+       (fn2-native-tls-transport tls) (fn2-nop-tls-record op) (fn2-nhost-core host))
+   (setf (fn2-nop-tls-record op) record)
+   (unless (member code '(:ok :kind :child :too-late))
+    (error "fn2 TLS: closed carrier loan authorization refused: ~S" code)))))
+
+(defun fn2-native-tls-cancel-result (host slot other)
+ ;; Works for closed-waiting operations without looking up a live capability.
+ (let ((cancel (aref (fn2-nhost-ops host) slot)))
+  (multiple-value-bind (decision target code count won address record)
+      (fn2-host-tls-cancel-result slot (fn2-nop-gen cancel)
+       (fn2-nop-tls-record other) (fn2-nhost-core host))
+   (setf (fn2-nop-tls-record other) record)
+   (case decision
+    ((:productive :cancelled)
+     ;; Only productive input carries pool effects. Cancelled Send retains
+     ;; accepted application count, not evidence of ciphertext delivery.
+     (fn2-n-complete host target code count 0 nil
+      (and (eq decision :productive) (fn2-n-octets host address count)))
+     (fn2-n-complete host slot :ok 0 0 won)
+     t)
+    ((:unbound :kind) nil)
+    (:too-late (fn2-n-complete host slot :ok 0 0 nil) t)
+    (otherwise (error "fn2 TLS: cancellation authorization refused: ~S" decision))))))

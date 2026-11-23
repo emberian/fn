@@ -41,24 +41,35 @@
                (equal (,reader (,update p c))
                       ,(if (eq reader writer) 'p `(,reader c))))
             (fn2-core-child-read-facts reader (cdr children))))))
-(defun fn2-core-child-facts (children all)
+(defun fn2-core-child-facts (children all index)
   (if (endp children) nil
     (let* ((field (caar children)) (type (cadar children))
            (pred (fn2-columns-sym type "P"))
+           (wrapper (fn2-columns-sym field "P"))
            (update (fn2-columns-pre "UPDATE-" field)))
       (append
        `((defthm ,(fn2-columns-sym field "-TYPE")
-           (implies (fn2-corep fn2-core) (,pred (,field fn2-core))))
+           (implies (fn2-corep fn2-core) (,pred (,field fn2-core)))
+           :hints (("Goal" :in-theory
+             (union-theories '(fn2-corep ,field ,wrapper) (theory 'minimal-theory)))))
          (defthm ,(fn2-columns-sym update "-TYPE")
            (implies (and (fn2-corep fn2-core) (,pred p))
                     (fn2-corep (,update p fn2-core)))
-           ; Symbolic positions: without it the child at position 0 splits
-           ; one case per child and costs seconds per registered kind.
-           :hints (("Goal" :in-theory (disable nth update-nth)))))
+           :hints (("Goal"
+                    :use ((:instance fn2-core-update-field-type
+                            (i ,index) (v p) (xs fn2-core)))
+                    :in-theory
+                    (union-theories '(,update fn2-core-field-p ,wrapper natp)
+                                    (theory 'minimal-theory))))))
        (fn2-core-child-read-facts field all)
-       (fn2-core-child-facts (cdr children) all)))))
+       (fn2-core-child-facts (cdr children) all (+ 1 (nfix index)))))))
 (defmacro fn2-core-children-facts (&rest children)
-  `(progn ,@(fn2-core-child-facts children children)))
+  ; ACL2 implements a nested stobj as a fixed-length record too. Reuse
+  ; the columns proof once, then specialize it with each child's slot.
+  `(encapsulate ()
+     (local (encapsulate ()
+       ,@(fn2-columns-record-events 'fn2-core (fn2-core-child-fields children))))
+     ,@(fn2-core-child-facts children children 0)))
 ; Expansion fixture catches wrong same-child and cross-child equations.
 (assert-event
  (equal (fn2-core-child-read-facts 'fn2-core-pool

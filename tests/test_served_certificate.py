@@ -352,6 +352,38 @@ class CoverageControls(unittest.TestCase):
         self.assertLess(ranges[0][1],ranges[1][0])
         with_axiom=m0.replace('theorem t','axiom bad : False\ntheorem t')
         self.assertIsNone(c.parse_module_slice(with_axiom))
+        for forbidden in ['sorry', 'admit', 'unsafe def u := 0', '@[implemented_by u]']:
+            with self.subTest(forbidden=forbidden):
+                self.assertIsNone(c.parse_module_slice(m0.replace('trivial', forbidden)))
+
+    def test_read_next_ast_case_expression_and_otherwise_requirement(self):
+        spg=module('served_proof_gen')
+        kinfo={
+            'name':'FN2-TEST',
+            'tuple':['FN2-TEST','FN2-MACHINES','FN2-CONTROL'],
+            'phases':{':FREE':0,':BUSY':1},
+            'columns':{'PHASE':0},
+            'links':{},
+            'consts':{'*C*':e.Atom('7')},
+            'ops':{'FN2-NEXT-CODE':{'callee':'FN2-NEXT-CODE-CHILD','stobjs_in':[None,'FN2-TEST']}},
+        }
+        # Compound expression key in (:next (:case <expr> ...)) matches Fn2.Arms.readNext
+        ast=spg.read_next_ast(
+            e.List([e.Atom(':CASE'), e.List([e.Atom('FN2-NEXT-CODE'), e.Atom('*C*')]),
+                    e.List([e.List([e.Atom(':OK')]), e.Atom(':BUSY')]),
+                    e.List([e.Atom(':OTHERWISE'), e.Atom(':FREE')])]),
+            kinfo, False,
+        )
+        lean=spg.term_to_lean(ast)
+        self.assertIn('FN2-NEXT-CODE-CHILD', lean)
+        self.assertIn('MEMBER-EQUAL', lean)
+        # Missing :OTHERWISE clause fails closed with UnsupportedArmError instead of IndexError
+        with self.assertRaisesRegex(spg.UnsupportedArmError, ':otherwise'):
+            spg.read_next_ast(
+                e.List([e.Atom(':CASE'), e.Atom('ID'),
+                        e.List([e.List([e.Atom(':OK')]), e.Atom(':BUSY')])]),
+                kinfo, False,
+            )
 
     def test_batched_lean_gates_cache_invalidation_and_error_isolation(self):
         with tempfile.TemporaryDirectory() as td:

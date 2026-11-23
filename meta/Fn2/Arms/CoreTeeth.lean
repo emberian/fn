@@ -35,9 +35,9 @@ operation with no child form. -/
 def coreArmBump : Arm :=
   { tag := ":COMMAND", sig := none, fn := "FN2-ECHO-RUN-COMMAND"
     decl := Val.ofList [
-      Val.ofList [.sym ":DO", Val.ofList [.sym "CODE"], Val.ofList [.sym "FN2-CORE-BUMP", .int 7],
+      Val.ofList [.sym ":DO", Val.ofList [.sym "ACL2::CODE"], Val.ofList [.sym "ACL2::FN2-CORE-BUMP", .int 7],
         .sym ":ACCEPT", Val.ofList [.sym ":OK"]],
-      Val.ofList [.sym ":SET", Val.ofList [.sym "OFF", .int 0]],
+      Val.ofList [.sym ":SET", Val.ofList [.sym "ACL2::OFF", .int 0]],
       Val.ofList [.sym ":NEXT", .sym ":REPLY"],
       Val.ofList [.sym ":CHARGE", .sym ":BYTES", .int 64, .sym ":STEPS", .int 2]] }
 

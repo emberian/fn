@@ -797,7 +797,7 @@ theorem handler_run (id slot event outcome reason count aux0 aux1 : Val) (c0 : V
     | .done v => pure v
     | .again _ => throw ":repeat-next outside a :repeat") = _
   rw [cns_row_reads]
-  have hr : readResult.read = .ok ⟨[], [], [.set handlerPending, .wake]⟩ := by rfl
+  have hr : readResult.read = .ok ⟨[], [], [.set handlerPending, .wake]⟩ := by with_unfolding_all rfl
   simp only [hr, except_ok_bind]
   dsimp only [run, pend, handlerPending]
   simp only [List.any_cons, List.any_nil, Bool.or_false, Bool.false_or, Bool.false_eq_true, ↓reduceIte, except_ok_bind, bind_assoc]

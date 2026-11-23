@@ -110,7 +110,8 @@
 (defun fnc-k28-result (octets)
   ; The result octets of the first frame in OCTETS when it is an accepted kind 28 reply.
   (declare (xargs :verify-guards nil))
-  (b* ((f (fn2-fnct-open (fnc-frame-extent octets) 4096))
+  (b* ((frame (fnc-frame-extent octets))
+       (f (fn2-fnct-open frame (len frame)))
        ((unless (and (eq (car f) :ok) (equal (cadr f) *fn2-fnct-port-reply-kind*))) nil)
        (r (fnc-parse *fn2-fnct-port-reply-layout* (caddr f))))
     (and r (equal (car (cadr r)) 0) (caddr (cadr r)))))
@@ -126,7 +127,8 @@
   ; for kind 28, WORD a string and RESULT the accepted verb's summary (nil
   ; otherwise); (:malformed ...) for anything else.
   (declare (xargs :verify-guards nil))
-  (b* ((f (fn2-fnct-open (fnc-frame-extent octets) 4096))
+  (b* ((frame (fnc-frame-extent octets))
+       (f (fn2-fnct-open frame (len frame)))
        ((unless (eq (car f) :ok)) (list :malformed (cadr f) octets))
        ((list & kind payload) f))
     (cond ((and (equal kind *fn2-fnct-control-reply-kind*) (consp payload) (null (cdr payload)))
@@ -146,10 +148,11 @@
     (let ((n (len (fnc-frame-extent octets))))
       (cons (fnc-reply (car verbs) octets)
             (if (< 0 n) (fnc-replies (cdr verbs) (nthcdr n octets)) nil)))))
-; The cursor a node issues under e-surface.md 14 item 8's interim rule: history
-; and incarnation one 0 octet each, the consumer id, the principal's slot and
-; query 1, each in its fewest big-endian octets. A fixture's expectation, never
-; a client's input to the node it judges.
+; Default control owner is account slot 1, incarnation 1 after genesis.
+(defconst *fnc-fixture-owner-pid* 4294967297)
+
+; Fixture cursor for the standard small profile's history and incarnation.
+; End-to-end clients instead carry the exact bytes returned by the node.
 (defun fnc-issued (cid principal version epoch position)
   (declare (xargs :verify-guards nil))
-  (fn2-fncu-encode (list :cursor 0 '(0) '(0) (fnc-be cid) (fnc-be principal) '(1) version version epoch position)))
+  (fn2-fncu-encode (list :cursor 0 '(1) '(1) (fnc-be cid) (fnc-be principal) '(1) version 0 epoch position)))

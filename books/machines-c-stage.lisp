@@ -118,7 +118,7 @@
   :guard (and (fn2-succ-slots-wfp fn2-succ-slots) (fn2-run-installed-wfp fn2-run-installed) (fn2-overlays-wfp fn2-overlays)
               (fn2-overlay-index-wfp fn2-overlay-index) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool)
               (natp s) (< s (fn2-succ-slots-rows fn2-succ-slots)) (natp i) (natp b0))
-  :guard-hints (("Goal" :in-theory (disable fn2-succ-eval-args fn2-succ-tip-scan fn2-succ-fits fn2-run-layout-size fn2-fields-rows)))))
+  :guard-hints ((fn2-columns-call-guard-hint 'fn2-succ-stage-insert '(fn2-succ-eval-args fn2-succ-tip-scan fn2-succ-fits fn2-run-layout-size fn2-fields-rows fn2-succ-reads-key (:definition fn2-run-layout-fields)) nil world))))
  (b* (((unless (and (natp s) (< s (fn2-succ-slots-rows fn2-succ-slots)) (natp i) (< i *fn2-succ-slots*) (natp b0)
                     (<= (+ b0 *fn2-idc-stride*) (fn2-fields-rows fn2-fields))))
        (mv :bounds fn2-succ-slots fn2-fields))

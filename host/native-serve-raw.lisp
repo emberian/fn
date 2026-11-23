@@ -11,19 +11,6 @@
     (and (= (length parts) 4) (every (lambda (p) (<= 0 p 255)) parts)
          (reduce (lambda (a p) (+ (* a 256) p)) parts :initial-value 0))))
 
-(defun fn2-nserve-groups (text)
-  "Trusted startup group names separated by newlines or commas, numbered from 1."
-  (loop with start = 0 and len = (length text) and id = 0 and acc = nil
-        while (<= start len)
-        for end = (or (position-if (lambda (c) (or (char= c #\Newline) (char= c #\,)))
-                                   text :start start)
-                      len)
-        for name = (string-trim '(#\Space #\Tab #\Return) (subseq text start end))
-        when (plusp (length name))
-          do (incf id) (push (cons name id) acc)
-        do (setf start (1+ end))
-        finally (return (nreverse acc))))
-
 (defvar *fn2-nserve-base* nil
   "The launcher supplies its served profile before applying environment keys.")
 
@@ -53,6 +40,8 @@ core rejects a present value that is not a u32; it never falls back to uid 0."
                     (sb-ext:posix-getenv "FN2_ORIGIN_INCARNATION")
                     (sb-ext:posix-getenv "FN2_HISTORY_ID")
                     (sb-ext:posix-getenv "FN2_HISTORY_INCARNATION")))
+    (setf profile (fn2-article-limit-profile-from-text profile
+                    (sb-ext:posix-getenv "FN2_ARTICLE_MAX")))
     (when tls-cert (setf profile (put-assoc-equal :tls-certificate tls-cert profile)))
     (when tls-key (setf profile (put-assoc-equal :tls-key tls-key profile)))
     (when tls-slots
@@ -73,8 +62,7 @@ core rejects a present value that is not a u32; it never falls back to uid 0."
       (setf profile (put-assoc-equal :listener-address (or (fn2-nserve-dotted address) -1) profile)))
     (when path
       (setf profile (put-assoc-equal :listener-path path profile)))
-    (when groups
-      (setf profile (put-assoc-equal :groups (fn2-nserve-groups groups) profile)))
+    (setf profile (fn2-startup-groups-from-text profile groups))
     (when peering
       (setf profile (put-assoc-equal :peering-interim
                                      (cond ((or (equal peering "1") (equal peering "true")) t)

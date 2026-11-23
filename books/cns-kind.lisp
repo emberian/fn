@@ -2,6 +2,9 @@
 ;; Arm bodies and helper operations live in books/cns.lisp (a leaf book).
 (in-package "ACL2")
 (include-book "cns-edges")
+(include-book "cns-source-raw")
+(include-book "cns-source-capture")
+(include-book "cns-source-manifest")
 (include-book "accounts")
 (include-book "machines-a")
 (include-book "machines-a-costs")
@@ -75,8 +78,23 @@
 (defthm fn2-cns-capacity-natp (natp (fn2-cns-capacity profile)) :rule-classes :type-prescription)
 (in-theory (disable fn2-ctl-capacity fn2-cns-capacity))
 
+; These are the actual per-request retained source and per-operation route.
+; The completion hook runs before op recycle and changes no issuance state.
+(defcorechild fn2-core-cns-sources fn2-cns-sources
+ :init (fn2-cns-sources-init (fn2-cns-capacity profile) fn2-cns-sources)
+ :profilep (unsigned-byte-p 32 (fn2-cns-capacity profile))
+ :harvest (fn2-cns-source-harvest
+           ((fn2-core-cns-sources fn2-cns-sources)
+            (fn2-core-cns-source-operations fn2-cns-source-operations)))
+ :why "Retain the selected published source and its promised-read claims until final transport handback.")
+(defcorechild fn2-core-cns-source-operations fn2-cns-source-operations
+ :init (fn2-cns-source-operations-init (fn2-profile-o profile) fn2-cns-source-operations)
+ :profilep (unsigned-byte-p 32 (fn2-profile-o profile))
+ :why "Route each real block-read terminal to the retained CNS source before operation recycle.")
+
+
 (defmachine fn2-ctl
- :phases (:free :greeting :frame :dispatch :waiting :reply :closing :draining :retired)
+ :phases (:free :greeting :frame :stream :dispatch :waiting :stream-reply :reply :closing :draining :retired)
  :fields ((cap-index :u32) (cap-nonce :u32) (rx-slot :link) (rx-gen :u60) (tx-slot :link) (tx-gen :u60)
           (fill :u32) (pos :u32) (flen :u32) (fkind :u8) (cns :link) (cns-gen :u60) (owner :bool)
           (tx-off :u32) (tx-len :u32) (request :u32) (pending :u32) (borrows :u32) (stopped :bool)
@@ -85,31 +103,40 @@
           ;; durable principal, whether it administers (an owner connection not
           ;; yet bound), whether it has done consumer work, and its auth request
           (principal :u60) (admin :bool) (worked :bool) (auth :link) (auth-gen :u60)
+          (sphase (:enum fn2-ctl-stream (:none :hash :feed :trailer :verified :bad :cancelled)))
+          (swindow :u60) (sremaining :u60) (shash :u32) (sstart :u32) (send :u32) (sack :bool)
+          (strailer :u8) (sop :u60) (slength :u32)
+          (ophase (:enum fn2-ctl-output (:none :prefix :fill :hash :send :trailer :last :done :cancelled)))
+          (ototal :u32) (oleft :u32) (ochecked :bool)
           (next-free :link))
  :holds ((:greeting :connection-row :rx-range) (:frame :connection-row :rx-range)
-         (:dispatch :connection-row :rx-range) (:waiting :connection-row :rx-range)
-         (:reply :connection-row :rx-range) (:closing :connection-row :rx-range)
+         (:stream :connection-row :rx-range) (:dispatch :connection-row :rx-range) (:waiting :connection-row :rx-range)
+         (:stream-reply :connection-row :rx-range) (:reply :connection-row :rx-range) (:closing :connection-row :rx-range)
          (:draining :connection-row :rx-range))
  :budget (:bytes 8192 :steps 32 :descriptors 4)
  :capacity (fn2-ctl-capacity profile)
  :admission (:phase :greeting :ranges ((:rx-range :slot rx-slot :gen rx-gen :class (:bytes *fn2-ctl-io-bytes*)))
              :copy (peer-family peer-w0)
              :clear (fill pos flen fkind cns-gen owner tx-off tx-len request pending borrows stopped cmd posture
-                     principal admin worked auth-gen))
+                     principal admin worked auth-gen sphase swindow sremaining shash sstart send sack strailer sop slength ophase ototal oleft ochecked))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (rx-slot *fn2-none*) (tx-slot *fn2-none*) (cns *fn2-none*) (auth *fn2-none*)
            (next-free fn2-machine-initial-next-free))
- :arms ((:free) (:greeting) (:frame) (:dispatch) (:waiting) (:reply) (:closing) (:draining) (:retired))
+ :arms ((:free) (:greeting) (:frame) (:stream) (:dispatch) (:waiting) (:stream-reply) (:reply) (:closing) (:draining) (:retired))
  :observes ((:receive-result) (:send-result) (:borrow-released) (:close-result)))
 
 (defmachine-registry fn2-ctl)
 
 (defmachine fn2-cns
- :phases (:free :decode :check :lookup :read :page :fetch :park :commit :committed :append :draining :retired)
+ :phases (:free :decode :check :lookup :read :page :article :item :fetch :source :park :commit :committed :append :draining :retired :replay :fetch-authorize :item-authorize :page-authorize)
  :fields ((ctl :link) (ctl-gen :u60) (request :u32) (fpos :u32) (flen :u32) (fkind :u8)
           (verb (:enum fn2-cns-verb (:none :register :read :wait :ack :position :status :append :fetch
                                      :rebase :unregister)))
           (consumer :u60) (epoch :u32) (op :u60) (to :u60) (cstart :u60) (page-limit :u16) (wait-ms :u32)
+          ;; The durable address key and the page read's internal publish
+          ;; snapshot. Neither takes the place of the scheduler's principal slot.
+          (address-principal :u60) (address-tip :u60)
+          (page-head :u60) (page-view-bound :bool) (stored-view :u60) (visible-ipos :u60)
           (cpos :u60) (version :u60) (pub-frontier :u60) (count :u32) (more :bool)
           (outcome (:enum fn2-cns-outcome (:none :accepted :refused :uncertain))) (reason :u8)
           (posted (:enum fn2-cns-posted (:none :accepted :unchanged :refused :uncertain))) (posted-word :u8)
@@ -119,9 +146,11 @@
           ;; (FED of them written, FEED-MODE the feed's line state, then
           ;; done; FEED-DISCARD 1 framing, 2 too large), as a connection feeds it
           (upload :link) (upload-gen :u60) (fstart :u32) (fed :u60) (feed-mode :u8) (feed-discard :u8)
+          ;; Streaming frame metadata is scalar; RX loans remain owned by CTL.
+          (stream :bool) (outcome-checked :bool)
           ;; a register's consumer name, the octets of its request's consumer
           ;; field in the control range (the names row it writes)
-          (name-off :u32) (name-len :u8)
+          (name-off :u32) (name-len :u8) (append-numbers-len :u32)
           ;; the consume check in progress at :check (AUTHORITY-20261105
           ;; section 4; fn2-cns-authority-allows' step, head and grant)
           (xstep :u8) (xhead :u60) (xgrant :u60)
@@ -149,30 +178,37 @@
           ;; admitted from there; a range of its own so the frame and the
           ;; reply in the connection's range stay intact), taken with the row from
           ;; the pool's class 0 (an emission that does not fit refuses :room);
-          ;; NS the row's name range, also class 0: a register's name copied
-          ;; there from the connection's range, so the emission reads every
-          ;; octet under the row's owner (as fn2-auth's key range)
+          ;; NS is at least one control window. It stores a register name
+          ;; or the committed APPEND Message-ID and all group pairs under
+          ;; the request row's own pool ownership.
           (sx :u32) (wstep :u8) (ticket :u60)
           (ws-slot :link) (ws-gen :u60) (ns-slot :link) (ns-gen :u60)
           (stopped :bool) (next-free :link))
  :holds ((:decode :tx-range :wait-row (:storage-window :while (lease :held))) (:check :tx-range :wait-row (:storage-window :while (lease :held))) (:lookup :tx-range :wait-row (:storage-window :while (lease :held)))
          (:read :tx-range :wait-row (:storage-window :while (lease :held))) (:page :tx-range :wait-row (:storage-window :while (lease :held)))
-         (:fetch :tx-range :wait-row (:storage-window :while (lease :held))) (:park :tx-range :wait-row (:storage-window :while (lease :held)))
+         (:fetch-authorize :tx-range :wait-row (:storage-window :while (lease :held)))
+         (:item-authorize :tx-range :wait-row (:storage-window :while (lease :held)))
+         (:page-authorize :tx-range :wait-row (:storage-window :while (lease :held)))
+         (:article :tx-range :wait-row (:storage-window :while (lease :held)))
+         (:item :tx-range :wait-row (:storage-window :while (lease :held)))
+         (:fetch :tx-range :wait-row (:storage-window :while (lease :held)))
+         (:source :tx-range :wait-row (:storage-window :while (lease :held))) (:park :tx-range :wait-row (:storage-window :while (lease :held)))
          (:commit :tx-range :wait-row (:storage-window :while (lease :held)))
+         (:replay :tx-range :wait-row (:storage-window :while (lease :held)))
          (:committed :tx-range :wait-row :batch-membership (:storage-window :while (lease :held))) (:append :tx-range :wait-row (:storage-window :while (lease :held))) (:draining :tx-range :wait-row (:storage-window :while (lease :held))))
  ;; :commit's submitting run stages, emits, admits and binds (24,576 bytes, as fn2-txn's :ready)
  :budget (:bytes 32768 :steps 32 :descriptors 4)
  :capacity (fn2-cns-capacity profile)
- :taken (:phase :decode :rows :wait-row :ranges ((:tx-range :slot ws-slot :gen ws-gen :class 0) (:tx-range :slot ns-slot :gen ns-gen :class 0))
+ :taken (:phase :decode :rows :wait-row :ranges ((:tx-range :slot ws-slot :gen ws-gen :class 0) (:tx-range :slot ns-slot :gen ns-gen :class (:bytes *fn2-ctl-io-bytes*)))
          :copy (ctl ctl-gen request fpos flen fkind tx-slot tx-gen)
-         :clear (verb consumer epoch op to cstart page-limit wait-ms deadline cpos version pub-frontier count more outcome
-                 reason posted posted-word txn-gen upload-gen fstart fed feed-mode feed-discard name-off name-len
+         :clear (verb consumer epoch op to cstart page-limit wait-ms deadline address-principal address-tip page-head page-view-bound stored-view visible-ipos cpos version pub-frontier count more outcome
+                 reason posted posted-word txn-gen upload-gen fstart fed feed-mode feed-discard stream outcome-checked name-off name-len append-numbers-len
                  ipos ioff ilen npos art istream itype alen lunit lepoch lalloc lgen lease revent routcome rcount rready cursor xrow xstep xhead xgrant
                  sx wstep ticket stopped))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (ctl *fn2-none*) (edge *fn2-none*) (txn *fn2-none*) (tx-slot *fn2-none*) (upload *fn2-none*)
            (lslot *fn2-none*) (ws-slot *fn2-none*) (ns-slot *fn2-none*) (next-free fn2-machine-initial-next-free))
- :arms ((:free) (:decode) (:check) (:lookup) (:read) (:page) (:fetch) (:park) (:commit) (:committed) (:append) (:draining) (:retired))
+ :arms ((:free) (:decode) (:check) (:lookup) (:read) (:page) (:article) (:item) (:fetch) (:source) (:park) (:commit) (:committed) (:append) (:draining) (:retired) (:replay) (:fetch-authorize) (:item-authorize) (:page-authorize))
  :observes ((:read-result)))
 
 (defmachine-registry fn2-cns)

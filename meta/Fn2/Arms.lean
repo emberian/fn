@@ -3,6 +3,8 @@ module
 public import Fn2.ACL2.Val
 public import Fn2.Arms.Commit
 public import Fn2.Arms.Syntax
+import all Fn2.Arms.Commit
+import all Fn2.Arms.Syntax
 
 @[expose] public section
 

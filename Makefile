@@ -1,6 +1,51 @@
 # Certification roots for the promoted fn tree. Keep every book and test
 # visible to --affected-by; lane mode selects immediate affected consumers.
 ACL2_BOOKS = \
+  sim/native-device-envelope \
+  sim/native-device-cut \
+  tests/native-device-envelope-unit \
+  tests/native-device-cut-unit \
+  books/checkpoint-geometry \
+  books/boot-config-state \
+  books/boot-bootstrap-pack \
+  books/boot-bootstrap-pack-contracts \
+  books/boot-bootstrap-verify \
+  books/boot-bootstrap-receipt \
+  tests/boot-bootstrap-producer-unit \
+  books/article-limit-text \
+  tests/article-limit-text-unit \
+  books/allocation-release-geometry \
+  books/article-limit-config \
+  books/checkpoint-service-geometry \
+  books/checkpoint-working-credit-init \
+  books/checkpoint-working-credit \
+  books/checkpoint-working-geometry \
+  books/identity-workspace-geometry \
+  books/source-manifest-codec \
+  books/upload-block-private \
+  books/upload-page-geometry \
+  books/upload-stream-manifest \
+  books/upload-stream-reset \
+  books/upload-stream-settle \
+  books/upload-stream-stage \
+  books/upload-stream \
+  books/upload-window-geometry \
+  tests/grant-class-resolution-unit \
+  tests/machine-range-provider-unit \
+  tests/machine-taken-byte-class-unit \
+  tests/root-upload-geometry-unit \
+  tests/root-working-credit-init-unit \
+  tests/txn-retained-source-served-unit \
+  tests/upload-block-private-unit \
+  tests/upload-dual-hash-unit \
+  tests/upload-page-take-unit \
+  tests/upload-posted-linear-unit \
+  tests/upload-rolling-feed-component-unit \
+  tests/upload-rolling-served-unit \
+  tests/upload-source-lifetime-unit \
+  tests/upload-stream-abort-served-unit \
+  tests/upload-stream-manifest-unit \
+  tests/upload-window-profile-unit \
   books/accounts \
   books/accounts-core \
   books/alloc \
@@ -21,6 +66,7 @@ ACL2_BOOKS = \
   books/assembly-callbacks-b \
   books/assembly-callbacks-b2 \
   books/assembly-callbacks-bt \
+  books/assembly-callbacks-bt0 \
   books/assembly-callbacks-c \
   books/assembly-callbacks-c-commit \
   books/assembly-callbacks-c-prepare \
@@ -111,17 +157,21 @@ ACL2_BOOKS = \
   books/tls-record-state \
   books/tls-record \
   books/tls-stack \
+  books/tls-record-effects \
   books/host-loan \
+  books/host-codec-close \
   books/host-codec \
   books/host-compress \
   books/columns \
   books/columns-guard-hints \
   books/columns-call-guards \
+  books/columns-observation-frames \
   books/columns-carrier-contracts \
   books/compress-policy \
   books/compress-kind \
   books/compress-operation \
   books/compress-record \
+  books/compress-record-shape \
   books/compress-close \
   books/compress-transport-lifecycle \
   books/compress-transport-ops \
@@ -205,6 +255,7 @@ ACL2_BOOKS = \
   books/machines-c \
   books/machines-c-bind \
   books/machines-c-groups \
+  books/pool-copy \
   books/machines-c-read \
   books/machines-c-sealer \
   books/machines-c-sealer-events \
@@ -216,12 +267,14 @@ ACL2_BOOKS = \
   books/native-b3-correspondence \
   books/native-b3-evidence \
   books/nntp-grammar \
+  books/startup-groups \
   books/node-profile \
   books/operations \
   books/ops-conservation \
   books/ops-heads \
   books/ops-semantic-steps \
   books/ordered \
+  books/overview-mid-span \
   books/outcome-class \
   books/overlay \
   books/origin \
@@ -468,12 +521,15 @@ ACL2_BOOKS = \
   tests/envelope-output-complete-unit \
   tests/envelope-input-unit \
   tests/envelope-prefix-unit \
+  tests/input-prefix-unit \
   tests/native-device-effects-unit \
   tests/native-device-bindings-unit \
   tests/native-unit \
   tests/network-backpressure-unit \
   tests/ops-semantic-steps-unit \
   tests/origin-unit \
+  tests/article-limit-config-unit \
+  tests/startup-groups-unit \
   tests/origin-format-unit \
   tests/origin-boot-unit \
   tests/owed-authority-unit \
@@ -513,9 +569,11 @@ ACL2_BOOKS = \
   tests/request-unit \
   tests/resources-unit \
   tests/ribbon-unit \
+  tests/outcome-key-origin-unit \
   tests/runs-assembly \
   tests/runs-assembly-import-order \
   tests/runs-unit \
+  tests/run-put-macro-unit \
   tests/sched-unit \
   tests/scribe-scenario \
   tests/sealer-capacity-unit \
@@ -553,7 +611,54 @@ ACL2_BOOKS = \
   tests/view-contracts-unit \
   tests/vocab-unit \
   tests/wake-unit \
-  tests/work-controls
+  tests/work-controls \
+  books/cns-query-lifetime-model \
+  books/core-scheduler-wake \
+  books/enqueue-trace \
+  books/query-reference-predicates \
+  books/query-reference-core-predicate \
+  books/query-ref-wake \
+  books/queue-model \
+  books/trace-events \
+  tests/cns-query-support \
+  tests/cns-query-lifetime-unit \
+  tests/enqueue-cost-unit \
+  tests/query-reference-unit \
+  tests/query-two-wake-unit \
+  tests/query-owner-drain-unit \
+  tests/queue-model-unit \
+  tests/trace-events-unit \
+  tests/cns-stream-append-unit \
+  books/successor-schema-geometry \
+  books/successor-workspace-geometry \
+  tests/successor-geometry-unit \
+  tests/ctl-hash-interleave-unit \
+  books/cns-source-core \
+  books/cns-source-issue-accounting \
+  tests/cns-source-issue-unit \
+  tests/cns-stream-fetch-unit \
+  books/cns-read-work-bounds \
+  tests/cns-article-slice-unit \
+  tests/cns-draining-credit-unit \
+  tests/cns-draining-teeth-unit \
+  tests/cns-fetch-cancel-unit \
+  tests/cns-range-continuation-unit \
+  tests/cns-tall-runs-support \
+  tests/cns-tall-runs-unit \
+  tests/cns-terminal-accounting-unit \
+  tests/cns-source-capture-unit \
+  tests/cns-source-retention-unit \
+  tests/cns-source-hash-interleave-unit \
+  tests/fnct-client-frame-unit \
+  books/cns-fetch-prefix-codec \
+  tests/cns-fetch-prefix-unit \
+  tests/txn-upload-physical-location-unit \
+  tests/upload-manifest-physical-unit \
+  tests/upload-raw-threshold-unit \
+  tests/upload-group16-served-unit \
+  tests/upload-uncertainty-served-unit \
+  tests/ctl-stripe-map-unit \
+  tests/checkpoint-installation-domain-unit
 
 .PHONY: certify
 certify:

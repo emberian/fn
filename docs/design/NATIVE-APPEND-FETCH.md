@@ -58,3 +58,38 @@ Source controls:
 python3 tests/test_fn_admin_codec.py ReplyDecoding.test_fetch_canonical_widths_and_exact_binary_reply ReplyDecoding.test_truncated_accepted_results_never_decode_as_accepted InvalidReplyOutcome.test_fetch_cli_preserves_binary_and_rejects_truncation
 python3 tests/test_native_append_fetch.py
 ```
+
+`fn init IMAGE --article-max OCTETS` and `fn serve IMAGE --article-max OCTETS`
+select an explicit article byte limit. The default remains 32768. The launcher
+passes the text unchanged; ACL2 parses it, checks the upload manifest domain,
+and applies the same execution/resource admission as other profile settings.
+Invalid text or an unsupported profile is refused rather than replaced with the
+default. Use the same explicit setting when initializing and reopening a test
+image; this runtime admission setting is not persisted in the image. An omitted
+option uses `FN2_ARTICLE_MAX` when set, otherwise the default profile. This
+option does not change the on-disk format. A larger limit
+alone does not establish rolling-window support or bypass upload capacity.
+
+Separate large-article campaigns (not part of the fast gates):
+
+```sh
+python3 tests/native-large-article-refusal.py --directory build/native-large-refusal
+python3 tests/native-large-article-restart.py --directory build/native-large-accepted
+```
+
+The first requires two explicit 96 KiB refusals and then recovers a subsequently
+accepted 6 KiB article. A refusal alone does not identify which admission layer
+refused it. The second requires the coherent rolling producer and qualified
+current native roots, and supplies `--article-max 100000` to initialization
+and both opens. It requires two distinct 96 KiB articles to be accepted and
+recovered exactly, and refuses a cross-paired Message-ID/occurrence.
+
+The accepted campaign inserts a test-only observer before the actual native
+entry through `tests/native-rolling-launcher.py`; `FN_ACL2` must explicitly name
+the qualified real launcher. The observer calls the original rolling-reset
+function exactly once and forwards every return value unchanged. It records
+existing upload identity and reset-counter values only. The campaign requires
+multiple actual counter increases under each accepted operation's same upload
+identity. This is executed reset-control evidence, not a proof of native disk
+effects. Recovery uses the unmodified launcher. Neither large campaign has been
+run by this source change.

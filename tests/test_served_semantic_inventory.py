@@ -134,11 +134,307 @@ class ServedSemanticInventory(unittest.TestCase):
         self.assertTrue(any('justification' in f.lower() for f in inventory([recursive])['frontiers']))
 
     def test_raw_justification_keeps_frontier_and_known_dependency(self):
-        root = record('ROOT', justification=['RAW-JUSTIFICATION', ['MEASURE', 'MEASURE-HELPER']])
+        root = record('ROOT', body=['ROOT', 'X'], justification=['RAW-JUSTIFICATION', ['MEASURE', 'MEASURE-HELPER']])
+        self.assertEqual(root['semantic']['metadata_states'][':JUSTIFICATION'], 'malformed')
         result = inventory([root, record('MEASURE-HELPER')])
         self.assertEqual({r['name'] for r in result['function_records']}, {'ROOT', 'MEASURE-HELPER'})
-        self.assertTrue(any('justification/measure binding requires a checked decoder' in f
-                            for f in result['frontiers']))
+        self.assertTrue(any('malformed :JUSTIFICATION:' in f for f in result['frontiers']))
+        self.assertIn('ROOT: recursive component has unresolved justification', result['frontiers'])
+
+    def test_valid_justification_decodes_pool_compare_and_member_eq_exec(self):
+        cl_syms = {'NIL', 'T', 'QUOTE', 'IF', 'LAMBDA'}
+
+        def csym(pkg, name):
+            return c.read_canonical(
+                '(:SYMBOL (' + ' '.join(str(ord(ch)) for ch in pkg) + ') (' +
+                ' '.join(str(ord(ch)) for ch in name) + '))'
+            )
+
+        def canon(val):
+            if isinstance(val, int):
+                return c.read_canonical(f'(:INTEGER {val})')
+            if isinstance(val, tuple) and len(val) == 2 and val[0] in ('ACL2', 'COMMON-LISP', 'KEYWORD'):
+                return csym(val[0], val[1])
+            if isinstance(val, str):
+                if val.startswith(':'):
+                    return csym('KEYWORD', val[1:])
+                return csym('COMMON-LISP' if val in cl_syms else 'ACL2', val)
+            if isinstance(val, list):
+                if len(val) >= 3 and val[-2] == '.':
+                    out = canon(val[-1])
+                    for elem in reversed(val[:-2]):
+                        out = c.List([c.Atom(':CONS'), canon(elem), out])
+                    return out
+                out = csym('COMMON-LISP', 'NIL')
+                for elem in reversed(val):
+                    out = c.List([c.Atom(':CONS'), canon(elem), out])
+                return out
+            raise TypeError(val)
+
+        def canon_record(name, formals, body, guard=None, justification='NIL'):
+            fmap = {
+                ':FORMALS': canon(formals),
+                ':LOGICAL-BODY': canon(body),
+                ':GUARD': canon(guard if guard is not None else ['QUOTE', 'T']),
+                ':JUSTIFICATION': canon(justification),
+                ':ATTACHMENT': canon('NIL'),
+                ':STOBJS-IN': canon(['NIL'] * len(formals)),
+                ':STOBJS-OUT': canon(['NIL']),
+            }
+            row = c.List([c.Atom(':FUNCTION'), canon(name)])
+            for k, v in fmap.items():
+                row.extend([c.Atom(k), v])
+            row = c.read_canonical(c.canonical_text(row))
+            fmap = c.fields(row)
+            return {'name': name, 'record_sha256': s.canonical_digest(row),
+                    'semantic': s.function_semantics(name, row, fmap)}
+
+        pool_just = [
+            'JUSTIFICATION',
+            ['I', 'N'],
+            ['NIL', 'O-P', '.', 'O<'],
+            [['NFIX', ['BINARY-+', ['NFIX', 'N'], ['UNARY--', ['NFIX', 'I']]]],
+             'IF', 'MV-LIST', 'RETURN-LAST'],
+        ]
+        pool_rec = canon_record(
+            'FN2-POOL-COMPARE-LOOP',
+            ['SLOT1', 'OFF1', 'SLOT2', 'OFF2', 'I', 'N', 'FN2-POOL'],
+            ['IF', ['<', ['NFIX', 'I'], ['NFIX', 'N']],
+             ['FN2-POOL-COMPARE-LOOP', 'SLOT1', 'OFF1', 'SLOT2', 'OFF2',
+              ['BINARY-+', ['QUOTE', 1], ['NFIX', 'I']], 'N', 'FN2-POOL'],
+             ['QUOTE', 'T']],
+            justification=pool_just,
+        )
+        nfix_rec = canon_record('NFIX', ['X'], ['IF', ['INTEGERP', 'X'], 'X', ['QUOTE', 0]])
+        sem = pool_rec['semantic']
+        self.assertEqual(sem['metadata_states'][':JUSTIFICATION'], 'present')
+        self.assertEqual(sem['justification_symbols'], [])
+        self.assertEqual(sem['calls']['measure'], ['BINARY-+', 'NFIX', 'UNARY--'])
+        self.assertEqual(sem['calls']['wfr'], [])
+        self.assertEqual(sem['justification']['subset'], ['I', 'N'])
+        self.assertEqual(sem['justification']['free_vars'], ['I', 'N'])
+        self.assertEqual(sem['justification']['wfr'], {
+            'domain': 'O-P', 'domain_package': 'ACL2',
+            'relation': 'O<', 'relation_package': 'ACL2',
+            'subversive': False,
+        })
+        self.assertEqual(sem['justification']['ruler_extenders'], ['IF', 'MV-LIST', 'RETURN-LAST'])
+        measure_sites = [st['callee'] for st in sem['primitive_sites'] if st['site'].startswith('measure:')]
+        self.assertEqual(sorted(measure_sites), ['BINARY-+', 'UNARY--'])
+        res = inventory([pool_rec, nfix_rec], root='FN2-POOL-COMPARE-LOOP',
+                        boundary=['<', 'BINARY-+', 'UNARY--', 'INTEGERP'])
+        self.assertEqual(res['frontiers'], [])
+        self.assertIn(('termination', 'FN2-POOL-COMPARE-LOOP'),
+                      {(o['layer'], o['subject']) for o in res['obligations']})
+        self.assertIn(('measure_domain', 'FN2-POOL-COMPARE-LOOP'),
+                      {(o['layer'], o['subject']) for o in res['obligations']})
+
+        # Mutating the measure changes measure_sha256
+        alt_just = [
+            'JUSTIFICATION',
+            ['I', 'N'],
+            ['NIL', 'O-P', '.', 'O<'],
+            [['NFIX', 'N'], 'IF', 'MV-LIST', 'RETURN-LAST'],
+        ]
+        alt_rec = canon_record(
+            'FN2-POOL-COMPARE-LOOP',
+            ['SLOT1', 'OFF1', 'SLOT2', 'OFF2', 'I', 'N', 'FN2-POOL'],
+            ['QUOTE', 'T'],
+            justification=alt_just,
+        )
+        self.assertNotEqual(sem['justification']['measure_sha256'],
+                            alt_rec['semantic']['justification']['measure_sha256'])
+
+        # MEMBER-EQ-EXEC canonical justification
+        mem_just = [
+            'JUSTIFICATION',
+            ['LST'],
+            ['NIL', 'O-P', '.', 'O<'],
+            [['ACL2-COUNT', 'LST'], 'IF', 'MV-LIST', 'RETURN-LAST'],
+        ]
+        mem_rec = canon_record(
+            'MEMBER-EQ-EXEC',
+            ['X', 'LST'],
+            ['IF', ['CONSP', 'LST'], ['MEMBER-EQ-EXEC', 'X', ['CDR', 'LST']], ['QUOTE', 'NIL']],
+            justification=mem_just,
+        )
+        mem_res = inventory([mem_rec], root='MEMBER-EQ-EXEC', boundary=['CONSP', 'CDR', 'ACL2-COUNT'])
+        self.assertEqual(mem_res['frontiers'], [])
+
+    def test_justification_measure_and_custom_wfr_edges_drive_closure_and_missing_frontiers(self):
+        cl_syms = {'NIL', 'T', 'QUOTE', 'IF', 'LAMBDA'}
+
+        def csym(pkg, name):
+            return c.read_canonical(
+                '(:SYMBOL (' + ' '.join(str(ord(ch)) for ch in pkg) + ') (' +
+                ' '.join(str(ord(ch)) for ch in name) + '))'
+            )
+
+        def canon(val):
+            if isinstance(val, int):
+                return c.read_canonical(f'(:INTEGER {val})')
+            if isinstance(val, tuple) and len(val) == 2 and val[0] in ('ACL2', 'COMMON-LISP', 'KEYWORD'):
+                return csym(val[0], val[1])
+            if isinstance(val, str):
+                if val.startswith(':'):
+                    return csym('KEYWORD', val[1:])
+                return csym('COMMON-LISP' if val in cl_syms else 'ACL2', val)
+            if isinstance(val, list):
+                if len(val) >= 3 and val[-2] == '.':
+                    out = canon(val[-1])
+                    for elem in reversed(val[:-2]):
+                        out = c.List([c.Atom(':CONS'), canon(elem), out])
+                    return out
+                out = csym('COMMON-LISP', 'NIL')
+                for elem in reversed(val):
+                    out = c.List([c.Atom(':CONS'), canon(elem), out])
+                return out
+            raise TypeError(val)
+
+        def canon_record(name, formals, body=None, justification=':MISSING'):
+            fmap = {
+                ':FORMALS': canon(formals),
+                ':LOGICAL-BODY': canon(body if body is not None else ['QUOTE', 0]),
+                ':GUARD': canon(['QUOTE', 'T']),
+                ':JUSTIFICATION': canon(justification),
+                ':ATTACHMENT': canon('NIL'),
+                ':STOBJS-IN': canon(['NIL'] * len(formals)),
+                ':STOBJS-OUT': canon(['NIL']),
+            }
+            row = c.List([c.Atom(':FUNCTION'), canon(name)])
+            for k, v in fmap.items():
+                row.extend([c.Atom(k), v])
+            row = c.read_canonical(c.canonical_text(row))
+            fmap = c.fields(row)
+            return {'name': name, 'record_sha256': s.canonical_digest(row),
+                    'semantic': s.function_semantics(name, row, fmap)}
+
+        custom_just = [
+            'JUSTIFICATION',
+            ['X'],
+            ['NIL', 'CUSTOM-MP', '.', 'CUSTOM-REL'],
+            [['BINARY-+', ['MEASURE-HELPER', 'X'], ['QUOTE', 1]], '.', ':ALL'],
+        ]
+        root = canon_record('ROOT', ['X'], body=['IF', ['CONSP', 'X'], ['ROOT', ['CDR', 'X']], ['QUOTE', 0]],
+                            justification=custom_just)
+        m_helper = canon_record('MEASURE-HELPER', ['X'], body=['MEASURE-LEAF', 'X'])
+        m_leaf = canon_record('MEASURE-LEAF', ['X'])
+        c_mp = canon_record('CUSTOM-MP', ['X'])
+        c_rel = canon_record('CUSTOM-REL', ['X', 'Y'])
+
+        full = inventory([root, m_helper, m_leaf, c_mp, c_rel], boundary=['CONSP', 'CDR', 'BINARY-+'])
+        self.assertEqual({r['name'] for r in full['function_records']},
+                         {'ROOT', 'MEASURE-HELPER', 'MEASURE-LEAF', 'CUSTOM-MP', 'CUSTOM-REL'})
+        self.assertEqual(full['frontiers'], [])
+
+        # Missing measure callee, missing custom domain/relation, or missing measure native -> explicit frontier
+        no_helper = inventory([root, c_mp, c_rel], boundary=['CONSP', 'CDR', 'BINARY-+'])
+        self.assertIn('missing function MEASURE-HELPER', no_helper['frontiers'])
+        no_rel = inventory([root, m_helper, m_leaf, c_mp], boundary=['CONSP', 'CDR', 'BINARY-+'])
+        self.assertIn('missing function CUSTOM-REL', no_rel['frontiers'])
+        no_mp = inventory([root, m_helper, m_leaf, c_rel], boundary=['CONSP', 'CDR', 'BINARY-+'])
+        self.assertIn('missing function CUSTOM-MP', no_mp['frontiers'])
+        no_plus = inventory([root, m_helper, m_leaf, c_mp, c_rel], boundary=['CONSP', 'CDR'])
+        self.assertIn('ROOT: primitive absent from canonical boundary BINARY-+', no_plus['frontiers'])
+
+    def test_decode_justification_rejects_malformed_and_subversive_records(self):
+        cl_syms = {'NIL', 'T', 'QUOTE', 'IF', 'LAMBDA'}
+
+        def csym(pkg, name):
+            return c.read_canonical(
+                '(:SYMBOL (' + ' '.join(str(ord(ch)) for ch in pkg) + ') (' +
+                ' '.join(str(ord(ch)) for ch in name) + '))'
+            )
+
+        def canon(val):
+            if isinstance(val, int):
+                return c.read_canonical(f'(:INTEGER {val})')
+            if isinstance(val, tuple) and len(val) == 2 and val[0] in ('ACL2', 'COMMON-LISP', 'KEYWORD'):
+                return csym(val[0], val[1])
+            if isinstance(val, str):
+                if val.startswith(':'):
+                    return csym('KEYWORD', val[1:])
+                return csym('COMMON-LISP' if val in cl_syms else 'ACL2', val)
+            if isinstance(val, list):
+                if len(val) >= 3 and val[-2] == '.':
+                    out = canon(val[-1])
+                    for elem in reversed(val[:-2]):
+                        out = c.List([c.Atom(':CONS'), canon(elem), out])
+                    return out
+                out = csym('COMMON-LISP', 'NIL')
+                for elem in reversed(val):
+                    out = c.List([c.Atom(':CONS'), canon(elem), out])
+                return out
+            raise TypeError(val)
+
+        # Subversive justification (T in wfr car) decodes cleanly as subversive=True and emits frontier
+        subv_just = [
+            'JUSTIFICATION',
+            ['X'],
+            ['T', 'O-P', '.', 'O<'],
+            [['ACL2-COUNT', 'X'], '.', ':BASIC'],
+        ]
+        fmap = {
+            ':FORMALS': canon(['X']),
+            ':LOGICAL-BODY': canon(['QUOTE', 0]),
+            ':GUARD': canon(['QUOTE', 'T']),
+            ':JUSTIFICATION': canon(subv_just),
+            ':ATTACHMENT': canon('NIL'),
+            ':STOBJS-IN': canon(['NIL']),
+            ':STOBJS-OUT': canon(['NIL']),
+        }
+        row = c.List([c.Atom(':FUNCTION'), canon('ROOT')])
+        for k, v in fmap.items():
+            row.extend([c.Atom(k), v])
+        row = c.read_canonical(c.canonical_text(row))
+        sem = s.function_semantics('ROOT', row, c.fields(row))
+        self.assertTrue(sem['justification']['wfr']['subversive'])
+        self.assertIn('subversive justification', sem['frontiers'])
+
+        # Valid lambda in measure is accepted
+        lam_just = canon([
+            'JUSTIFICATION',
+            ['X'],
+            ['NIL', 'T', '.', 'O<'],
+            [[[['LAMBDA', ['Y'], ['ACL2-COUNT', 'Y']], 'X'], ':LAMBDAS'],
+             '.', ':ALL'] if False else
+            [[['LAMBDA', ['Y'], ['ACL2-COUNT', 'Y']], 'X'], '.', ':LAMBDAS'],
+        ])
+        parsed_lam = s.decode_justification(lam_just, formals=['X'])
+        self.assertEqual(parsed_lam['state'], 'present')
+        self.assertEqual(parsed_lam['ruler_extenders'], ':LAMBDAS')
+
+        bad_cases = [
+            # Wrong tag package or name
+            [('COMMON-LISP', 'JUSTIFICATION'), ['X'], ['NIL', 'O-P', '.', 'O<'], [['ACL2-COUNT', 'X'], '.', ':ALL']],
+            ['NOT-JUSTIFICATION', ['X'], ['NIL', 'O-P', '.', 'O<'], [['ACL2-COUNT', 'X'], '.', ':ALL']],
+            # Wrong arity
+            ['JUSTIFICATION', ['X'], ['NIL', 'O-P', '.', 'O<']],
+            # Subset outside formals or duplicate or non-variable
+            ['JUSTIFICATION', ['Y'], ['NIL', 'O-P', '.', 'O<'], [['ACL2-COUNT', 'Y'], '.', ':ALL']],
+            ['JUSTIFICATION', ['X', 'X'], ['NIL', 'O-P', '.', 'O<'], [['ACL2-COUNT', 'X'], '.', ':ALL']],
+            ['JUSTIFICATION', [':KW'], ['NIL', 'O-P', '.', 'O<'], [['QUOTE', 0], '.', ':ALL']],
+            # Measure variable outside subset
+            ['JUSTIFICATION', ['X'], ['NIL', 'O-P', '.', 'O<'], [['ACL2-COUNT', 'Z'], '.', ':ALL']],
+            # Synthetic skipped-proof measure (:? X)
+            ['JUSTIFICATION', ['X'], ['NIL', 'O-P', '.', 'O<'], [[':?', 'X'], '.', ':ALL']],
+            # Unquoted integer literal in translated measure term
+            ['JUSTIFICATION', ['X'], ['NIL', 'O-P', '.', 'O<'], [['BINARY-+', 'X', 1], '.', ':ALL']],
+            # Bad lambda arity in measure
+            ['JUSTIFICATION', ['X'], ['NIL', 'O-P', '.', 'O<'],
+             [[['LAMBDA', ['Y', 'Z'], ['ACL2-COUNT', 'Y']], 'X'], '.', ':ALL']],
+            # Bad wfr subversive / mp / rel
+            ['JUSTIFICATION', ['X'], [('ACL2', 'NIL'), 'O-P', '.', 'O<'], [['ACL2-COUNT', 'X'], '.', ':ALL']],
+            ['JUSTIFICATION', ['X'], ['NIL', 'NIL', '.', 'O<'], [['ACL2-COUNT', 'X'], '.', ':ALL']],
+            ['JUSTIFICATION', ['X'], ['NIL', 'O-P', '.', 'T'], [['ACL2-COUNT', 'X'], '.', ':ALL']],
+            # Bad ruler-extenders
+            ['JUSTIFICATION', ['X'], ['NIL', 'O-P', '.', 'O<'], [['ACL2-COUNT', 'X'], '.', ':BOGUS']],
+            ['JUSTIFICATION', ['X'], ['NIL', 'O-P', '.', 'O<'], [['ACL2-COUNT', 'X'], 7]],
+        ]
+        for idx, bad in enumerate(bad_cases):
+            with self.subTest(case=idx):
+                with self.assertRaises(ValueError):
+                    s.decode_justification(canon(bad), formals=['X', 'Z'])
 
     def test_duplicate_and_conflicting_subjects_rejected(self):
         root = record('ROOT')
