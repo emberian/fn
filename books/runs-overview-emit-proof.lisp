@@ -151,6 +151,41 @@
                            (fn2-fields-ref-slot fn2-fields-ref-gen fn2-fields-ref-off fn2-fields-ref-len
                             fn2-layout-range-code fn2-overview-entry-emit-group fn2-overview-entry-size unsigned-byte-p))))))
 
+(local
+ (defthm fn2-run-overview-prefix-offsets-fit
+ (implies (and (unsigned-byte-p 32 off) (unsigned-byte-p 32 (+ off h n))
+               (natp h) (natp n) (<= n 1024))
+          (and (natp off) (unsigned-byte-p 32 (+ off h)) (unsigned-byte-p 32 n)))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (enable unsigned-byte-p)))))
+
+(local
+ (defthm fn2-run-assembled-page-row-readback
+  (let* ((body (fn2-run-read-bytes n src sg at pk ps pg pool))
+         (bytes (append header body))
+         (next (+ off (len header))) (end (+ next n))
+         (src-base (+ at (fn2-pool-base src pool))) (dst-base (+ off (fn2-pool-base dst pool)))
+         (head (fn2-run-load-bytes header dst dg off pk ps pg pool))
+         (copy (fn2-layout-copy src sg at dst dg next n pk ps pg (mv-nth 1 head)))
+         (load (fn2-run-load-bytes bytes dst dg off pk ps pg pool)))
+    (implies (and (natp src) (natp dst) (not (equal src dst))
+                  (natp (fn2-pool-base src pool)) (natp (fn2-pool-base dst pool))
+                  (natp off) (unsigned-byte-p 32 next) (unsigned-byte-p 32 at) (unsigned-byte-p 32 n)
+                  (or (<= (+ src-base n) dst-base) (<= (+ dst-base (len header) n) src-base))
+                  (fn-b3-octet-listp header) (fn-b3-octet-listp body)
+                  (eq (fn2-layout-range-code src sg at (+ at n) nil pk ps pg pool) :ok)
+                  (eq (fn2-layout-range-code dst dg off end t pk ps pg pool) :ok))
+             (and (equal (car head) :ok) (equal copy load) (equal (car copy) :ok)
+                  (equal (fn2-run-read-bytes (+ (len header) n) dst dg off pk ps pg (mv-nth 1 copy)) bytes))))
+  :rule-classes nil
+  :hints (("Goal" :use (fn2-run-write-prefix-and-payload
+              (:instance fn2-run-load-bytes-roundtrip
+               (bytes (append header (fn2-run-read-bytes n src sg at pk ps pg pool)))
+               (slot dst) (gen dg) (cap (+ off (len header) n))))
+            :in-theory (disable fn2-run-load-bytes fn2-run-read-bytes fn2-layout-copy
+                                fn2-layout-range-code fn2-pool-base fn-b3-octet-listp true-list-fix
+                                binary-append unsigned-byte-p)))))
+
 (defthm fn2-run-overview-leaf-encode-writes-layout
   (let* ((i (+ base 4)) (src (fn2-fields-ref-slot i f)) (sg (fn2-fields-ref-gen i f))
          (at (fn2-fields-ref-off i f)) (n (fn2-fields-ref-len i f))
@@ -176,18 +211,14 @@
                   (equal (fn2-run-read-bytes size dst dg off 9 0 1 (mv-nth 2 actual)) bytes))))
   :rule-classes nil
   :hints (("Goal" :do-not '(preprocess) :do-not-induct t :use
-           ((:instance fn2-run-overview-emit-prefix (pk 9) (ps 0) (pg 1))
-            (:instance fn2-run-write-prefix-and-payload
+           ((:instance fn2-run-overview-prefix-offsets-fit (h (len (fn2-run-overview-prefix-octets base f)))
+                         (n (fn2-fields-ref-len (+ base 4) f)))
+            (:instance fn2-run-overview-emit-prefix (pk 9) (ps 0) (pg 1))
+            (:instance fn2-run-assembled-page-row-readback
               (header (fn2-run-overview-prefix-octets base f)) (pk 9) (ps 0) (pg 1)
               (src (fn2-fields-ref-slot (+ base 4) f)) (sg (fn2-fields-ref-gen (+ base 4) f))
-              (at (fn2-fields-ref-off (+ base 4) f)) (n (fn2-fields-ref-len (+ base 4) f)))
-            (:instance fn2-run-load-bytes-roundtrip
-              (bytes (append (fn2-run-overview-prefix-octets base f)
-                       (fn2-run-read-bytes (fn2-fields-ref-len (+ base 4) f)
-                         (fn2-fields-ref-slot (+ base 4) f) (fn2-fields-ref-gen (+ base 4) f)
-                         (fn2-fields-ref-off (+ base 4) f) 9 0 1 pool)))
-              (slot dst) (gen dg) (pk 9) (ps 0) (pg 1) (cap (+ off (fn2-overview-entry-size base f)))))
-           :in-theory (disable fn2-run-layout-encode fn2-run-load-byte-segments fn2-fields-value fn2-fields-ref-slot fn2-fields-ref-gen fn2-fields-ref-off
+              (at (fn2-fields-ref-off (+ base 4) f)) (n (fn2-fields-ref-len (+ base 4) f))))
+           :in-theory (disable natp unsigned-byte-p fn2-run-layout-encode fn2-run-load-byte-segments fn2-fields-value fn2-fields-ref-slot fn2-fields-ref-gen fn2-fields-ref-off
                             fn2-fields-ref-len fn2-pool-base fn2-poolp fn2-pool-wfp fn2-layout-range-code
                             fn2-run-read-bytes fn2-run-load-bytes fn2-run-unload-values fn2-layout-octets
                             fn2-layout-copy fn2-run-overview-prefix-octets fn2-overview-entry-emit-group
