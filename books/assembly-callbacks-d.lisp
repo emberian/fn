@@ -39,16 +39,21 @@
                                    row lslot lgen boff len okind oslot ogen
                                    fn2-b3 fn2-digests fn2-pool))
                         :ok)
-                 (natp row))
+                 (natp row)
+                 (fn2-digestsp fn2-digests)
+                 (fn2-digests-wfp fn2-digests)
+                 (fn2-b3p fn2-b3)
+                 (fn2-b3-wfp fn2-b3)
+                 (fn2-poolp fn2-pool)
+                 (fn2-pool-wfp fn2-pool))
             (fn2-digest-rowp
              (fn2-digest-slot row *fn2-b3-result*)
              (mv-nth 2 (fn2-block-hash-into
                         row lslot lgen boff len okind oslot ogen
                         fn2-b3 fn2-digests fn2-pool))))
-   :hints (("Goal" :in-theory (e/d (fn2-block-hash-into)
+   :hints (("Goal" :in-theory (e/d (fn2-block-hash-into fn2-digest-rowp fn2-digest-slot)
                                    (nth fn2-b3-ready fn2-b3-init
                                         fn2-block-hash-span fn2-b3-finalize
-                                        fn2-digest-rowp fn2-digest-slot
                                         fn2-digests-rows fn2-b3-rows))))))
 (local
  (defun fn2-subst-tree (new old x)
