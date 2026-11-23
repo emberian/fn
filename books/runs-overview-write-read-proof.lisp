@@ -114,6 +114,9 @@
                 (fn2-poolp (mv-nth 2 write)) (fn2-pool-wfp (mv-nth 2 write))
                 (natp (fn2-pool-base dst (mv-nth 2 write)))
                 (equal (fn2-layout-range-code dst dg off end nil 9 0 1 (mv-nth 2 write)) :ok)
+                (equal (mv-nth 2 write)
+                       (mv-nth 1 (fn2-run-load-bytes bytes dst dg off 9 0 1
+                          (mv-nth 1 (fn2-run-load-bytes line src sg at 9 0 1 pool)))))
                 (equal (mv-nth 1 write) end) (equal (mv-nth 1 read) end)
                 (equal (fn2-run-read-bytes size dst dg off 9 0 1 (mv-nth 2 write)) bytes))))
  :rule-classes nil
