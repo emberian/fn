@@ -2,6 +2,7 @@
 ; selected event. NEXT and its chain stop at the last pair in the page.
 (in-package "ACL2")
 (include-book "arms")
+(include-book "fnct-stream")
 (include-book "xfnc-view-chain")
 (fn2-book-layer :e)
 
