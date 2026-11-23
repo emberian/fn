@@ -379,16 +379,17 @@
   (input
    ;; Need-more: every filled octet is examined. All consumed: reset RX. Full
    ;; with a retained partial line: compact (next run). Else Receive at fill.
+   ;; Prefix bytes (*fn2-conn-frame-bytes*) are added by caller subarm `frame`.
    (:let nfill (fn2-conn-fill row-rx-slot))
    (:let cap (fn2-conn-cap row-rx-slot))
    (:cond ((and (equal row-start nfill) (< 0 nfill))
            (:do (code) (fn2-core-reset row-rx-slot row-rx-gen)
                 :case ((:otherwise (:stop :machine-phase))))
            (:set (start 0) (pos 0))
-           (:charge :bytes *fn2-conn-frame-bytes* :steps *fn2-work-mailbox* :runnable t))
+           (:charge :steps *fn2-work-mailbox* :runnable t))
           ((and (<= cap nfill) (< 0 row-start))
            (:set (compacting 1) (cursor 0))
-           (:charge :bytes *fn2-conn-frame-bytes* :steps *fn2-work-mailbox* :runnable t))
+           (:charge :steps *fn2-work-mailbox* :runnable t))
           ((<= cap nfill)
            ;; A slot smaller than the line cap is full with one unfinished line:
            ;; refuse it as overlong and close (a profile check keeps served
@@ -397,26 +398,27 @@
                 :case ((:otherwise (:stop :machine-phase))))
            (:set (tx-off 0) (after *fn2-conn-after-closing*))
            (:next :reply)
-           (:charge :bytes *fn2-conn-frame-bytes* :steps *fn2-work-mailbox* :runnable t))
+           (:charge :steps *fn2-work-mailbox* :runnable t))
           (t (:let len (min *fn2-conn-receive-bytes* (nfix (- cap nfill))))
              (:issue (fn2-issue-receive row-cap-index row-cap-nonce row-rx-slot row-rx-gen len
                                         :principal row-principal-slot)
-                     :ok ((:wait :completion :bytes (+ *fn2-conn-frame-bytes* len)))))))
+                     :ok ((:wait :completion :bytes len))))))
   (block-input
    ;; RX exhausted during a block: reset it when every octet was fed, else
    ;; Receive (the feed consumes every octet it frames, so nothing is retained).
+   ;; Prefix bytes (*fn2-conn-feed-cost*) are added by caller `:article-input`.
    (:let nfill (fn2-conn-fill row-rx-slot))
    (:let cap (fn2-conn-cap row-rx-slot))
    (:cond ((and (equal row-start nfill) (< 0 nfill))
            (:do (code) (fn2-core-reset row-rx-slot row-rx-gen)
                 :case ((:otherwise (:stop :machine-phase))))
            (:set (start 0) (pos 0))
-           (:charge :bytes *fn2-conn-feed-cost* :steps *fn2-work-mailbox* :runnable t))
+           (:charge :steps *fn2-work-mailbox* :runnable t))
           ((<= cap nfill) (:stop :machine-phase))
           (t (:let len (min *fn2-conn-receive-bytes* (nfix (- cap nfill))))
              (:issue (fn2-issue-receive row-cap-index row-cap-nonce row-rx-slot row-rx-gen len
                                         :principal row-principal-slot)
-                     :ok ((:wait :completion :bytes (+ *fn2-conn-feed-cost* len)))))))
+                     :ok ((:wait :completion :bytes len))))))
   (frame
    ;; Frame from the row's continuation; at a line, answer it and move to :reply.
    (:do (status s p o) (fn2-conn-frame row-rx-slot row-rx-gen row-start row-pos row-overflow))

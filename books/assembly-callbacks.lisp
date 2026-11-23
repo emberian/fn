@@ -308,5 +308,21 @@
 (make-event
  (value (fn2-cb-patch-runs '(progn (defmachine-arms fn2-boot) (defmachine-run fn2-boot)))))
 
+(defun fn2-issue-compress-start (cap-index cap-nonce slot gen off len okind oslot ogen principal fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (stobj-let ((fn2-pool (fn2-core-pool fn2-core))
+              (fn2-ops (fn2-core-ops fn2-core))
+              (fn2-control (fn2-core-control fn2-core)))
+    (code rslot rgen fn2-pool fn2-ops fn2-control)
+    (fn2-issue-compress-start-children cap-index cap-nonce slot gen off len okind oslot ogen principal fn2-pool fn2-ops fn2-control)
+    (mv code rslot rgen fn2-core)))
+(fn2-core-preserves fn2-issue-compress-start (cap-index cap-nonce slot gen off len okind oslot ogen principal fn2-core) :position 3 :rows nil)
+(make-event
+ (value
+  `(progn
+     ,(fn2-issue-core-effect-event 'fn2-issue-compress-start '(cap-index cap-nonce slot gen off len okind oslot ogen principal fn2-core))
+     ,(fn2-issue-core-issued-event 'fn2-issue-compress-start '(cap-index cap-nonce slot gen off len okind oslot ogen principal fn2-core))
+     (in-theory (disable fn2-issue-compress-start)))))
+
 (table fn2-costs 'fn2-conn-run-greeting nil)
 (fn2-resolve :callbacks)
