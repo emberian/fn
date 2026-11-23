@@ -4,7 +4,7 @@
 (in-package "ACL2")
 (include-book "assembly-callbacks-b")
 (make-event
- (let* ((body (cadr (getpropc 'fn2-commit-events-1t 'macro-body nil (w state))))
+ (let* ((body (fn2-commit-event-forms-1t))
         (pos (position-equal '(fn2-checkpoint-allocation-coordinator-events) body))
         (lemmas
          '(local
