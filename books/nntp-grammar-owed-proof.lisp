@@ -639,8 +639,11 @@
 (local
  (defun fn2-nntp-pending-frame (xs start pos overflow cap)
    (let ((lf (fn2-nntp-next-lf pos xs))
-         (limit (max pos (+ (nfix start) (nfix cap) -1))))
+         (limit (+ (nfix start) (nfix cap) -1)))
      (cond ((equal overflow 1) (list :long-line (+ 1 lf) (+ 1 lf) 1))
+           ((<= (nfix cap) (- (nfix pos) (nfix start)))
+            (if (equal lf pos) (list :long-line (+ 1 pos) (+ 1 pos) 1)
+              (list :overflow (+ 1 pos) (+ 1 pos) 1)))
            ((<= lf limit) (list :line start (+ 1 lf) overflow))
            (t (list :overflow (+ 1 limit) (+ 1 limit) 1))))))
 

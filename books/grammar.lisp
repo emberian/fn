@@ -70,9 +70,10 @@
 ;   :fault      the pool refused a read of a filled octet.
 (defun fn2-gram-frame (left start pos overflow cap slot gen okind oslot ogen fn2-pool)
   ; D2c: one fn2-pool-scan for LF over [pos, pos+n), n = min(LEFT, fill-pos),
-  ; replacing the octet loop. The overflow point is the first octet at or
-  ; after POS that would make the line reach CAP without its LF:
-  ; max(pos, start+cap-1).
+  ; replacing the octet loop. A line fits when its LF is at or before
+  ; LIMIT = start+cap-1. A caller may resume with [start, pos) already
+  ; holding CAP octets and no LF: the octet at POS then ends the line over
+  ; CAP (an LF, :long-line) or takes it over CAP (:overflow).
   (declare (xargs :stobjs fn2-pool
                   :guard (and (fn2-pool-wfp fn2-pool) (natp left) (natp start) (natp pos)
                               (<= start pos) (bitp overflow) (posp cap))))
@@ -87,11 +88,15 @@
                          (cond (found (mv :long-line (+ 1 lf) (+ 1 lf) 1))
                                ((equal n left) (mv :budget (+ pos n) (+ pos n) 1))
                                (t (mv :need-more nfill nfill 1)))
-                       (let ((limit (max pos (+ (nfix start) (nfix cap) -1))))
-                         (cond ((and found (<= lf limit)) (mv :line start (+ 1 lf) overflow))
-                               ((< limit (+ pos n)) (mv :overflow (+ 1 limit) (+ 1 limit) 1))
-                               ((equal n left) (mv :budget start (+ pos n) overflow))
-                               (t (mv :need-more start nfill overflow)))))))))))))
+                       (if (<= (nfix cap) (- pos (nfix start)))
+                           (if (and found (equal lf pos))
+                               (mv :long-line (+ 1 pos) (+ 1 pos) 1)
+                             (mv :overflow (+ 1 pos) (+ 1 pos) 1))
+                         (let ((limit (+ (nfix start) (nfix cap) -1)))
+                           (cond ((and found (<= lf limit)) (mv :line start (+ 1 lf) overflow))
+                                 ((< limit (+ pos n)) (mv :overflow (+ 1 limit) (+ 1 limit) 1))
+                                 ((equal n left) (mv :budget start (+ pos n) overflow))
+                                 (t (mv :need-more start nfill overflow))))))))))))))
 
 (defconst *fn2-gram-frame-statuses* '(:line :long-line :overflow :need-more :budget :fault))
 

@@ -206,7 +206,10 @@
   (declare (xargs :stobjs fn2-pool :verify-guards nil))
   (and (fn2-gram-frame-outcome-p 1 start pos 0 *fn2-nntp-line-cap* slot gen 1 1 1 fn2-pool)
        (fn2-gram-frame-outcome-p 4096 start pos 0 *fn2-nntp-line-cap* slot gen 1 1 1 fn2-pool)
-       (or (> (- pos start) 4) (fn2-gram-frame-outcome-p 4096 start pos 1 4 slot gen 1 1 1 fn2-pool))
+       (or (> (- pos start) 4)
+           (and (fn2-gram-frame-outcome-p 1 start pos 0 4 slot gen 1 1 1 fn2-pool)
+                (fn2-gram-frame-outcome-p 4096 start pos 0 4 slot gen 1 1 1 fn2-pool)
+                (fn2-gram-frame-outcome-p 4096 start pos 1 4 slot gen 1 1 1 fn2-pool)))
        (fn2-nntp-parse-outcome-p start pos *fn2-gu-reader* slot gen 1 1 1 fn2-pool)))
 (in-theory (disable fn2-gu-frame-at))
 (defun fn2-gu-frames-pos (left start pos slot gen fn2-pool)
@@ -265,7 +268,8 @@
   (and (not (fn2-gram-frame-shape-p 4096 0 0 4 :need-more 0 9 0 9))     ; retains 9 > cap 4
        (not (fn2-gram-frame-shape-p 4096 0 5 512 :line 0 3 0 9))        ; moved backwards
        (not (fn2-gram-frame-shape-p 2 0 0 512 :need-more 0 5 0 9))       ; over budget
-       (not (fn2-gram-frame-shape-p 4096 0 0 512 :bogus 0 1 0 9))))     ; undeclared status
+       (not (fn2-gram-frame-shape-p 4096 0 0 512 :bogus 0 1 0 9))       ; undeclared status
+       (not (fn2-gram-frame-shape-p 1 0 1 1 :line 0 2 0 2))))           ; LF after a full cap kept as a line
 
 (in-theory (disable fn2-gram-test-frame-shapes-negative))
 (defun fn2-nntp-test-parse-total ()
@@ -381,7 +385,8 @@
         (t (mv-let (ok byte) (fn2-gram-read slot gen pos okind oslot ogen fn2-pool)
              (cond ((not ok) (mv :fault start pos overflow))
                    ((= byte *fn2-gram-lf*)
-                    (if (equal overflow 1) (mv :long-line (+ 1 (nfix pos)) (+ 1 (nfix pos)) overflow)
+                    (if (or (equal overflow 1) (<= (nfix cap) (- (nfix pos) (nfix start))))
+                        (mv :long-line (+ 1 (nfix pos)) (+ 1 (nfix pos)) 1)
                       (mv :line start (+ 1 (nfix pos)) overflow)))
                    ((or (equal overflow 1) (>= (- (+ 1 (nfix pos)) (nfix start)) (nfix cap)))
                     (if (equal overflow 1)
@@ -439,3 +444,45 @@
   (declare (xargs :verify-guards nil))
   (if (atom ts) t (and (fn2-gu-frame-agree-octets (car ts)) (fn2-gu-frame-agree-all (cdr ts)))))
 (assert-event (fn2-gu-frame-agree-all *fn2-gu-short-transcripts*))
+
+; ------------------------------------------------------------------------
+; The cap boundary, framer and reference alike. Resumed with [start, pos)
+; already holding CAP octets and no LF, an LF at POS ends an over-cap line
+; (:long-line, nothing retained) and any other octet overflows it; one
+; octet short of CAP the same LF ends a line of exactly CAP octets.
+(defun fn2-gu-frame-on (octets left start pos overflow cap)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-pool
+    (mv-let (result fn2-pool)
+      (let ((fn2-pool (fn2-pool-init '((2 . 8192)) 1 1000 fn2-pool)))
+        (mv-let (c slot gen fn2-pool) (fn2-pool-reserve 0 1 1 1 fn2-pool)
+          (declare (ignore c))
+          (mv-let (rest fn2-pool) (fn2-nntp-feed (len octets) octets slot gen fn2-pool)
+            (declare (ignore rest))
+            (mv (list (mv-list 4 (fn2-gram-frame left start pos overflow cap slot gen 1 1 1 fn2-pool))
+                      (mv-list 4 (fn2-gu-frame-reference left start pos overflow cap slot gen 1 1 1 fn2-pool))
+                      (fn2-gram-frame-outcome-p left start pos overflow cap slot gen 1 1 1 fn2-pool))
+                fn2-pool))))
+      result)))
+(in-theory (disable fn2-gu-frame-on))
+(defun fn2-gu-frame-tooth (octets left start pos overflow cap expect)
+  (declare (xargs :verify-guards nil))
+  (equal (fn2-gu-frame-on octets left start pos overflow cap) (list expect expect t)))
+(in-theory (disable fn2-gu-frame-tooth))
+
+; Boundary: "A" retained at cap 1, its LF at pos.
+(assert-event (fn2-gu-frame-tooth '(65 10) 1 0 1 0 1 '(:long-line 2 2 1)))
+(assert-event (fn2-gu-frame-tooth '(65 10) 4096 0 1 0 1 '(:long-line 2 2 1)))
+; Boundary: "A" retained at cap 1, a non-LF at pos; the next call ends it.
+(assert-event (fn2-gu-frame-tooth '(65 66 10) 4096 0 1 0 1 '(:overflow 2 2 1)))
+(assert-event (fn2-gu-frame-tooth '(65 66 10) 4096 2 2 1 1 '(:long-line 3 3 1)))
+; Positive: "A\n" is a line of exactly cap 2, whole or resumed after budget 1.
+(assert-event (fn2-gu-frame-tooth '(65 10) 4096 0 0 0 2 '(:line 0 2 0)))
+(assert-event (fn2-gu-frame-tooth '(65 10) 1 0 0 0 2 '(:budget 0 1 0)))
+(assert-event (fn2-gu-frame-tooth '(65 10) 1 0 1 0 2 '(:line 0 2 0)))
+; The NNTP cap: 512 octets with CRLF is a line, from the start or resumed
+; at 511; 513 overflows at 512 and, resumed at 512, its LF is a long line.
+(assert-event (fn2-gu-frame-tooth (fn2-gu-group-line 512) 4096 0 0 0 *fn2-nntp-line-cap* '(:line 0 512 0)))
+(assert-event (fn2-gu-frame-tooth (fn2-gu-group-line 512) 4096 0 511 0 *fn2-nntp-line-cap* '(:line 0 512 0)))
+(assert-event (fn2-gu-frame-tooth (fn2-gu-group-line 513) 4096 0 0 0 *fn2-nntp-line-cap* '(:overflow 512 512 1)))
+(assert-event (fn2-gu-frame-tooth (fn2-gu-group-line 513) 4096 0 512 0 *fn2-nntp-line-cap* '(:long-line 513 513 1)))

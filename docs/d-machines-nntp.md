@@ -599,7 +599,7 @@ obligations are covered by four rows:
 
 | row | covers | teeth |
 |---|---|---|
-| `fn2-gram-frame-total-linear` | framer totality, linear consumption, bounded retention | every `(start, pos)` of six transcripts (one holds all 256 octet values) at budgets 1 and 4096 and caps 512 and 4; negative: four wrong outcomes |
+| `fn2-gram-frame-total-linear` | framer totality, linear consumption, bounded retention; **proved** (`books/grammar-frame-proof.lisp`) | every `(start, pos)` of six transcripts (one holds all 256 octet values) at budgets 1 and 4096, cap 512, and cap 4 in both overflow states; the cap boundary resumed with `cap` octets retained; negative: five wrong outcomes |
 | `fn2-nntp-parse-total` | parse totality over arbitrary octets (guard only) | the same probe; negative: shapes a wrong parser would produce |
 | `fn2-nntp-fragmentation` | fragmentation invariance | 29 transcripts × 3 state masks, every split point, every pair for those of at most 64 octets, and bytewise arrival, equal on events and on rendered reply bytes; negative: a chunker that forgets the retained line |
 | `fn2-nntp-reply-typing` | reply typing | every reply × every command tag × 3 masks; negative: an untyped renderer |
