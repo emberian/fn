@@ -57,7 +57,7 @@
   compress-settings
   tls-config tls-client-config (tls-window 0) (tls-quantum 0) (tls-seed-capacity 0) (tls-turns 0)
   ;; Memory device for existing seeded sessions. An image session uses
-  ;; STORAGE's FIFO worker instead; the memory table makes no durability claim.
+  ;; STORAGE's device workers instead; the memory table makes no durability claim.
   (device (make-hash-table))
   storage (storage-pending 0)
   ;; the Unix-domain listener socket (-1: none), its path, and which of the

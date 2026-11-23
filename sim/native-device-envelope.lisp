@@ -1,5 +1,6 @@
 ; Bind the physical file-device capture to actual envelope replay.
-; Selected-host premise: one executor submits, one FIFO worker performs;
+; Selected-host premise: one executor submits; one thread performs Writes and
+; Fences and a pool performs Reads, under fn2-nde-ordered-p's hazards;
 ; direct seed/setup performs are outside this existing-image replay entry.
 (in-package "ACL2")
 (include-book "check-envelope")
@@ -34,18 +35,23 @@
          (mv nil (cdr unbound)))
         (t (mv :physical-take-mismatch unbound)))))
 
-; Physical returns enter the selected worker's done FIFO, then the host's
-; completion FIFO. A terminal crash may leave a suffix unposted, but cannot
-; justify posting a later physical completion before an earlier one.
-(defun fn2-nde-returned-ids (records)
- (if (atom records) nil
-  (if (eq (caar records) :return)
-      (cons (nth 1 (car records)) (fn2-nde-returned-ids (cdr records)))
-    (fn2-nde-returned-ids (cdr records)))))
+; A worker releases its job after recording the return; the release order
+; fills the done FIFO, then the host's completion FIFO. Ordered jobs release
+; in return order, which is submission order; unordered ones (two Reads, a
+; Read and a Fence) race between return and release. UNPOSTED pairs returned
+; ids with descriptors in return order. A terminal crash may leave any jobs
+; unposted, but cannot justify posting a job before an earlier-returned
+; ordered one.
+(defun fn2-nde-returned-jobs (tail records)
+ (if (atom tail) nil
+  (if (eq (caar tail) :return)
+      (cons (cons (nth 1 (car tail)) (fn2-nde-submitted (nth 1 (car tail)) records))
+            (fn2-nde-returned-jobs (cdr tail) records))
+    (fn2-nde-returned-jobs (cdr tail) records))))
 (defun fn2-nde-post-join-p (e records unposted)
  (declare (xargs :verify-guards nil))
  (let ((job (fn2-nde-job (nth 2 e) (nth 3 e) records)))
-  (or (not job) (and (consp unposted) (equal (nth 1 job) (car unposted))))))
+  (or (not job) (fn2-nde-ready-p (nth 1 job) (nth 3 (nth 2 job)) unposted))))
 
 ; Shapes are the actual adapter constructors. Validate before positional
 ; reads in the replay; a dotted/truncated capture must fail without taking a
@@ -81,7 +87,8 @@
                        ((not (fn2-nde-post-join-p e records unposted)) :physical-post-order)
                        (t nil))
                  unbound
-                 (if (fn2-nde-job (nth 2 e) (nth 3 e) records) (cdr unposted) unposted)))
+                 (let ((job (fn2-nde-job (nth 2 e) (nth 3 e) records)))
+                  (if job (remove1-assoc-equal (nth 1 job) unposted) unposted))))
             (t (mv nil unbound unposted)))
       (if binding (mv binding caps fn2-core)
        (fn2-native-device-envelope-steps (cdr rest) trace records taken caps unbound unposted backend fn2-core)))))))))
@@ -99,6 +106,6 @@
       (mv-let (code fn2-core) (fn2-boot-start (nth 1 boot) (nth 2 boot) fn2-core)
        (if (and (equal (car boot) :boot-start) (equal (len boot) 4)
                 (equal code :ok) (equal code (nth 3 boot)))
-           (fn2-native-device-envelope-steps trace trace records nil nil (fn2-nde-submitted-ids records) (fn2-nde-returned-ids records) backend fn2-core)
+           (fn2-native-device-envelope-steps trace trace records nil nil (fn2-nde-submitted-ids records) (fn2-nde-returned-jobs records records) backend fn2-core)
          (mv :boot-start-mismatch nil fn2-core))))
      (list verdict caps)))))))

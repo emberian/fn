@@ -39,9 +39,12 @@ exit. A syscall already executing may finish physically while its return logger
 blocks; its recorded begin still makes that Write uncertain in the existing
 model. A performer blocked before begin cannot execute the syscall. If stdout
 or process termination fails, the campaign must reject the missing exact exit86;
-a marker alone is not a successful crash run. Concurrent submissions after a
-worker return are allowed before its return boundary; another begin/return is
-refused because the selected single worker has not left that boundary yet.
+a marker alone is not a successful crash run. Between a worker's return and its
+return boundary the worker still holds its job's hazard: submissions and other
+returns may follow, and so may begins of unordered jobs (Reads beside a Read
+or Fence), but the begin of a job ordered with it (`fn2-nde-ordered-p`) is
+refused. A syscall cut admits any job the hazards make ready, not only the
+oldest, and posts keep return order only between ordered jobs.
 
 ## Executed model path
 

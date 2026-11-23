@@ -16,6 +16,10 @@
    (if (and (member-eq (car r) '(:submit :direct))
             (equal slot (nth 1 (nth 2 r))) (equal gen (nth 2 (nth 2 r))))
        r (fn2-nde-job slot gen (cdr records))))))
+(defun fn2-nde-submitted (id records)
+ (if (atom records) nil
+  (if (and (member-eq (caar records) '(:submit :direct)) (equal (nth 1 (car records)) id))
+      (nth 2 (car records)) (fn2-nde-submitted id (cdr records)))))
 (defun fn2-nde-return (id records)
  (if (atom records) nil
   (if (and (eq (caar records) :return) (equal (nth 1 (car records)) id))

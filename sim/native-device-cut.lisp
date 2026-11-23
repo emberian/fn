@@ -33,30 +33,36 @@
  (if (atom records) nil
   (or (equal (car records) (list :begin id))
       (fn2-nde-cut-begunp id (cdr records)))))
-; The executor may submit more jobs after this worker records its return but
-; before the worker reaches the boundary. Those submissions are not another
-; physical effect. No later begin/return can occur on this single worker.
-(defun fn2-nde-cut-submit-tailp (records)
- (if (atom records) (null records)
-  (and (eq (caar records) :submit) (fn2-nde-cut-submit-tailp (cdr records)))))
-(defun fn2-nde-cut-return-tailp (id records)
- (if (atom records) nil
-  (if (and (eq (caar records) :return) (equal (nth 1 (car records)) id))
-      (fn2-nde-cut-submit-tailp (cdr records))
-    (fn2-nde-cut-return-tailp id (cdr records)))))
+; Between its return and this boundary the worker still holds the job's
+; hazard: no job ordered with it may begin. The executor may submit more, and
+; other workers may begin and return unordered jobs (Reads beside a Read or
+; Fence). A begin of an unsubmitted id fails closed here too.
+(defun fn2-nde-cut-unordered-tailp (kind tail records)
+ (if (atom tail) (null tail)
+  (and (not (and (eq (caar tail) :begin)
+                 (let ((other (nth 3 (fn2-nde-submitted (nth 1 (car tail)) records))))
+                  (or (not other) (fn2-nde-ordered-p kind other)))))
+       (fn2-nde-cut-unordered-tailp kind (cdr tail) records))))
+(defun fn2-nde-cut-return-tailp (id kind tail records)
+ (if (atom tail) nil
+  (if (and (eq (caar tail) :return) (equal (nth 1 (car tail)) id))
+      (fn2-nde-cut-unordered-tailp kind (cdr tail) records)
+    (fn2-nde-cut-return-tailp id kind (cdr tail) records))))
+; Submitted, unreturned jobs (id . descriptor) in submission order.
 (defun fn2-nde-cut-pending (records pending)
  (if (atom records) pending
   (let ((row (car records)))
    (fn2-nde-cut-pending (cdr records)
     (case (car row)
-     (:submit (append pending (list (nth 1 row))))
-     (:return (remove1-equal (nth 1 row) pending))
+     (:submit (append pending (list (cons (nth 1 row) (nth 2 row)))))
+     (:return (remove1-assoc-equal (nth 1 row) pending))
      (otherwise pending))))))
 
-; Before syscall: the FIFO head has NOT begun, so it cannot explain effects.
-; After syscall: its real return (including short/error) must exist; no
-; terminal Post may be invented. The shared decoder retains error Writes as
-; uncertain spans and does not turn a returned Fence into power-loss evidence.
+; Before syscall: a job ready under the device hazards has NOT begun, so it
+; cannot explain effects. After syscall: its real return (including short/
+; error) must exist; no terminal Post may be invented. The shared decoder
+; retains error Writes as uncertain spans and does not turn a returned Fence
+; into power-loss evidence.
 (defun fn2-nde-cut-position (cut trace records backend)
  (declare (xargs :verify-guards nil))
  (let* ((label (nth 2 cut)) (slot (nth 3 cut)) (gen (nth 4 cut))
@@ -79,11 +85,11 @@
              (equal (car (last (butlast trace 1))) take))
         :before-submit :cut-submit-position))
    ((equal label "device-syscall")
-    (if (and job (equal id (car (fn2-nde-cut-pending records nil)))
-             (not (fn2-nde-cut-begunp id records)))
+    (if (and job (not (fn2-nde-cut-begunp id records))
+             (fn2-nde-ready-p id (nth 3 (nth 2 job)) (fn2-nde-cut-pending records nil)))
         :before-physical :cut-begin-position))
    ((equal label "device-syscall-return")
-    (if (and job (fn2-nde-cut-return-tailp id records))
+    (if (and job (fn2-nde-cut-return-tailp id (nth 3 (nth 2 job)) records records))
         :after-physical :cut-return-position))
    ((equal label "device-return")
     (if (and job (fn2-nde-return id records)) :before-terminal-post :cut-return-position))

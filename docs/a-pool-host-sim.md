@@ -299,7 +299,7 @@ core: outbox peek/ack, a descriptor's fields, the validated physical span of its
 deadline, and the result normalization `fn2-host-result` (physical kind, syscall return, errno
 class, length -> the cell's words, by the simulator's `fn2-sim-terminal-values`). The loop
 implements physical scheduling and reports observations; ACL2 owns their interpretation.
-One semantic executor; file devices additionally use one FIFO worker. Per op slot a host record in one of `waiting`, `closed-waiting` (its capability was
+One semantic executor; file devices additionally use one Write/Fence worker and a Read pool. Per op slot a host record in one of `waiting`, `closed-waiting` (its capability was
 closed under it: its loan is retained until the core cancels it, and no syscall result is
 invented), `completed`; per capability index an fd, nonce, the physical peer (captured from
 `accept(2)`'s sockaddr) and test counters. One iteration:
@@ -343,15 +343,22 @@ reports its actual count and errno; `books/device-boundary.lisp` classifies thos
 before the ordinary terminal normalizer. `fn2-device-request` refuses FUA before I/O:
 these file primitives implement baseline writes plus Fence, not the stronger FUA mode.
 No retries complete a short read or write implicitly.
-Its two bounded rings have one entry per operation slot. The executor alone posts results;
-the worker wakes its mux. A stalled call holds its borrowed bytes and does not block turns.
-Shutdown leaves a stalled fd with the worker until return, so it cannot act on a reused fd.
+One thread performs Writes and Fences in submission order; a pool (default 4) performs Reads.
+Each job gets a submission sequence number: a Read begins only after every earlier Write has
+returned from `pwrite` and while none is in progress, and a Write only after every earlier Read
+has returned from `pread`, so each Read/Write pair takes effect in submission order. A Fence
+waits only for the Writes before it, and Reads proceed while it runs. Completions post in
+submission order except between two Reads, or a Read and a Fence. Its three bounded rings (Writes/Fences, Reads, completions) have
+one entry per operation slot. The executor alone posts results; a worker wakes its mux.
+A stalled call holds its borrowed bytes and does not block turns. Shutdown joins every worker,
+waiting out a stalled call, and only then closes the fd, so no call can act on a reused fd.
 The harness's quiet marker also requires no outstanding storage call. Worker syscall entry
 and return join the death-cut counter under a short mutex, held outside the physical call.
 
-`tests/native-device-unit.lsp` controls FIFO fence ordering, a deliberately stalled worker,
+`tests/native-device-unit.lsp` controls Write-before-Fence/Read ordering, a deliberately stalled worker,
 short reads, exclusive creation and locking, and exact bytes after close/reopen. It is a
-primitive test. The image entry points are `./fn init IMAGE` and `./fn serve IMAGE --port PORT`;
+primitive test. `tests/test_device_concurrent_reads.py` controls the Read pool: Reads during
+a held Fence, Read after Write, Write after Read, and a joining stop, each refusing a one-rule mutant. The image entry points are `./fn init IMAGE` and `./fn serve IMAGE --port PORT`;
 the launcher refuses an uncertified book closure.
 `init` exclusively creates a preallocated image (default 32 MiB), and serve opens it without
 truncation. `books/node-profile.lisp` names the small native profile, including its 128-extent

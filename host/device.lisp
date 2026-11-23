@@ -1,5 +1,6 @@
-;;; File device primitives. One FIFO worker owns the fd; the executor owns
-;;; all core calls. A loan remains outstanding until its physical completion.
+;;; File device primitives. One writer thread performs Writes and Fences in
+;;; submission order; a small pool performs Reads. The executor owns all core
+;;; calls. A loan remains outstanding until its physical completion.
 (in-package "ACL2")
 
 (sb-alien:define-alien-routine ("pread" %fn2-device-pread) sb-alien:long
@@ -84,13 +85,43 @@ an existing image is never truncated, including after an interrupted init."
              (values fd size #+darwin :fullfsync #+linux :fdatasync)))
       (unless ok (fn2-native-close fd)))))
 
+;;; Every submitted job takes the next sequence number. A Read begins only
+;;; after every earlier Write has returned from pwrite; a Write begins only
+;;; after every earlier Read has returned from pread. Reads never overlap a
+;;; pwrite, so each Read/Write pair takes effect in submission order. A Fence
+;;; orders Writes only: it waits for the Writes before it and holds no Read.
 (defstruct fn2-device-job
-  slot gen kind bytes address length offset (result 0) (errno 0))
+  slot gen kind bytes address length offset (result 0) (errno 0)
+  ;; Set at submit: this job's sequence number and, for a Read, that of the
+  ;; last Write submitted before it (-1: none).
+  (seq -1) (after-write -1))
+
+;;; A bounded FIFO; one entry per operation slot. Used under the device lock.
+(defstruct (fn2-device-ring (:constructor fn2-device-ring
+                                (capacity &aux (items (make-array capacity :initial-element nil)))))
+  items (head 0) (count 0))
+(defun fn2-device-ring-peek (ring)
+  (and (plusp (fn2-device-ring-count ring))
+       (aref (fn2-device-ring-items ring) (fn2-device-ring-head ring))))
+(defun fn2-device-ring-pop (ring)
+  (let* ((items (fn2-device-ring-items ring)) (i (fn2-device-ring-head ring)) (x (aref items i)))
+    (setf (aref items i) nil (fn2-device-ring-head ring) (mod (1+ i) (length items)))
+    (decf (fn2-device-ring-count ring))
+    x))
+(defun fn2-device-ring-push (ring x)
+  (let ((items (fn2-device-ring-items ring)))
+    (assert (< (fn2-device-ring-count ring) (length items)))
+    (setf (aref items (mod (+ (fn2-device-ring-head ring) (fn2-device-ring-count ring)) (length items))) x)
+    (incf (fn2-device-ring-count ring))))
+
 (defstruct (fn2-device (:constructor %make-fn2-device))
-  fd size backend thread wake boundary
+  fd size backend thread (read-threads nil) wake boundary
   (lock (sb-thread:make-mutex :name "fn2 device queue"))
   (available (sb-thread:make-waitqueue :name "fn2 device work"))
-  queue done (head 0) (tail 0) (pending 0) (dhead 0) (dtail 0) (completed 0)
+  (readable (sb-thread:make-waitqueue :name "fn2 device read work"))
+  queue reads done                      ; Writes+Fences, Reads, completions
+  (next-seq 0) (write-submitted -1) (write-completed -1)
+  (active-reads 0) (active-pwrite nil) (active-fence nil)
   (stopping nil))
 
 (defun fn2-device-perform (device job)
@@ -108,66 +139,133 @@ an existing image is never truncated, including after an interrupted init."
     (setf (fn2-device-job-result job) n
           (fn2-device-job-errno job) (if (minusp n) (fn2-native-errno) 0))))
 
-(defun fn2-device-worker (device)
-  (unwind-protect
-       (loop
-         (let ((job
-                 (sb-thread:with-mutex ((fn2-device-lock device))
-                   (loop while (and (zerop (fn2-device-pending device))
-                                    (not (fn2-device-stopping device)))
-                         do (sb-thread:condition-wait (fn2-device-available device) (fn2-device-lock device)))
-                   (when (fn2-device-stopping device) (return-from fn2-device-worker nil))
-                   (let* ((q (fn2-device-queue device)) (i (fn2-device-head device)) (job (aref q i)))
-                     (setf (aref q i) nil (fn2-device-head device) (mod (1+ i) (length q)))
-                     (decf (fn2-device-pending device))
-                     job))))
-           (when (fn2-device-boundary device)
-             (funcall (fn2-device-boundary device) "device-syscall" job))
-           (fn2-device-perform device job)
-           (when (fn2-device-boundary device)
-             (funcall (fn2-device-boundary device) "device-syscall-return" job))
-           (sb-thread:with-mutex ((fn2-device-lock device))
-             (when (fn2-device-stopping device) (return-from fn2-device-worker nil))
-             (let ((q (fn2-device-done device)))
-               (assert (< (fn2-device-completed device) (length q)))
-               (setf (aref q (fn2-device-dtail device)) job
-                     (fn2-device-dtail device) (mod (1+ (fn2-device-dtail device)) (length q)))
-               (incf (fn2-device-completed device)))
-             (funcall (fn2-device-wake device)))))
-    ;; Do not retry close after EINTR: the fd may already have been closed
-    ;; and reused by the executor's next accept while this thread returns.
-    (%fn2-native-close (fn2-device-fd device))))
+;;; Hazard rules, called under the device lock.
+(defun fn2-device-read-ready-p (device job)
+  ;; Read after Write: no pwrite in progress, and every Write submitted
+  ;; before JOB has returned. A Fence in progress does not hold a Read.
+  (and (not (fn2-device-active-pwrite device))
+       (>= (fn2-device-write-completed device) (fn2-device-job-after-write job))))
+(defun fn2-device-write-ready-p (device job)
+  ;; Write after Read: no Read submitted before JOB is queued or in pread.
+  ;; A Read submitted after JOB cannot have begun while JOB waits, so any
+  ;; active Read is an earlier one.
+  (let ((oldest (fn2-device-ring-peek (fn2-device-reads device))))
+    (and (zerop (fn2-device-active-reads device))
+         (not (and oldest (< (fn2-device-job-seq oldest) (fn2-device-job-seq job)))))))
 
-(defun fn2-device-start (fd size backend capacity wake &optional boundary)
+(defun fn2-device-take-read (device)
+  (let ((job (fn2-device-ring-peek (fn2-device-reads device))))
+    (when (and job (fn2-device-read-ready-p device job))
+      (fn2-device-ring-pop (fn2-device-reads device))
+      (incf (fn2-device-active-reads device))
+      ;; Readiness is monotone along the queue; hand the next Read to a peer.
+      (let ((next (fn2-device-ring-peek (fn2-device-reads device))))
+        (when (and next (fn2-device-read-ready-p device next))
+          (sb-thread:condition-notify (fn2-device-readable device))))
+      job)))
+(defun fn2-device-take-write (device)
+  (let ((job (fn2-device-ring-peek (fn2-device-queue device))))
+    (when (and job (or (eq (fn2-device-job-kind job) :fence)
+                       (fn2-device-write-ready-p device job)))
+      (fn2-device-ring-pop (fn2-device-queue device))
+      (if (eq (fn2-device-job-kind job) :fence)
+          (setf (fn2-device-active-fence device) t)
+          (setf (fn2-device-active-pwrite device) t))
+      job)))
+
+(defun fn2-device-take (device reader)
+  "The next job this worker may begin, or NIL once stopping."
+  (let ((lock (fn2-device-lock device)))
+    (sb-thread:with-mutex (lock)
+      (loop
+        (when (fn2-device-stopping device) (return nil))
+        (let ((job (if reader (fn2-device-take-read device) (fn2-device-take-write device))))
+          (when job (return job)))
+        (sb-thread:condition-wait
+         (if reader (fn2-device-readable device) (fn2-device-available device)) lock)))))
+
+(defun fn2-device-finish (device job)
+  "Release JOB's hazard and post its completion; NIL once stopping."
+  (sb-thread:with-mutex ((fn2-device-lock device))
+    (ecase (fn2-device-job-kind job)
+      (:read (when (zerop (decf (fn2-device-active-reads device)))
+               (sb-thread:condition-notify (fn2-device-available device))))
+      (:write (setf (fn2-device-active-pwrite device) nil
+                    (fn2-device-write-completed device) (fn2-device-job-seq job))
+              (sb-thread:condition-broadcast (fn2-device-readable device)))
+      (:fence (setf (fn2-device-active-fence device) nil)))
+    (unless (fn2-device-stopping device)
+      (fn2-device-ring-push (fn2-device-done device) job)
+      (funcall (fn2-device-wake device))
+      t)))
+
+(defun fn2-device-worker (device reader)
+  ;; READER: one of the Read pool; otherwise the one Write/Fence thread.
+  ;; Every syscall crosses the same death-cut boundary pair.
+  (loop
+    (let ((job (fn2-device-take device reader)))
+      (unless job (return nil))
+      (when (fn2-device-boundary device)
+        (funcall (fn2-device-boundary device) "device-syscall" job))
+      (fn2-device-perform device job)
+      (when (fn2-device-boundary device)
+        (funcall (fn2-device-boundary device) "device-syscall-return" job))
+      (unless (fn2-device-finish device job) (return nil)))))
+
+(defun fn2-device-start (fd size backend capacity wake &optional boundary (read-workers 4))
+  "Take ownership of FD: it is closed by FN2-DEVICE-STOP, or here on failure."
+  (assert (and (integerp read-workers) (plusp read-workers)))
   (let ((device (%make-fn2-device :fd fd :size size :backend backend :wake wake :boundary boundary
-                                :queue (make-array capacity :initial-element nil)
-                                :done (make-array capacity :initial-element nil))))
-    (setf (fn2-device-thread device)
-          (sb-thread:make-thread (lambda () (fn2-device-worker device)) :name "fn2 storage"))
-    device))
+                                :queue (fn2-device-ring capacity) :reads (fn2-device-ring capacity)
+                                :done (fn2-device-ring capacity)))
+        (ok nil))
+    (unwind-protect
+         (progn
+           (setf (fn2-device-thread device)
+                 (sb-thread:make-thread (lambda () (fn2-device-worker device nil)) :name "fn2 storage"))
+           (loop repeat read-workers
+                 do (push (sb-thread:make-thread (lambda () (fn2-device-worker device t))
+                                                 :name "fn2 storage read")
+                          (fn2-device-read-threads device)))
+           (setf ok t)
+           device)
+      (unless ok (fn2-device-stop device)))))
 
 (defun fn2-device-submit (device job)
   (sb-thread:with-mutex ((fn2-device-lock device))
-    (let ((q (fn2-device-queue device)))
-      (assert (not (fn2-device-stopping device)))
-      (assert (< (fn2-device-pending device) (length q)))
-      (setf (aref q (fn2-device-tail device)) job
-            (fn2-device-tail device) (mod (1+ (fn2-device-tail device)) (length q)))
-      (incf (fn2-device-pending device))
-      (sb-thread:condition-notify (fn2-device-available device)))))
+    (assert (not (fn2-device-stopping device)))
+    (let ((seq (fn2-device-next-seq device)))
+      (setf (fn2-device-job-seq job) seq)
+      (ecase (fn2-device-job-kind job)
+        (:read
+         (setf (fn2-device-job-after-write job) (fn2-device-write-submitted device))
+         (fn2-device-ring-push (fn2-device-reads device) job)
+         (sb-thread:condition-notify (fn2-device-readable device)))
+        ((:write :fence)
+         (fn2-device-ring-push (fn2-device-queue device) job)
+         (when (eq (fn2-device-job-kind job) :write)
+           (setf (fn2-device-write-submitted device) seq))
+         (sb-thread:condition-notify (fn2-device-available device))))
+      (setf (fn2-device-next-seq device) (1+ seq)))))
 
 (defun fn2-device-take-completion (device)
   (sb-thread:with-mutex ((fn2-device-lock device))
-    (when (plusp (fn2-device-completed device))
-      (let* ((q (fn2-device-done device)) (i (fn2-device-dhead device)) (job (aref q i)))
-        (setf (aref q i) nil (fn2-device-dhead device) (mod (1+ i) (length q)))
-        (decf (fn2-device-completed device))
-        job))))
+    (when (fn2-device-ring-peek (fn2-device-done device))
+      (fn2-device-ring-pop (fn2-device-done device)))))
 
 (defun fn2-device-stop (device)
-  ;; Never close a descriptor under a stalled syscall or release its loan.
-  ;; The worker owns both until return, then closes. No join blocks the
-  ;; executor, and this mutex excludes a wake after the mux is destroyed.
-  (sb-thread:with-mutex ((fn2-device-lock device))
-    (setf (fn2-device-stopping device) t)
-    (sb-thread:condition-notify (fn2-device-available device))))
+  ;; Each worker finishes the syscall in hand, posts nothing more, and exits;
+  ;; this waits for all of them, including a stalled one. The fd is closed
+  ;; once, after the last has returned, so no pread, pwrite or Fence can act
+  ;; on a closed or reused descriptor, and no wake follows the mux's teardown.
+  (let ((threads (sb-thread:with-mutex ((fn2-device-lock device))
+                   (unless (fn2-device-stopping device)
+                     (setf (fn2-device-stopping device) t)
+                     (sb-thread:condition-broadcast (fn2-device-available device))
+                     (sb-thread:condition-broadcast (fn2-device-readable device))
+                     (cons (fn2-device-thread device) (fn2-device-read-threads device))))))
+    (when threads
+      (dolist (thread threads)
+        (when thread (sb-thread:join-thread thread :default nil)))
+      ;; Not retried after EINTR: the descriptor may already be released.
+      (%fn2-native-close (fn2-device-fd device)))))

@@ -60,7 +60,8 @@ class CaptureSourceTests(unittest.TestCase):
                         self.assertEqual(len(callback[1]), 2, str(path))
                         found.append(str(path.relative_to(ROOT)))
         self.assertEqual(set(found), {'host/adapter.lisp', 'host/native-session-raw.lisp',
-                                      'tests/native-device-unit.lsp'})
+                                      'tests/native-device-unit.lsp',
+                                      'tests/native-device-concurrent-reads.lsp'})
 
     def test_raw_cut_consumer_requires_actual_replay_and_complete_image(self):
         source = (ROOT / 'tests/native-device-cut-raw.lsp').read_text()
