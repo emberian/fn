@@ -216,7 +216,7 @@
                (fms (caddr (cadar xs))))
            (list* `(encapsulate ()
                      (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p))))
-                     ,(fn2-dt-rewrite-core-ev (car xs) 'fn2-txn nil nil))
+                     ,(car xs))
                   `(local
                     (make-event
                      (value

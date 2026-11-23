@@ -66,14 +66,20 @@
    :rule-classes (:rewrite :forward-chaining)
    :hints (("Goal" :in-theory (enable fn2-pool-readable-code fn2-pool-handle-code)))))
 (local
+ (defthm fn2-du-qref-array-nth-natp
+   (implies (and (fn2-pool-query-ref-count$ap l) (natp s) (< s (len l)))
+            (natp (nth s l)))
+   :hints (("Goal" :in-theory (enable fn2-pool-query-ref-count$ap nth len unsigned-byte-p)))))
+(local
  (defthm fn2-du-query-ref-count-nth-natp
    (implies (and (fn2-poolp p) (fn2-pool-wfp p) (natp s) (< s (fn2-pool-rows p)))
             (and (integerp (nth s (nth *fn2-pool-query-ref-count$ai* p)))
                  (<= 0 (nth s (nth *fn2-pool-query-ref-count$ai* p)))
                  (acl2-numberp (nth s (nth *fn2-pool-query-ref-count$ai* p)))))
-   :hints (("Goal" :in-theory (union-theories '(natp fn2-pool-query-ref-count$ai fn2-pool-query-ref-count$a-length)
+   :hints (("Goal" :in-theory (union-theories '(natp fn2-poolp fn2-pool-query-ref-count$a-length)
                                               (theory 'minimal-theory))
-                   :use ((:instance fn2-pool-query-ref-count$ai-natp (fn2-pool p) (i s))
+                   :use ((:instance fn2-du-qref-array-nth-natp
+                                    (l (nth *fn2-pool-query-ref-count$ai* p)))
                          (:instance fn2-pool-query-ref-count-length-when-wfp (fn2-pool p)))))))
 (encapsulate ()
   (local (in-theory (disable fn2-pool-workspace-code fn2-pool-readable-code
@@ -791,7 +797,7 @@
                (fms (caddr (cadar xs))))
            (list* `(encapsulate ()
                      (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p))))
-                     ,(fn2-du-rewrite-core-ev (car xs) 'fn2-upload nil nil))
+                     ,(car xs))
                   `(local
                     (make-event
                      (value
