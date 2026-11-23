@@ -46,6 +46,7 @@
                     :guard-hints (("Goal" :in-theory (disable fn2-core-wfp
                                                               fn2-machine-idp
                                                               fn2-machine-kind
+                                                              fn2-machine-generation-read-code
                                                               fn2-machine-generation
                                                               fn2-machine-phase-read-code
                                                               fn2-machine-phase
@@ -53,6 +54,7 @@
                                                               ,@(fn2-machine-row-readers (fn2-machine-names (w state))))))))
     (and (fn2-machine-idp owner fn2-core)
          (equal (fn2-machine-kind owner fn2-core) kind)
+         (eq (fn2-machine-generation-read-code owner fn2-core) :ok)
          (equal (fn2-machine-generation owner fn2-core) generation)
          (eq (fn2-machine-phase-read-code owner fn2-core) :ok)
          (let ((phase (fn2-machine-phase owner fn2-core)))
