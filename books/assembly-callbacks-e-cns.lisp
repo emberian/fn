@@ -162,19 +162,44 @@
                                    fn2-cns-article-next-natp-5 fn2-cns-article-next-natp-6
                                    fn2-cns-article-next-natp-7 fn2-cns-article-next-natp-8)))
                  '(:do-not '(preprocess)
-                   :in-theory (union-theories '(fn2-cns-article-next fn2-cns-item-answer-types)
-                                (union-theories (executable-counterpart-theory :here)
-                                                (theory 'minimal-theory)))))
+                   :in-theory (union-theories
+                                '(fn2-cns-article-next fn2-cns-item-answer-types
+                                  (:type-prescription fn2-cns-article-ready)
+                                  (:type-prescription fn2-read-lookup)
+                                  (:type-prescription fn2-read-value)
+                                  (:type-prescription fn2-cns-article-answer)
+                                  (:type-prescription fn2-cns-fill-cap)
+                                  (:type-prescription fn2-cns-item-answer)
+                                  (:type-prescription fn2-core-reset)
+                                  (:type-prescription fn2-cns-stream-source-capture)
+                                  (:type-prescription fn2-read-octets)
+                                  (:type-prescription fn2-cns-article-release))
+                                (union-theories
+                                 (set-difference-theories (executable-counterpart-theory :here)
+                                                          '((:executable-counterpart bubble-down)))
+                                 (theory 'minimal-theory)))))
                 ((and (consp ctx) (eq (cdr ctx) 'fn2-cns-decode-port-at-types))
                  '(:do-not '(preprocess)
-                   :in-theory (union-theories '(fn2-cns-decode-port-at natp unsigned-byte-p integer-range-p nfix)
-                                (union-theories (executable-counterpart-theory :here)
-                                                (theory 'minimal-theory)))))
+                   :in-theory (union-theories
+                                '(fn2-cns-decode-port-at natp unsigned-byte-p integer-range-p nfix
+                                  (:type-prescription fn2-ctl-fc-row)
+                                  (:type-prescription fn2-core-history-values)
+                                  (:type-prescription fn2-cns-decode-port-pool)
+                                  (:type-prescription fn2-cns-dec-refuse))
+                                (union-theories
+                                 (set-difference-theories (executable-counterpart-theory :here)
+                                                          '((:executable-counterpart bubble-down)))
+                                 (theory 'minimal-theory)))))
                 ((and (consp ctx) (eq (cdr ctx) 'fn2-cns-decode-port-types))
                  '(:do-not '(preprocess)
-                   :in-theory (union-theories '(fn2-cns-decode-port fn2-cns-decode-port-at-types)
-                                (union-theories (executable-counterpart-theory :here)
-                                                (theory 'minimal-theory)))))
+                   :in-theory (union-theories
+                                '(fn2-cns-decode-port fn2-cns-decode-port-at-types
+                                  (:type-prescription fn2-cns-stream-frontier)
+                                  (:type-prescription fn2-cns-decode-port-at))
+                                (union-theories
+                                 (set-difference-theories (executable-counterpart-theory :here)
+                                                          '((:executable-counterpart bubble-down)))
+                                 (theory 'minimal-theory)))))
                 ((and (consp ctx)
                       (member-eq (cdr ctx)
                                  '(fn2-auth-find-current fn2-auth-find-current-preserves-type
