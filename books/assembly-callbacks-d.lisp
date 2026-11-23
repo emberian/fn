@@ -34,19 +34,16 @@
                                         '(fn2-input-config fn2-extents fn2-fields)
                                         (w state)))))))
 (local
- (defthm fn2-block-hash-into-ok-digests-rows-fc
-   (implies (equal (car (fn2-block-hash-into
-                         row lslot lgen boff len okind oslot ogen
-                         fn2-b3 fn2-digests fn2-pool))
-                   :ok)
-            (< (+ 57 (* 136 (nfix row)))
+ (defthm fn2-block-hash-into-ok-digests-rows-lemma
+   (implies (and (equal (mv-nth 0 (fn2-block-hash-into
+                                   row lslot lgen boff len okind oslot ogen
+                                   fn2-b3 fn2-digests fn2-pool))
+                        :ok)
+                 (integerp row)
+                 (<= 0 row))
+            (< (+ 57 (* 136 row))
                (fn2-digests-rows fn2-digests)))
-   :rule-classes ((:forward-chaining
-                   :trigger-terms
-                   ((equal (car (fn2-block-hash-into
-                                 row lslot lgen boff len okind oslot ogen
-                                 fn2-b3 fn2-digests fn2-pool))
-                           :ok))))
+   :rule-classes nil
    :hints (("Goal" :in-theory (e/d (fn2-block-hash-into fn2-digest-rowp fn2-digest-slot)
                                    (nth fn2-b3-ready fn2-digests-rows fn2-b3-rows))))))
 (local
@@ -56,21 +53,47 @@
          ((atom x) x)
          (t (cons (fn2-subst-tree new old (car x))
                   (fn2-subst-tree new old (cdr x)))))))
+(local
+ (defun fn2-patch-block-hash-hint (x)
+   (declare (xargs :mode :program))
+   (cond ((atom x) x)
+         ((and (eq (car x) 'defun)
+               (consp (cdr x))
+               (eq (cadr x) 'fn2-upload-block-hash)
+               (consp (cddr x))
+               (consp (cdddr x)))
+          (list* 'defun 'fn2-upload-block-hash (caddr x)
+                 '(declare (xargs :stobjs fn2-core
+                                  :guard (fn2-core-wfp fn2-core)
+                                  :guard-hints (("Goal"
+                                                 :use ((:instance fn2-block-hash-into-ok-digests-rows-lemma
+                                                        (row (fn2-b-block-read-row (fn2-b3-rows (fn2-core-b3 fn2-core))))
+                                                        (lslot ls) (lgen lg) (boff *fn2-upload-page-stage*) (len blen)
+                                                        (fn2-b3 (fn2-core-b3 fn2-core))
+                                                        (fn2-digests (fn2-core-digests fn2-core))
+                                                        (fn2-pool (fn2-core-pool fn2-core))))))))
+                 (cddddr x)))
+         (t (cons (fn2-patch-block-hash-hint (car x))
+                  (fn2-patch-block-hash-hint (cdr x)))))))
 (make-event
  (mv-let (erp exp)
    (macroexpand1-cmp '(fn2-upload-op-events) 'assembly-callbacks-d (w state) (default-state-vars nil))
    (if erp
        (er soft 'assembly-callbacks-d "macroexpand1-cmp failed on fn2-upload-op-events")
-     (let ((patched (fn2-subst-tree
-                     '(if (and (natp slot) (< slot (fn2-pool-rows fn2-pool)))
-                          (fn2-pool-slot-fill slot fn2-pool)
-                        0)
-                     '(fn2-pool-slot-fill slot fn2-pool)
-                     exp)))
-       (if (equal patched exp)
-           (er soft 'assembly-callbacks-d "Could not patch fn2-pool-slot-fill in fn2-upload-op-events")
-         (value `(progn ,patched
-                        (in-theory (disable fn2-upload-chunk-fill)))))))))
+     (let* ((patched1 (fn2-subst-tree
+                       '(if (and (natp slot) (< slot (fn2-pool-rows fn2-pool)))
+                            (fn2-pool-slot-fill slot fn2-pool)
+                          0)
+                       '(fn2-pool-slot-fill slot fn2-pool)
+                       exp))
+            (patched2 (fn2-patch-block-hash-hint patched1)))
+       (cond ((equal patched1 exp)
+              (er soft 'assembly-callbacks-d "Could not patch fn2-pool-slot-fill in fn2-upload-op-events"))
+             ((equal patched2 patched1)
+              (er soft 'assembly-callbacks-d "Could not patch fn2-upload-block-hash in fn2-upload-op-events"))
+             (t
+              (value `(progn ,patched2
+                             (in-theory (disable fn2-upload-chunk-fill))))))))))
 (fn2-book-layer :d)
 ;; The effective durable principal of consumer request CNS of generation
 ;; GEN (section 1): its control connection's, the owner's or the one it
