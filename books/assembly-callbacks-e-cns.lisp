@@ -18,6 +18,15 @@
                   :rule-classes :forward-chaining))))
 (make-event
  (value `(local (in-theory (enable ,@(fn2-core-child-wfp-forward-runes *fn2-core-children*))))))
+(local
+ (defthm fn2-ecns-dir-readers-over-other-child
+   (implies (not (equal (nfix k) *fn2-core-machines*))
+            (and (equal (fn2-machine-idp i (update-nth k v c)) (fn2-machine-idp i c))
+                 (equal (fn2-machine-kind i (update-nth k v c)) (fn2-machine-kind i c))
+                 (equal (fn2-machine-slot i (update-nth k v c)) (fn2-machine-slot i c))
+                 (equal (fn2-core-machines (update-nth k v c)) (fn2-core-machines c))))
+   :hints (("Goal" :in-theory (enable fn2-machine-idp fn2-machine-kind fn2-machine-kind-read-code
+                                      fn2-machine-slot fn2-machine-slot-read-code fn2-core-machines)))))
 (make-event
  (value `(local (in-theory (disable nth fn2-reads-rows fn2-fields-rows fn2-fc-rows
                                     fn2-digests-rows fn2-b3-rows fn2-pool-fill fn2-pool-base fn2-pool-data-length
@@ -107,7 +116,7 @@
          (t (or (fn2-ecns-find-result-fn (car x))
                 (fn2-ecns-find-result-fn (cdr x)))))))
 (local
- (defun fn2-ecns-augment-arms-list (xs)
+ (defun fn2-ecns-augment-arms-list (xs kind)
    (declare (xargs :mode :program))
    (if (atom xs) nil
      (let ((fn (fn2-ecns-find-result-fn (car xs))))
@@ -156,30 +165,38 @@
                            :hints (("Goal" :use ,iss
                                            :in-theory (disable ,iss ,',fn fn2-core-ops fn2-corep fn2-core-wfp
                                                                fn2-ops-issued-count fn2-ops-rows)))))))))
-                (fn2-ecns-augment-arms-list (cdr xs))))
+                (fn2-ecns-augment-arms-list (cdr xs) kind)))
         ((and (consp (car xs)) (eq (caar xs) 'progn)
               (consp (cdar xs)) (consp (cadar xs)) (eq (caadar xs) 'defun))
          (let ((w (cadr (cadar xs)))
-               (fms (caddr (cadar xs))))
+               (fms (caddr (cadar xs)))
+               (upd-tbl (fn2-columns-pre "UPDATE-" (fn2-columns-sym kind "-TABLE"))))
            (list* `(encapsulate ()
                      (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p))))
                      ,(car xs))
                   `(local
-                    (defthm ,(fn2-columns-sym w "-PRESERVES-MACHINE-DIR")
-                      (and (equal (fn2-machine-idp fn2-any-id (,w ,@fms)) (fn2-machine-idp fn2-any-id fn2-core))
-                           (equal (fn2-machine-kind fn2-any-id (,w ,@fms)) (fn2-machine-kind fn2-any-id fn2-core))
-                           (equal (fn2-machine-slot fn2-any-id (,w ,@fms)) (fn2-machine-slot fn2-any-id fn2-core)))
-                      :hints (("Goal" :in-theory (e/d (,w fn2-machine-refuse-write fn2-core-stop
-                                                       fn2-machine-idp fn2-machine-kind fn2-machine-slot)
-                                                      ((:definition unsigned-byte-p) (:definition integer-range-p)))))))
+                    (make-event
+                     (value
+                      `(defthm ,(fn2-columns-sym ',w "-PRESERVES-MACHINE-DIR")
+                         (and (equal (fn2-machine-idp fn2-any-id (,',w ,@',fms)) (fn2-machine-idp fn2-any-id fn2-core))
+                              (equal (fn2-machine-kind fn2-any-id (,',w ,@',fms)) (fn2-machine-kind fn2-any-id fn2-core))
+                              (equal (fn2-machine-slot fn2-any-id (,',w ,@',fms)) (fn2-machine-slot fn2-any-id fn2-core)))
+                         :hints (("Goal" :in-theory
+                                  (union-theories
+                                   '(,',w fn2-machine-refuse-write fn2-core-stop fn2-control-record-stop
+                                     update-fn2-core-control ,',upd-tbl
+                                     fn2-machine-idp-bounds fn2-ecns-dir-readers-over-other-child
+                                     ,(fn2-arm-frame-name ',w "-ARM-SLOT")
+                                     ,@(fn2-arm-frame-directory-runes (strip-cars *fn2-machine-directory-fields*)))
+                                   (theory 'fn2-arm-frame-base))))))))
                   `(local (in-theory (disable ,w)))
-                  (fn2-ecns-augment-arms-list (cdr xs)))))
+                  (fn2-ecns-augment-arms-list (cdr xs) kind))))
         ((and (consp (car xs)) (member-eq (caar xs) '(defun progn)))
          (cons `(encapsulate ()
                   (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p))))
                   ,(car xs))
-               (fn2-ecns-augment-arms-list (cdr xs))))
-        (t (cons (car xs) (fn2-ecns-augment-arms-list (cdr xs)))))))))
+               (fn2-ecns-augment-arms-list (cdr xs) kind)))
+        (t (cons (car xs) (fn2-ecns-augment-arms-list (cdr xs) kind))))))))
 (local
  (defun fn2-ecns-subst-sym (new old x)
    (declare (xargs :mode :program))
@@ -200,12 +217,17 @@
          ((equal x '(in-theory (disable fn2-outcome-lookup-step)))
           '(progn
              (local
-              (defthm fn2-outcome-lookup-step-preserves-machines-and-cns
+              (defthm fn2-outcome-lookup-step-preserves-tables
                 (and (equal (fn2-core-machines (mv-nth 1 (fn2-outcome-lookup-step x principal op budget fn2-core)))
                             (fn2-core-machines fn2-core))
                      (equal (fn2-cns-table (mv-nth 1 (fn2-outcome-lookup-step x principal op budget fn2-core)))
-                            (fn2-cns-table fn2-core))
-                     (equal (fn2-machine-idp cns (mv-nth 1 (fn2-outcome-lookup-step x principal op budget fn2-core)))
+                            (fn2-cns-table fn2-core)))
+                :hints (("Goal" :in-theory (e/d (fn2-outcome-lookup-step)
+                                                (fn2-read-key fn2-read-lookup fn2-read-release))))))
+             (in-theory (disable fn2-outcome-lookup-step))
+             (local
+              (defthm fn2-outcome-lookup-step-preserves-machines-and-cns
+                (and (equal (fn2-machine-idp cns (mv-nth 1 (fn2-outcome-lookup-step x principal op budget fn2-core)))
                             (fn2-machine-idp cns fn2-core))
                      (equal (fn2-machine-kind cns (mv-nth 1 (fn2-outcome-lookup-step x principal op budget fn2-core)))
                             (fn2-machine-kind cns fn2-core))
@@ -219,11 +241,11 @@
                             (fn2-cns-row-ns-slot cns fn2-core))
                      (equal (fn2-cns-row-ns-gen cns (mv-nth 1 (fn2-outcome-lookup-step x principal op budget fn2-core)))
                             (fn2-cns-row-ns-gen cns fn2-core)))
-                :hints (("Goal" :in-theory (enable fn2-outcome-lookup-step fn2-read-key fn2-read-lookup fn2-read-release
-                                                   fn2-machine-idp fn2-machine-kind fn2-machine-slot
-                                                   fn2-cns-row-ws-slot fn2-cns-row-ws-gen
-                                                   fn2-cns-row-ns-slot fn2-cns-row-ns-gen)))))
-             (in-theory (disable fn2-outcome-lookup-step))))
+                :hints (("Goal" :in-theory (e/d (fn2-machine-idp fn2-machine-kind fn2-machine-kind-read-code
+                                                 fn2-machine-slot fn2-machine-slot-read-code
+                                                 fn2-cns-row-ws-slot fn2-cns-row-ws-gen
+                                                 fn2-cns-row-ns-slot fn2-cns-row-ns-gen)
+                                                (fn2-outcome-lookup-step))))))))
          ((equal x '(in-theory (disable fn2-cns-append-read-contextp)))
           '(progn
              (in-theory (disable fn2-cns-append-read-contextp))
@@ -256,7 +278,7 @@
                (make-event
                 (mv-let (err form) (fn2-arms-events ',k ':core (w state))
                   (if err (er soft 'assembly-callbacks-e-cns "~@0" err)
-                    (value (cons 'progn (fn2-ecns-augment-arms-list (cdr form))))))))))
+                    (value (cons 'progn (fn2-ecns-augment-arms-list (cdr form) ',k)))))))))
          ((and (equal (car x) 'defmachine-run) (consp (cdr x)) (symbolp (cadr x)))
           (let ((k (cadr x)))
             `(make-event
@@ -307,6 +329,6 @@
               (and (fn2-digestsp d) (fn2-digests-wfp d)
                    (fn2-b3p b) (fn2-b3-wfp b))))
    :hints (("Goal" :in-theory (e/d (fn2-fnct-stream-finish)
-                                   (fn2-b3-ready fn2-digest-rowp fn2-digest-slot fn2-b3-finalize))))))
+                                   (fn2-b3-ready fn2-digest-rowp fn2-b3-finalize))))))
 (local (in-theory (disable fn2-fnct-stream-start fn2-fnct-stream-update fn2-fnct-stream-finish)))
 (fn2-ecns-fast-events (fn2-cns-events))

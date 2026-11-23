@@ -17,6 +17,15 @@
 (make-event
  (value `(local (in-theory (enable ,@(fn2-core-child-wfp-forward-runes *fn2-core-children*))))))
 (local
+ (defthm fn2-ea-dir-readers-over-other-child
+   (implies (not (equal (nfix k) *fn2-core-machines*))
+            (and (equal (fn2-machine-idp i (update-nth k v c)) (fn2-machine-idp i c))
+                 (equal (fn2-machine-kind i (update-nth k v c)) (fn2-machine-kind i c))
+                 (equal (fn2-machine-slot i (update-nth k v c)) (fn2-machine-slot i c))
+                 (equal (fn2-core-machines (update-nth k v c)) (fn2-core-machines c))))
+   :hints (("Goal" :in-theory (enable fn2-machine-idp fn2-machine-kind fn2-machine-kind-read-code
+                                      fn2-machine-slot fn2-machine-slot-read-code fn2-core-machines)))))
+(local
  (defun fn2-ea-arm-fns (arms)
    (declare (xargs :mode :program))
    (if (atom arms) nil (cons (cadar arms) (fn2-ea-arm-fns (cdr arms))))))
@@ -159,13 +168,20 @@
                      (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p))))
                      ,(car xs))
                   `(local
-                    (defthm ,(fn2-columns-sym w "-PRESERVES-MACHINE-DIR")
-                      (and (equal (fn2-machine-idp fn2-any-id (,w ,@fms)) (fn2-machine-idp fn2-any-id fn2-core))
-                           (equal (fn2-machine-kind fn2-any-id (,w ,@fms)) (fn2-machine-kind fn2-any-id fn2-core))
-                           (equal (fn2-machine-slot fn2-any-id (,w ,@fms)) (fn2-machine-slot fn2-any-id fn2-core)))
-                      :hints (("Goal" :in-theory (e/d (,w fn2-machine-refuse-write fn2-core-stop
-                                                       fn2-machine-idp fn2-machine-kind fn2-machine-slot)
-                                                      ((:definition unsigned-byte-p) (:definition integer-range-p)))))))
+                    (make-event
+                     (value
+                      `(defthm ,(fn2-columns-sym ',w "-PRESERVES-MACHINE-DIR")
+                         (and (equal (fn2-machine-idp fn2-any-id (,',w ,@',fms)) (fn2-machine-idp fn2-any-id fn2-core))
+                              (equal (fn2-machine-kind fn2-any-id (,',w ,@',fms)) (fn2-machine-kind fn2-any-id fn2-core))
+                              (equal (fn2-machine-slot fn2-any-id (,',w ,@',fms)) (fn2-machine-slot fn2-any-id fn2-core)))
+                         :hints (("Goal" :in-theory
+                                  (union-theories
+                                   '(,',w fn2-machine-refuse-write fn2-core-stop fn2-control-record-stop
+                                     update-fn2-core-control update-fn2-auth-table
+                                     fn2-machine-idp-bounds fn2-ea-dir-readers-over-other-child
+                                     ,(fn2-arm-frame-name ',w "-ARM-SLOT")
+                                     ,@(fn2-arm-frame-directory-runes (strip-cars *fn2-machine-directory-fields*)))
+                                   (theory 'fn2-arm-frame-base))))))))
                   `(local (in-theory (disable ,w)))
                   (fn2-ea-augment-arms-list (cdr xs)))))
         ((and (consp (car xs)) (member-eq (caar xs) '(defun progn)))

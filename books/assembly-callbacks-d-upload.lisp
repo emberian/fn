@@ -19,6 +19,15 @@
                   :rule-classes :forward-chaining))))
 (make-event
  (value `(local (in-theory (enable ,@(fn2-core-child-wfp-forward-runes *fn2-core-children*))))))
+(local
+ (defthm fn2-du-dir-readers-over-other-child
+   (implies (not (equal (nfix k) *fn2-core-machines*))
+            (and (equal (fn2-machine-idp i (update-nth k v c)) (fn2-machine-idp i c))
+                 (equal (fn2-machine-kind i (update-nth k v c)) (fn2-machine-kind i c))
+                 (equal (fn2-machine-slot i (update-nth k v c)) (fn2-machine-slot i c))
+                 (equal (fn2-core-machines (update-nth k v c)) (fn2-core-machines c))))
+   :hints (("Goal" :in-theory (enable fn2-machine-idp fn2-machine-kind fn2-machine-kind-read-code
+                                      fn2-machine-slot fn2-machine-slot-read-code fn2-core-machines)))))
 (make-event
  (value `(local (in-theory (disable nth fn2-digests-rows fn2-b3-rows fn2-fields-rows
                                     fn2-pool-fill fn2-pool-base fn2-pool-data-length)))))
@@ -44,7 +53,30 @@
     (mv-let (erp exp) (macroexpand1-cmp ',form 'assembly-callbacks-d-upload (w state) (default-state-vars nil))
       (if erp (er soft 'assembly-callbacks-d-upload "Expand failed: ~x0" ',form)
         (value (fn2-du-wrap-preserves exp))))))
-(fn2-du-fast-events (fn2-upload-stream-stage-events))
+(local
+ (defthm fn2-du-workspace-code-implies-row-bounds
+   (implies (equal (fn2-pool-workspace-code s g okind oid ogen p) :ok)
+            (and (natp s) (integerp s) (<= 0 s) (< s (fn2-pool-rows p))))
+   :rule-classes (:rewrite :forward-chaining)
+   :hints (("Goal" :in-theory (enable fn2-pool-workspace-code fn2-pool-handle-code)))))
+(local
+ (defthm fn2-du-readable-code-implies-row-bounds
+   (implies (equal (fn2-pool-readable-code s g okind oid ogen p) :ok)
+            (and (natp s) (integerp s) (<= 0 s) (< s (fn2-pool-rows p))))
+   :rule-classes (:rewrite :forward-chaining)
+   :hints (("Goal" :in-theory (enable fn2-pool-readable-code fn2-pool-handle-code)))))
+(local
+ (defthm fn2-du-query-ref-count-nth-natp
+   (implies (and (fn2-poolp p) (fn2-pool-wfp p) (natp s) (< s (fn2-pool-rows p)))
+            (and (integerp (nth s (nth *fn2-pool-query-ref-count$ai* p)))
+                 (<= 0 (nth s (nth *fn2-pool-query-ref-count$ai* p)))
+                 (acl2-numberp (nth s (nth *fn2-pool-query-ref-count$ai* p)))))
+   :hints (("Goal" :in-theory (enable fn2-poolp fn2-pool-wfp fn2-pool-query-ref-count fn2-pool-query-ref-count$ai)))))
+(encapsulate ()
+  (local (in-theory (disable fn2-pool-workspace-code fn2-pool-readable-code
+                             fn2-pool-range-in fn2-feed-header-complete-p
+                             fn2-gram-fill fn2-upload-stored-hasher)))
+  (fn2-du-fast-events (fn2-upload-stream-stage-events)))
 (fn2-du-fast-events (fn2-upload-stream-reset-op-events))
 (fn2-du-fast-events (fn2-upload-stream-manifest-op-events))
 (local
@@ -63,22 +95,11 @@
                (fn2-upload-row-lslot id fn2-core))
         (equal (fn2-upload-row-lgen id (mv-nth 1 (fn2-upload-digest row hashed fn2-core)))
                (fn2-upload-row-lgen id fn2-core)))
-   :hints (("Goal" :in-theory (enable fn2-upload-digest fn2-upload-hash-begin fn2-upload-hash-end
-                                      fn2-machine-idp fn2-machine-kind fn2-machine-slot
-                                      fn2-upload-row-lslot fn2-upload-row-lgen)))))
+   :hints (("Goal" :in-theory (e/d (fn2-upload-digest
+                                    fn2-machine-idp fn2-machine-kind fn2-machine-slot
+                                    fn2-upload-row-lslot fn2-upload-row-lgen)
+                                   (fn2-upload-hash-begin fn2-upload-hash-end))))))
 (fn2-du-fast-events (fn2-upload-stream-op-events))
-(local
- (defthm fn2-du-workspace-code-implies-row-bounds
-   (implies (equal (fn2-pool-workspace-code s g okind oid ogen p) :ok)
-            (and (natp s) (integerp s) (<= 0 s) (< s (fn2-pool-rows p))))
-   :rule-classes (:rewrite :forward-chaining)
-   :hints (("Goal" :in-theory (enable fn2-pool-workspace-code fn2-pool-handle-code)))))
-(local
- (defthm fn2-du-readable-code-implies-row-bounds
-   (implies (equal (fn2-pool-readable-code s g okind oid ogen p) :ok)
-            (and (natp s) (integerp s) (<= 0 s) (< s (fn2-pool-rows p))))
-   :rule-classes (:rewrite :forward-chaining)
-   :hints (("Goal" :in-theory (enable fn2-pool-readable-code fn2-pool-handle-code)))))
 (local
  (defthm fn2-du-payload-settle-preserves-machines-and-upload
    (and (equal (fn2-core-machines (mv-nth 1 (fn2-upload-payload-settle e ep al fn2-core)))
@@ -722,13 +743,20 @@
                      (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p))))
                      ,(car xs))
                   `(local
-                    (defthm ,(fn2-columns-sym w "-PRESERVES-MACHINE-DIR")
-                      (and (equal (fn2-machine-idp fn2-any-id (,w ,@fms)) (fn2-machine-idp fn2-any-id fn2-core))
-                           (equal (fn2-machine-kind fn2-any-id (,w ,@fms)) (fn2-machine-kind fn2-any-id fn2-core))
-                           (equal (fn2-machine-slot fn2-any-id (,w ,@fms)) (fn2-machine-slot fn2-any-id fn2-core)))
-                      :hints (("Goal" :in-theory (e/d (,w fn2-machine-refuse-write fn2-core-stop
-                                                       fn2-machine-idp fn2-machine-kind fn2-machine-slot)
-                                                      ((:definition unsigned-byte-p) (:definition integer-range-p)))))))
+                    (make-event
+                     (value
+                      `(defthm ,(fn2-columns-sym ',w "-PRESERVES-MACHINE-DIR")
+                         (and (equal (fn2-machine-idp fn2-any-id (,',w ,@',fms)) (fn2-machine-idp fn2-any-id fn2-core))
+                              (equal (fn2-machine-kind fn2-any-id (,',w ,@',fms)) (fn2-machine-kind fn2-any-id fn2-core))
+                              (equal (fn2-machine-slot fn2-any-id (,',w ,@',fms)) (fn2-machine-slot fn2-any-id fn2-core)))
+                         :hints (("Goal" :in-theory
+                                  (union-theories
+                                   '(,',w fn2-machine-refuse-write fn2-core-stop fn2-control-record-stop
+                                     update-fn2-core-control update-fn2-upload-table
+                                     fn2-machine-idp-bounds fn2-du-dir-readers-over-other-child
+                                     ,(fn2-arm-frame-name ',w "-ARM-SLOT")
+                                     ,@(fn2-arm-frame-directory-runes (strip-cars *fn2-machine-directory-fields*)))
+                                   (theory 'fn2-arm-frame-base))))))))
                   `(local (in-theory (disable ,w)))
                   (fn2-du-augment-arms-list (cdr xs)))))
         ((and (consp (car xs)) (member-eq (caar xs) '(defun progn)))
