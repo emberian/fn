@@ -1,8 +1,7 @@
-; The commit kind's B-S2 section: the transaction member's admission, its
-; source reference, the block read and the seal's verbatim copy (split from
-; assembly-callbacks-b and -b2 under the one-minute rule).
+; Second half of the commit kind's B-S2 section: checkpoint allocation and
+; installation coordinators, txn source reference, block read, and verbatim copy.
 (in-package "ACL2")
-(include-book "assembly-callbacks-b")
+(include-book "assembly-callbacks-bt0")
 (make-event
  (let* ((body (fn2-commit-event-forms-1t))
         (pos-a (position-equal '(fn2-checkpoint-allocation-coordinator-events) body))
@@ -19,9 +18,15 @@
                :hints (("Goal" :in-theory (enable fn2-checkpoint-builder-claimp)))))
             (make-event
              (value `(local (in-theory (disable nth
+                       fn2-core-wfp
                        fn2-checkpoint-builder-claimp
                        fn2-checkpoint-production-roots-p
                        fn2-alloc-handle-code
+                       fn2-checkpoint-future-bind
+                       fn2-checkpoint-future-lease
+                       fn2-checkpoint-future-staging-return
+                       fn2-pool-reset
+                       fn2-pool-cap
                        ,@(fn2-columns-getter-runes
                            '(fn2-extents fn2-checkpoint-construction fn2-retirement-control
                              fn2-checkpoint-future fn2-checkpoint-future-windows
@@ -55,5 +60,10 @@
             (fn2-checkpoint-allocation-coordinator-events)
             (fn2-checkpoint-installation-coordinator-events))))
    (if (and pos-a pos-i (= (+ 1 pos-a) pos-i))
-       (value (append (take pos-a body) (cons wrapped (nthcdr (+ 1 pos-i) body))))
+       (value (list* 'progn
+                     (fn2-commit-local-theory)
+                     (fn2-commit-local-forward)
+                     (fn2-commit-local-idp)
+                     wrapped
+                     (nthcdr (+ 1 pos-i) body)))
      (er soft 'assembly-callbacks-bt "Could not locate adjacent allocation/installation coordinator events in fn2-commit-event-forms-1t."))))

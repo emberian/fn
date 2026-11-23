@@ -66,6 +66,7 @@ ACL2_BOOKS = \
   books/assembly-callbacks-b \
   books/assembly-callbacks-b2 \
   books/assembly-callbacks-bt \
+  books/assembly-callbacks-bt0 \
   books/assembly-callbacks-c \
   books/assembly-callbacks-c-commit \
   books/assembly-callbacks-c-prepare \
