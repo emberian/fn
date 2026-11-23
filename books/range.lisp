@@ -242,6 +242,24 @@
 (fn2-fields-preserves fn2-range-copy-rows (n from to fn2-fields) :position 1
  :hyps ((fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (natp from) (natp to)))
 
+; Increment an integer key in place from its least significant field.
+; :end carries past the first field, so the delivered key was the last one.
+(defun fn2-range-carry (n base fn2-fields)
+ (declare (xargs :stobjs fn2-fields :measure (nfix n)
+                 :guard (and (natp n) (natp base) (fn2-fields-wfp fn2-fields))))
+ (b* (((when (zp n)) (mv :end fn2-fields))
+      (row (+ base n -1))
+      ((unless (and (natp base) (< row (fn2-fields-rows fn2-fields))))
+       (mv :bounds fn2-fields))
+      (next (+ 1 (nfix (fn2-fields-value row fn2-fields))))
+      ((when (unsigned-byte-p 60 next))
+       (let ((fn2-fields (fn2-fields-set-value row next fn2-fields)))
+         (mv :ok fn2-fields)))
+      (fn2-fields (fn2-fields-set-value row 0 fn2-fields)))
+   (fn2-range-carry (1- n) base fn2-fields)))
+(fn2-fields-preserves fn2-range-carry (n base fn2-fields) :position 1
+ :hyps ((fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (natp base)))
+
 ; ---------------------------------------------------------------------------
 ; The parts that read entries, generated after the run assembly.
 (defun fn2-rga-integer-kindp (k)
@@ -451,7 +469,7 @@
     :hyps ((fn2-range-sourcesp fn2-range-sources) (fn2-range-sources-wfp fn2-range-sources) (natp base)))
    (in-theory (disable fn2-range-pick))
    ;; The query becomes the successor of the delivered key at EB: its key
-   ;; fields, the last one plus one (integer keys).
+   ;; fields incremented in lexicographic order, carrying across u60 fields.
    (defun fn2-range-successor (sid eb qbase fn2-fields)
     (declare (xargs :stobjs fn2-fields :guard (fn2-fields-wfp fn2-fields)
      :guard-hints (("Goal" :in-theory (disable fn2-run-copy-row)))))
@@ -461,13 +479,8 @@
                        (<= (+ qbase *fn2-run-entry-rows*) (fn2-fields-rows fn2-fields))))
           (mv :bounds fn2-fields))
          ((mv code fn2-fields) (fn2-range-copy-rows nk eb qbase fn2-fields))
-         ((unless (eq code :ok)) (mv code fn2-fields))
-         (last (+ qbase (- nk 1)))
-         ((unless (< last (fn2-fields-rows fn2-fields))) (mv :bounds fn2-fields))
-         (v (+ 1 (nfix (fn2-fields-value last fn2-fields))))
-         ((unless (unsigned-byte-p 60 v)) (mv :bounds fn2-fields))
-         (fn2-fields (fn2-fields-set-value last v fn2-fields)))
-     (mv :ok fn2-fields)))
+         ((unless (eq code :ok)) (mv code fn2-fields)))
+     (fn2-range-carry nk qbase fn2-fields)))
    (fn2-ra-shape fn2-range-successor-shape (fn2-range-successor sid eb qbase fn2-fields)
     (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields)) ((fn2-fields 1)) (fn2-range-copy-rows fn2-run-cursors-rows fn2-run-paths-rows fn2-fields-rows fn2-range-sources-rows fn2-ranges-rows))
    (in-theory (disable fn2-range-successor))
@@ -511,11 +524,11 @@
          ((mv code fn2-range-sources) (fn2-range-consume n sbase sid best fn2-range-sources fn2-fields fn2-pool))
          ((unless (eq code :ok)) (mv code fn2-ranges fn2-range-sources fn2-fields))
          ((mv code fn2-fields) (fn2-range-successor sid eb (fn2-ranges-qbase g fn2-ranges) fn2-fields))
-         ((unless (eq code :ok)) (mv code fn2-ranges fn2-range-sources fn2-fields))
+         ((unless (member-eq code '(:ok :end))) (mv code fn2-ranges fn2-range-sources fn2-fields))
          (delivered (+ 1 (fn2-ranges-delivered g fn2-ranges)))
          ((unless (and (unsigned-byte-p 32 eb) (unsigned-byte-p 60 delivered)))
           (mv :bounds fn2-ranges fn2-range-sources fn2-fields))
-         (fn2-ranges (fn2-ranges-put g (phase *fn2-range-phase-merge*) (out eb) (ok ok) (os os) (og og)
+         (fn2-ranges (fn2-ranges-put g (phase (if (eq code :end) *fn2-range-phase-done* *fn2-range-phase-merge*)) (out eb) (ok ok) (os os) (og og)
                                      (delivered delivered))))
      (mv :entry fn2-ranges fn2-range-sources fn2-fields)))
    (in-theory (disable fn2-range-deliver))
@@ -602,7 +615,9 @@
          (pos (nfix (fn2-fields-value (+ out pf) fn2-fields)))
          ((unless (unsigned-byte-p 60 (+ 1 n))) (mv :bounds fn2-seeks))
          (fn2-seeks (if (< (fn2-seeks-after k fn2-seeks) pos)
-                              (fn2-seeks-put k (phase *fn2-seek-phase-probe*) (hi n))
+                              ; N is the first entry at or above MID. The gap before N
+                              ; contains no entry, and positions increase from N on.
+                              (fn2-seeks-put k (phase *fn2-seek-phase-probe*) (hi (fn2-seeks-mid k fn2-seeks)))
                             (fn2-seeks-put k (phase *fn2-seek-phase-probe*) (lo (+ 1 n))))))
      (mv :more fn2-seeks)))
    ;; One bounded step: :more, :miss, :done (the answer is the row's LO), or a refusal.
@@ -731,6 +746,18 @@
 (defconst *fn2-rga-heads* 2000)
 (defconst *fn2-rga-smax* 8)
 
+; A probe seeks every run to its first entry at or above the midpoint.
+; At budget one, a page takes a header step, a binary search of its
+; restarts, a scan of one restart interval, and cursor transitions.
+; At a leaf boundary the cursor can ascend and descend once more.
+(defun fn2-rgs-step-limit (hi sources)
+ (declare (xargs :guard (and (natp hi) (natp sources))))
+ (let* ((page (+ (integer-length *fn2-run-restart-capacity*)
+                 *fn2-run-restart-interval* 6))
+        (source (* 3 *fn2-run-max-levels* page))
+        (probe (+ 3 (* sources source))))
+   (+ 1 (* (integer-length hi) probe))))
+
 (defmacro fn2-range-adapters ()
  '(progn
    (fn2-rga-defun fn2-rga-setup ()
@@ -746,7 +773,10 @@
          (fn2-run-writers (fn2-run-writers-init *fn2-run-max-levels* fn2-run-writers))
          (fn2-run-restarts (fn2-run-restarts-init (* *fn2-run-max-levels* *fn2-run-restart-capacity*) fn2-run-restarts))
          (fn2-fields (fn2-fields-init (+ *fn2-rga-heads* (* *fn2-rga-smax* *fn2-run-reader-fields*)) fn2-fields))
-         (fn2-pool (fn2-pool-init '((300 . 65536)) 1 100 fn2-pool))
+         ; Six builds including the seal. Each needs two work slots and at most
+         ; 48 leaves, three index pages (16 children fit), and one root.
+         ; The overlay, its source, and the query use three further slots.
+         (fn2-pool (fn2-pool-init '((327 . 65536)) 1 100 fn2-pool))
          (fn2-fc (fn2-fc-init 1 fn2-fc))
          (fn2-fc-context (fn2-fc-context-init 1 fn2-fc-context))
          (fn2-b3 (fn2-b3-table-init 1 fn2-b3))
@@ -848,7 +878,10 @@
    ;; read, delivers exactly the specified window of the union.
    (defthm-owed fn2-range-read-exact (sources lo hi pidx plimit budget sealat)
     (implies (and (fn2-range-inputp *fn2-overview-entry* '((group (:id group)) (number (:id group-number))) sources budget)
-                  (true-listp lo) (equal (len lo) 2) (true-listp hi) (equal (len hi) 2))
+                  (true-listp lo) (equal (len lo) 2) (unsigned-byte-p 60 (nth 0 lo)) (unsigned-byte-p 60 (nth 1 lo))
+                  (true-listp hi) (equal (len hi) 2) (unsigned-byte-p 60 (nth 0 hi)) (unsigned-byte-p 60 (nth 1 hi))
+                  (or (null pidx) (and (natp pidx) (< pidx (len *fn2-overview-entry*))))
+                  (unsigned-byte-p 60 plimit))
              (equal (fn2-range-image 3 *fn2-overview-entry* sources lo hi pidx plimit budget sealat)
                     (fn2-range-spec '((group (:id group)) (number (:id group-number))) sources lo hi pidx plimit)))
     :teeth (fn2-range-read-exact-positive fn2-range-read-exact-negative)
@@ -884,7 +917,7 @@
          ((mv code fn2-seeks) (fn2-seek-start 0 0 0 hi p pidx fn2-seeks))
          ((unless (eq code :ok)) (mv (list :seek code) fn2-seeks fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests))
          ((mv code fn2-seeks fn2-ranges fn2-range-sources fn2-run-cursors fn2-run-paths fn2-fields)
-          (fn2-rgs-drive 10000 budget fn2-seeks fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)))
+          (fn2-rgs-drive (fn2-rgs-step-limit hi (len sources)) budget fn2-seeks fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)))
      (mv (if (eq code :done) (list (fn2-seeks-lo 0 fn2-seeks) (fn2-seeks-probes 0 fn2-seeks)) (list code))
          fn2-seeks fn2-ranges fn2-range-sources fn2-overlays fn2-overlay-index fn2-run-installed fn2-run-builds fn2-run-cursors fn2-run-paths fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)))
    (defun fn2-range-seek-image (sid layout sources prefix p hi pidx budget)
@@ -894,7 +927,8 @@
    ;; Keystone (INBOX 4.1, Seek(stream, after = p)).
    (defthm-owed fn2-range-seek-position (sources prefix p hi budget)
     (implies (and (fn2-range-inputp *fn2-overview-entry* '((group (:id group)) (number (:id group-number))) sources budget)
-                  (true-listp prefix) (equal (len prefix) 1) (natp p) (posp hi) (unsigned-byte-p 59 hi)
+                  (true-listp prefix) (equal (len prefix) 1) (unsigned-byte-p 60 (car prefix))
+                  (unsigned-byte-p 60 p) (posp hi) (unsigned-byte-p 59 hi)
                   (fn2-range-monotonep '((group (:id group)) (number (:id group-number))) sources prefix 3))
              (equal (car (fn2-range-seek-image 3 *fn2-overview-entry* sources prefix p hi 3 budget))
                     (fn2-range-seek-spec '((group (:id group)) (number (:id group-number))) sources prefix p hi 3)))
