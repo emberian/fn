@@ -47,6 +47,13 @@
 (fn2-du-fast-events (fn2-upload-stream-stage-events))
 (fn2-du-fast-events (fn2-upload-stream-reset-op-events))
 (fn2-du-fast-events (fn2-upload-stream-manifest-op-events))
+(local
+ (defthm fn2-du-upload-digest-preserves-machines-and-upload
+   (and (equal (fn2-core-machines (mv-nth 1 (fn2-upload-digest row hashed fn2-core)))
+               (fn2-core-machines fn2-core))
+        (equal (fn2-upload-table (mv-nth 1 (fn2-upload-digest row hashed fn2-core)))
+               (fn2-upload-table fn2-core)))
+   :hints (("Goal" :in-theory (enable fn2-upload-digest fn2-upload-hash-begin fn2-upload-hash-end)))))
 (fn2-du-fast-events (fn2-upload-stream-op-events))
 (fn2-du-fast-events (fn2-upload-stream-settle-op-events))
 (fn2-du-fast-events (fn2-upload-block-private-op-events))
@@ -605,7 +612,48 @@
                                      ,@',arm-fns)))))))))))
          (t (cons (fn2-du-wrap-success-charge (car x) kind arm-fns)
                   (fn2-du-wrap-success-charge (cdr x) kind arm-fns))))))
-(defmachine-arms fn2-upload)
+(local
+ (defun fn2-du-find-result-fn (x)
+   (declare (xargs :mode :program))
+   (cond ((atom x) nil)
+         ((and (eq (car x) 'fn2-machine-core-result-events)
+               (consp (cdr x)) (consp (cadr x)) (eq (caadr x) 'quote))
+          (cadadr x))
+         (t (or (fn2-du-find-result-fn (car x))
+                (fn2-du-find-result-fn (cdr x)))))))
+(local
+ (defun fn2-du-augment-arms-list (xs)
+   (declare (xargs :mode :program))
+   (if (atom xs) nil
+     (let ((fn (fn2-du-find-result-fn (car xs))))
+       (if fn
+           (list* (car xs)
+                  `(local
+                    (make-event
+                     (let ((guard (getpropc ',fn 'guard t (w state)))
+                           (iss (fn2-columns-sym ',fn "-ISSUED-EFFECT"))
+                           (gen (fn2-columns-sym ',fn "-ISSUED-EFFECT-GENERAL-N")))
+                       (value
+                        `(defthm ,gen
+                           (implies (and (equal n (fn2-ops-rows (fn2-core-ops fn2-core)))
+                                         (fn2-corep fn2-core)
+                                         ,guard)
+                                    (equal (fn2-ops-issued-count n (fn2-core-ops (mv-nth 4 (,',fn id budget fn2-core))))
+                                           (+ (fn2-ops-issued-count n (fn2-core-ops fn2-core))
+                                              (mv-nth 2 (,',fn id budget fn2-core)))))
+                           :hints (("Goal" :use ,iss
+                                           :in-theory (disable ,iss ,',fn fn2-core-ops fn2-corep fn2-core-wfp
+                                                               fn2-ops-issued-count fn2-ops-rows))))))))
+                  (fn2-du-augment-arms-list (cdr xs)))
+         (cons (car xs) (fn2-du-augment-arms-list (cdr xs))))))))
+(make-event
+ (mv-let (err events) (fn2-arms-link-core-events 'fn2-upload (fn2-arms-links 'fn2-upload (w state)) (w state))
+   (if err (er soft 'assembly-callbacks-d-upload "~@0" err) (value (cons 'progn events)))))
+(defcost-faces fn2-upload)
+(make-event
+ (mv-let (err form) (fn2-arms-events 'fn2-upload ':core (w state))
+   (if err (er soft 'assembly-callbacks-d-upload "~@0" err)
+     (value (cons 'progn (fn2-du-augment-arms-list (cdr form)))))))
 (make-event
  (let* ((ev (fn2-machine-run-event 'fn2-upload (w state)))
         (arm-fns (fn2-du-arm-fns (fn2-machine-property 'fn2-upload :continuations (w state))))

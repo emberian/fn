@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "assembly-callbacks-d")
 (include-book "conn")
+(include-book "sched-timers")
 (local (defun fn2-dc-core-child-type-terms (children)
          (declare (xargs :verify-guards nil))
          (if (atom children) nil
@@ -616,7 +617,48 @@
                                      ,@',arm-fns)))))))))))
          (t (cons (fn2-dc-wrap-success-charge (car x) kind arm-fns)
                   (fn2-dc-wrap-success-charge (cdr x) kind arm-fns))))))
-(defmachine-arms fn2-conn)
+(local
+ (defun fn2-dc-find-result-fn (x)
+   (declare (xargs :mode :program))
+   (cond ((atom x) nil)
+         ((and (eq (car x) 'fn2-machine-core-result-events)
+               (consp (cdr x)) (consp (cadr x)) (eq (caadr x) 'quote))
+          (cadadr x))
+         (t (or (fn2-dc-find-result-fn (car x))
+                (fn2-dc-find-result-fn (cdr x)))))))
+(local
+ (defun fn2-dc-augment-arms-list (xs)
+   (declare (xargs :mode :program))
+   (if (atom xs) nil
+     (let ((fn (fn2-dc-find-result-fn (car xs))))
+       (if fn
+           (list* (car xs)
+                  `(local
+                    (make-event
+                     (let ((guard (getpropc ',fn 'guard t (w state)))
+                           (iss (fn2-columns-sym ',fn "-ISSUED-EFFECT"))
+                           (gen (fn2-columns-sym ',fn "-ISSUED-EFFECT-GENERAL-N")))
+                       (value
+                        `(defthm ,gen
+                           (implies (and (equal n (fn2-ops-rows (fn2-core-ops fn2-core)))
+                                         (fn2-corep fn2-core)
+                                         ,guard)
+                                    (equal (fn2-ops-issued-count n (fn2-core-ops (mv-nth 4 (,',fn id budget fn2-core))))
+                                           (+ (fn2-ops-issued-count n (fn2-core-ops fn2-core))
+                                              (mv-nth 2 (,',fn id budget fn2-core)))))
+                           :hints (("Goal" :use ,iss
+                                           :in-theory (disable ,iss ,',fn fn2-core-ops fn2-corep fn2-core-wfp
+                                                               fn2-ops-issued-count fn2-ops-rows))))))))
+                  (fn2-dc-augment-arms-list (cdr xs)))
+         (cons (car xs) (fn2-dc-augment-arms-list (cdr xs))))))))
+(make-event
+ (mv-let (err events) (fn2-arms-link-core-events 'fn2-conn (fn2-arms-links 'fn2-conn (w state)) (w state))
+   (if err (er soft 'assembly-callbacks-d-conn "~@0" err) (value (cons 'progn events)))))
+(defcost-faces fn2-conn)
+(make-event
+ (mv-let (err form) (fn2-arms-events 'fn2-conn ':core (w state))
+   (if err (er soft 'assembly-callbacks-d-conn "~@0" err)
+     (value (cons 'progn (fn2-dc-augment-arms-list (cdr form)))))))
 (make-event
  (let* ((ev (fn2-machine-run-event 'fn2-conn (w state)))
         (arm-fns (fn2-dc-arm-fns (fn2-machine-property 'fn2-conn :continuations (w state))))
