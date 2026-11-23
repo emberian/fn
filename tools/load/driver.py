@@ -489,8 +489,13 @@ def shaped_article(r, i, octets, shape=None):
     return art
 
 
-def post_one(conn, ctr, octets, retries=40, shape=None, deadline=None):
-    """One POST that counts its refusals by name and retries a refused POST command; seconds or None."""
+def post_one_detailed(conn, ctr, octets, retries=40, shape=None, deadline=None):
+    """One POST that counts its refusals by name and retries a refused POST command.
+
+    Returns (service_s, logical_s, attempts): service_s is the accepted attempt's own
+    POST-to-240 seconds, logical_s spans every attempt and backoff sleep from the first
+    POST to that 240, attempts counts POST commands sent.  Both times are None when
+    the article was not accepted."""
     m, r = _clients()
     i = ctr.next_id()
     def remaining_timeout():
@@ -499,7 +504,8 @@ def post_one(conn, ctr, octets, retries=40, shape=None, deadline=None):
             if left <= 0:
                 raise TimeoutError("POST exceeded command deadline")
             conn.sock.settimeout(left)
-    for _ in range(retries):
+    t_logical = time.perf_counter()
+    for attempt in range(1, retries + 1):
         t0 = time.perf_counter()
         remaining_timeout()
         first = conn.line("POST")
@@ -513,10 +519,15 @@ def post_one(conn, ctr, octets, retries=40, shape=None, deadline=None):
         dt_ = time.perf_counter() - t0
         if final.startswith(b"240"):
             ctr.ok(i)
-            return dt_
+            return dt_, time.perf_counter() - t_logical, attempt
         ctr.refuse(final)
-        return None
-    return None
+        return None, None, attempt
+    return None, None, retries
+
+
+def post_one(conn, ctr, octets, retries=40, shape=None, deadline=None):
+    """One POST with retries (post_one_detailed); the accepted attempt's service seconds or None."""
+    return post_one_detailed(conn, ctr, octets, retries, shape, deadline)[0]
 
 
 def store_files(root):
@@ -647,6 +658,8 @@ class Run:
         count = ph.get("count")
         stop_at = time.monotonic() + ph["duration_s"] if "duration_s" in ph else None
         lat = [[] for _ in range(conns)]
+        logical = [[] for _ in range(conns)]
+        extra = [0] * conns
         remaining = itertools.count()
         lock = threading.Lock()
         errs = []
@@ -663,9 +676,11 @@ class Run:
                                 break
                     elif time.monotonic() >= stop_at:
                         break
-                    d = post_one(c, self.ctr, octets, shape=ph.get("shape"))
+                    d, d_logical, attempts = post_one_detailed(c, self.ctr, octets, shape=ph.get("shape"))
+                    extra[k] += attempts - 1
                     if d is not None:
                         lat[k].append(d)
+                        logical[k].append(d_logical)
                 c.close()
             except Exception as e:      # noqa: BLE001 - recorded, not hidden
                 errs.append(repr(e))
@@ -697,9 +712,13 @@ class Run:
             t.join()
         secs = time.monotonic() - t0
         allv = [d for v in lat for d in v]
+        all_logical = [d for v in logical for d in v]
+        total_extra_attempts = sum(extra)
         errs += bg_errs
-        out = {"background_readers": ph.get("background_readers", 0), "cmd": {"POST": res_mod.lat_stats(allv)}, "rate": {"post_per_s": round(len(allv) / secs, 3) if secs else None},
-               "connections": conns, "octets": octets}
+        out = {"background_readers": ph.get("background_readers", 0),
+               "cmd": {"POST": res_mod.lat_stats(allv), "POST_LOGICAL": res_mod.lat_stats(all_logical)},
+               "rate": {"post_per_s": round(len(allv) / secs, 3) if secs else None},
+               "connections": conns, "octets": octets, "retry_attempts": total_extra_attempts}
         if errs:
             out["errors"] = errs
             self.errors += errs
