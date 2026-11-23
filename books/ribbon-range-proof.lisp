@@ -5,7 +5,7 @@
 (include-book "range-window-proof")
 (include-book "range-seek-step-proof")
 (include-book "runs-built-cache-proof")
-(include-book "runs-overview-write-read-proof")
+(include-book "runs-overview-builder-proof")
 
 (local
  (defthm fn2-range-value-after-set
