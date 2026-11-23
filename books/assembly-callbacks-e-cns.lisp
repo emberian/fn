@@ -57,8 +57,6 @@
  (value `(local (in-theory (disable nth fn2-reads-rows fn2-fields-rows fn2-fc-rows
                                     fn2-digests-rows fn2-b3-rows fn2-pool-fill fn2-pool-base fn2-pool-data-length
                                     fn2-cns-sources-rows fn2-ctl-rows fn2-cns-rows fn2-succ-slots-rows
-                                    fn2-cns-snapshot-read-code fn2-ctl-snapshot-read-code
-                                    fn2-machine-phase-read-code fn2-machine-generation-read-code
                                     fn2-cns-item-binding-answer fn2-cns-item-fits fn2-cns-put-answer)))))
 (local
  (defun fn2-ecns-arm-fns (arms)
@@ -459,6 +457,8 @@
          ((and (eq (car x) 'defun) (eq (cadr x) 'fn2-cns-post-reply))
           `(encapsulate ()
              (local (in-theory (disable nfix min posp floor mod
+                                        fn2-cns-snapshot-read-code fn2-ctl-snapshot-read-code
+                                        fn2-machine-phase-read-code fn2-machine-generation-read-code
                                         (:definition unsigned-byte-p) (:definition integer-range-p))))
              (defun ,(cadr x) ,(caddr x)
                (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
@@ -470,6 +470,8 @@
                (eq (cadr x) 'fn2-cns-post-reply))
           `(encapsulate ()
              (local (in-theory (disable nfix min posp floor mod
+                                        fn2-cns-snapshot-read-code fn2-ctl-snapshot-read-code
+                                        fn2-machine-phase-read-code fn2-machine-generation-read-code
                                         (:definition unsigned-byte-p) (:definition integer-range-p)
                                         |(< x (if a b c))| |(< (if a b c) x)|)))
              (fn2-core-preserves ,(cadr x) ,(caddr x)
