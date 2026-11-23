@@ -111,15 +111,36 @@
    (declare (xargs :mode :program))
    (if (atom xs) nil
      (let ((fn (fn2-ecns-find-result-fn (car xs))))
-       (if fn
-           (list* (car xs)
-                  `(local
-                    (make-event
-                     (let ((guard (getpropc ',fn 'guard t (w state)))
-                           (iss (fn2-columns-sym ',fn "-ISSUED-EFFECT"))
-                           (gen (fn2-columns-sym ',fn "-ISSUED-EFFECT-GENERAL-N")))
-                       (value
-                        `(defthm ,gen
+       (cond
+        (fn
+         (list* (car xs)
+                `(local
+                  (make-event
+                   (let ((guard (getpropc ',fn 'guard t (w state)))
+                         (iss (fn2-columns-sym ',fn "-ISSUED-EFFECT"))
+                         (qnt (fn2-columns-sym ',fn "-QUANTITIES"))
+                         (nums (fn2-columns-sym ',fn "-RESULT-NUMBERS"))
+                         (gen (fn2-columns-sym ',fn "-ISSUED-EFFECT-GENERAL-N")))
+                     (value
+                      `(progn
+                         (defthm ,nums
+                           (implies (and (fn2-corep fn2-core) ,guard)
+                                    (and (natp (car (,',fn id budget fn2-core)))
+                                         (integerp (car (,',fn id budget fn2-core)))
+                                         (<= 0 (car (,',fn id budget fn2-core)))
+                                         (acl2-numberp (car (,',fn id budget fn2-core)))
+                                         (natp (mv-nth 1 (,',fn id budget fn2-core)))
+                                         (integerp (mv-nth 1 (,',fn id budget fn2-core)))
+                                         (<= 0 (mv-nth 1 (,',fn id budget fn2-core)))
+                                         (acl2-numberp (mv-nth 1 (,',fn id budget fn2-core)))
+                                         (natp (mv-nth 2 (,',fn id budget fn2-core)))
+                                         (integerp (mv-nth 2 (,',fn id budget fn2-core)))
+                                         (<= 0 (mv-nth 2 (,',fn id budget fn2-core)))
+                                         (acl2-numberp (mv-nth 2 (,',fn id budget fn2-core)))))
+                           :hints (("Goal" :use ,qnt
+                                           :in-theory (e/d (fn2-run-quantitiesp)
+                                                           (,qnt ,',fn fn2-corep fn2-core-wfp)))))
+                         (defthm ,gen
                            (implies (and (equal n (fn2-ops-rows (fn2-core-ops fn2-core)))
                                          (fn2-corep fn2-core)
                                          ,guard)
@@ -128,9 +149,21 @@
                                               (mv-nth 2 (,',fn id budget fn2-core)))))
                            :hints (("Goal" :use ,iss
                                            :in-theory (disable ,iss ,',fn fn2-core-ops fn2-corep fn2-core-wfp
-                                                               fn2-ops-issued-count fn2-ops-rows))))))))
-                  (fn2-ecns-augment-arms-list (cdr xs)))
-         (cons (car xs) (fn2-ecns-augment-arms-list (cdr xs))))))))
+                                                               fn2-ops-issued-count fn2-ops-rows)))))))))
+                (fn2-ecns-augment-arms-list (cdr xs))))
+        ((and (consp (car xs)) (member-eq (caar xs) '(defun progn)))
+         (cons `(encapsulate ()
+                  (local (in-theory (disable (:definition unsigned-byte-p) (:definition integer-range-p))))
+                  ,(car xs))
+               (fn2-ecns-augment-arms-list (cdr xs))))
+        (t (cons (car xs) (fn2-ecns-augment-arms-list (cdr xs)))))))))
+(local
+ (defun fn2-ecns-subst-sym (new old x)
+   (declare (xargs :mode :program))
+   (cond ((eq x old) new)
+         ((atom x) x)
+         (t (cons (fn2-ecns-subst-sym new old (car x))
+                  (fn2-ecns-subst-sym new old (cdr x)))))))
 (local
  (defun fn2-ecns-patch-form (x wrld)
    (declare (xargs :mode :program))
@@ -138,6 +171,9 @@
          ((equal x '(fn2-append-outcome-read-events))
           (mv-let (erp exp) (macroexpand1-cmp x 'assembly-callbacks-e-cns wrld (default-state-vars nil))
             (if erp x (fn2-ecns-patch-form exp wrld))))
+         ((equal x '(fn2-ctl-stream-events))
+          (mv-let (erp exp) (macroexpand1-cmp x 'assembly-callbacks-e-cns wrld (default-state-vars nil))
+            (if erp x (fn2-ecns-patch-form (fn2-ecns-subst-sym 'rfill 'fill exp) wrld))))
          ((equal x '(in-theory (disable fn2-outcome-lookup-step)))
           '(progn
              (local
