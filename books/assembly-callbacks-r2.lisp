@@ -272,10 +272,10 @@
                   (patched (fn2-r2-wrap-success-charge ev)))
              (if (equal patched ev)
                  (er soft 'assembly-callbacks-r2 "Could not locate fn2-machine-success-charge-event in fn2-machine-run-event.")
-               (value patched)))))))
+               (value patched))))))
    (cond ((not pos)
           (er soft 'assembly-callbacks-r2 "Could not locate (fn2-checkpoint-retirement-install-events) in fn2-commit-event-forms-2b."))
          ((not rpos)
           (er soft 'assembly-callbacks-r2 "Could not locate (defmachine-run fn2-commit) in fn2-commit-event-forms-2b."))
          (t
-          (value (append (take rpos body2) (cons run-patched (nthcdr (+ 1 rpos) body2)))))))
+          (value (append (take rpos body2) (cons run-patched (nthcdr (+ 1 rpos) body2))))))))
