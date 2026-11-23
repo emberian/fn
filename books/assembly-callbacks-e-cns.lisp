@@ -45,9 +45,7 @@
    :hints (("Goal" :in-theory (enable fn2-ctl-snapshot-read-code fn2-machine-idp
                                       fn2-machine-phase-read-code fn2-machine-generation-read-code)))))
 (local (in-theory (disable fn2-reads-rows fn2-fields-rows fn2-fc-rows fn2-id-decides-rows
-                           fn2-digests-rows fn2-b3-rows fn2-extents-rows fn2-cns-sources-rows
-                           fn2-cns-snapshot-read-code fn2-ctl-snapshot-read-code
-                           fn2-machine-phase-read-code fn2-machine-generation-read-code)))
+                           fn2-digests-rows fn2-b3-rows fn2-extents-rows fn2-cns-sources-rows)))
 (local (defun fn2-ecns-mentions-sym-p (sym x)
          (declare (xargs :guard (symbolp sym)))
          (if (atom x) (eq x sym)
@@ -210,7 +208,10 @@
                                    fn2-authority-depend fn2-authority-depend-preserves-type
                                    fn2-authority-depend-preserves-wfp
                                    fn2-cns-article-next-preserves-type
-                                   fn2-cns-article-next-preserves-wfp)))
+                                   fn2-cns-article-next-preserves-wfp
+                                   fn2-cns-post-reply
+                                   fn2-cns-post-reply-preserves-type
+                                   fn2-cns-post-reply-preserves-wfp)))
                  (append '(:do-not '(preprocess)) keyword-alist))
                 ((and (fn2-ecns-mentions-sym-p 'fn2-ctl-run clause)
                       (fn2-ecns-mentions-sym-p 'fn2-ctl-arm-charge-ok-p clause))
