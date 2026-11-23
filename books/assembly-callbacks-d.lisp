@@ -21,8 +21,12 @@
                   :rule-classes :forward-chaining))))
 (make-event
  (value `(local (in-theory (enable ,@(fn2-core-child-wfp-forward-runes *fn2-core-children*))))))
-(local (in-theory (disable fn2-digests-rows fn2-b3-rows fn2-pool-fill fn2-pool-base fn2-pool-data-length
-                           fn2-control-path-identityi fn2-control-path-identity-length)))
+(make-event
+ (value `(local (in-theory (disable nth fn2-digests-rows fn2-b3-rows fn2-pool-fill fn2-pool-base fn2-pool-data-length
+                                    fn2-control-path-identityi fn2-control-path-identity-length
+                                    ,@(fn2-columns-getter-runes
+                                        '(fn2-tls-config fn2-compress-config fn2-input-config fn2-extents fn2-fields)
+                                        (w state)))))))
 (fn2-tls-op-events)
 (fn2-compress-op-events)
 (local
@@ -261,7 +265,7 @@
                      slot sgen *fn2-upload-kind* u ugen fn2-pool)
     (mv status start2 mode2 discard2 copied fn2-core)))
 (fn2-core-preserves fn2-conn-feed-pool (left start mode discard rslot rgen oslot ogen slot sgen u ugen fn2-core)
-  :position 5 :rows nil)
+  :position 5 :rows nil :hints (("Goal" :in-theory (disable nfix max))))
 (in-theory (disable fn2-conn-feed-pool))
 (defun fn2-upload-feed-pool (left start end mode discard raw rslot rgen rk rs rg slot sgen limit stop-header u ugen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
@@ -272,7 +276,7 @@
                              (nfix limit) stop-header fn2-pool)
     (mv status start2 mode2 discard2 copied lines fn2-core)))
 (fn2-core-preserves fn2-upload-feed-pool (left start end mode discard raw rslot rgen rk rs rg slot sgen limit stop-header u ugen fn2-core)
-  :position 6 :rows nil)
+  :position 6 :rows nil :hints (("Goal" :in-theory (disable nfix max))))
 (in-theory (disable fn2-upload-feed-pool))
 ;; Feed [start, end) of the owner's range RSLOT (read under RK RS RG) into
 ;; upload U's current chunk (the first while it has room), at most
@@ -344,7 +348,8 @@
                    (t 0))))
     (mv (if (member-eq status '(:full :header)) :budget status)
         start2 mode2 why2 (nfix copied) fn2-core)))
-(fn2-core-preserves fn2-upload-feed-run (start end mode why fed raw rslot rgen rk rs rg u ugen fn2-core) :position 5 :rows nil)
+(fn2-core-preserves fn2-upload-feed-run (start end mode why fed raw rslot rgen rk rs rg u ugen fn2-core) :position 5 :rows nil
+  :hints (("Goal" :in-theory (disable nfix min max unsigned-byte-p))))
 (in-theory (disable fn2-upload-feed-run))
 (defun fn2-conn-feed-run (start mode why fed rslot rgen u ugen oslot ogen fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
