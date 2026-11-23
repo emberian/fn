@@ -7,12 +7,49 @@
 (include-book "upload-stream-reset")
 (include-book "upload-stream-settle")
 (include-book "upload-block-private")
-(fn2-upload-stream-stage-events)
-(fn2-upload-stream-reset-op-events)
-(fn2-upload-stream-manifest-op-events)
-(fn2-upload-stream-op-events)
-(fn2-upload-stream-settle-op-events)
-(fn2-upload-block-private-op-events)
+(local (defun fn2-du-core-child-type-terms (children)
+         (declare (xargs :verify-guards nil))
+         (if (atom children) nil
+           (cons `(,(fn2-columns-sym (cadar children) "P") (,(caar children) fn2-core))
+                 (fn2-du-core-child-type-terms (cdr children))))))
+(make-event
+ (value `(local (defthm fn2-du-core-child-types-fc
+                  (implies (fn2-corep fn2-core)
+                           (and ,@(fn2-du-core-child-type-terms *fn2-core-children*)))
+                  :rule-classes :forward-chaining))))
+(make-event
+ (value `(local (in-theory (enable ,@(fn2-core-child-wfp-forward-runes *fn2-core-children*))))))
+(make-event
+ (value `(local (in-theory (disable nth fn2-digests-rows fn2-b3-rows fn2-fields-rows
+                                    fn2-pool-fill fn2-pool-base fn2-pool-data-length)))))
+(local
+ (defun fn2-du-wrap-preserves (x)
+   (declare (xargs :mode :program))
+   (cond ((atom x) x)
+         ((eq (car x) 'fn2-core-preserves)
+          `(encapsulate ()
+             (local (in-theory (disable nfix min floor mod
+                                        fn2-pool-range-in fn2-pool-workspace-code fn2-pool-readable-code
+                                        fn2-layout-range-code fn2-feed-header-complete-p fn2-gram-fill
+                                        fn2-upload-snapshot-read-code fn2-conn-snapshot-read-code
+                                        fn2-cns-snapshot-read-code fn2-machine-generation
+                                        fn2-upload-stored-hasher fn2-upload-hasher
+                                        fn2-digest-rowp fn2-digest-slot fn2-b3-ready
+                                        |(< x (if a b c))| |(< (if a b c) x)|)))
+             ,x))
+         (t (cons (fn2-du-wrap-preserves (car x))
+                  (fn2-du-wrap-preserves (cdr x)))))))
+(defmacro fn2-du-fast-events (form)
+  `(make-event
+    (mv-let (erp exp) (macroexpand1-cmp ',form 'assembly-callbacks-d-upload (w state) (default-defun-mode (w state)))
+      (if erp (er soft 'assembly-callbacks-d-upload "Expand failed: ~x0" ',form)
+        (value (fn2-du-wrap-preserves exp))))))
+(fn2-du-fast-events (fn2-upload-stream-stage-events))
+(fn2-du-fast-events (fn2-upload-stream-reset-op-events))
+(fn2-du-fast-events (fn2-upload-stream-manifest-op-events))
+(fn2-du-fast-events (fn2-upload-stream-op-events))
+(fn2-du-fast-events (fn2-upload-stream-settle-op-events))
+(fn2-du-fast-events (fn2-upload-block-private-op-events))
 
 ;; The source manifest's pure decisions the arms read (article-manifest.lisp).
 (defcost fn2-am-fits :doc "Whether stored octets of a length are named by one source manifest.")
@@ -493,5 +530,86 @@
   (:fence-result (:set (sevent event) (soutcome outcome) (scount count) (sready 1)) (:wake))
   (:borrow-released (:wake))))
 
+(local
+ (defun fn2-du-arm-fns (arms)
+   (declare (xargs :mode :program))
+   (if (atom arms) nil (cons (cadar arms) (fn2-du-arm-fns (cdr arms))))))
+(local
+ (defun fn2-du-wrap-success-charge (x kind arm-fns)
+   (declare (xargs :mode :program))
+   (cond ((atom x) x)
+         ((and (eq (car x) 'make-event) (consp (cdr x)) (consp (cadr x))
+               (eq (caadr x) 'value) (consp (cdadr x)) (consp (cadadr x))
+               (eq (car (cadadr x)) 'fn2-machine-success-charge-event))
+          (let ((arm-ok (fn2-columns-sym kind "-ARM-OK-P"))
+                (arm-charge (fn2-columns-sym kind "-ARM-CHARGE-OK-P"))
+                (arm-next (fn2-columns-sym kind "-ARM-NEXT-OK-P"))
+                (row-phase (fn2-columns-sym kind "-ROW-PHASE"))
+                (snap-code (fn2-columns-sym kind "-SNAPSHOT-READ-CODE"))
+                (run-fn (fn2-columns-sym kind "-RUN"))
+                (thm-name (fn2-columns-sym (fn2-columns-sym kind "-RUN") "-SUCCESS-CHARGE"))
+                (cc-thm (fn2-columns-sym kind "-FAST-CONTRACT-CHECK-CHARGE"))
+                (rp-thm (fn2-columns-sym kind "-FAST-ROW-PHASE-IS-MACHINE-PHASE")))
+            `(make-event
+              (let ((guard (getpropc ',run-fn 'guard t (w state))))
+                (value
+                 `(encapsulate ()
+                    (local
+                     (defthm ,',cc-thm
+                       (implies (fn2-core-success-p
+                                 (mv-nth 4 (fn2-machine-contract-check
+                                            (,',arm-ok id phase bytes steps descriptors c1)
+                                            bytes steps descriptors runnable c1)))
+                                (,',arm-charge
+                                 phase
+                                 (car (fn2-machine-contract-check
+                                       (,',arm-ok id phase bytes steps descriptors c1)
+                                       bytes steps descriptors runnable c1))
+                                 (mv-nth 1 (fn2-machine-contract-check
+                                            (,',arm-ok id phase bytes steps descriptors c1)
+                                            bytes steps descriptors runnable c1))
+                                 (mv-nth 2 (fn2-machine-contract-check
+                                            (,',arm-ok id phase bytes steps descriptors c1)
+                                            bytes steps descriptors runnable c1))))
+                       :hints (("Goal" :in-theory
+                                (remove-equal '(:rewrite fn2-core-stopped-p-is-exec-stop)
+                                 (e/d (fn2-machine-contract-check ,',arm-ok
+                                       fn2-core-success-p fn2-core-stopped-p fn2-core-stop-reason
+                                       fn2-core-stop fn2-control-record-stop fn2-control-stop
+                                       update-fn2-control-stop update-fn2-control-stop-reason)
+                                      (,',arm-charge ,',arm-next
+                                       fn2-machine-phase fn2-machine-phase-read-code)))))))
+                    (local
+                     (defthm ,',rp-thm
+                       (implies (eq (,',snap-code id fn2-core) :ok)
+                                (equal (,',row-phase id fn2-core)
+                                       (fn2-machine-phase id fn2-core)))
+                       :hints (("Goal" :in-theory
+                                (enable ,',row-phase fn2-machine-phase
+                                        ,',snap-code fn2-machine-phase-read-code)))))
+                    (defthm ,',thm-name
+                      (implies (and (fn2-corep fn2-core)
+                                    ,guard
+                                    (fn2-core-success-p (mv-nth 4 (,',run-fn id budget fn2-core))))
+                               (,',arm-charge
+                                (fn2-machine-phase id fn2-core)
+                                (car (,',run-fn id budget fn2-core))
+                                (mv-nth 1 (,',run-fn id budget fn2-core))
+                                (mv-nth 2 (,',run-fn id budget fn2-core))))
+                      :hints (("Goal" :in-theory
+                               (e/d (,',run-fn ,',cc-thm ,',rp-thm fn2-core-stop-not-success)
+                                    (fn2-machine-contract-check
+                                     ,',arm-ok ,',arm-charge ,',arm-next ,',row-phase
+                                     fn2-machine-phase ,',snap-code fn2-machine-phase-read-code
+                                     fn2-core-success-p fn2-core-stop fn2-machine-refuse-phase
+                                     ,@',arm-fns)))))))))))
+         (t (cons (fn2-du-wrap-success-charge (car x) kind arm-fns)
+                  (fn2-du-wrap-success-charge (cdr x) kind arm-fns))))))
 (defmachine-arms fn2-upload)
-(defmachine-run fn2-upload)
+(make-event
+ (let* ((ev (fn2-machine-run-event 'fn2-upload (w state)))
+        (arm-fns (fn2-du-arm-fns (fn2-machine-property 'fn2-upload :continuations (w state))))
+        (patched (fn2-du-wrap-success-charge ev 'fn2-upload arm-fns)))
+   (if (equal patched ev)
+       (er soft 'assembly-callbacks-d-upload "Could not patch fn2-upload-run-success-charge.")
+     (value patched))))
