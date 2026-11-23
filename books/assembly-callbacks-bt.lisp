@@ -12,11 +12,16 @@
          (list* (car inst-begin) (cadr inst-begin) (caddr inst-begin)
                 '(declare (xargs :stobjs fn2-core
                                  :guard (fn2-core-wfp fn2-core)
-                                 :guard-hints (("Goal" :do-not '(preprocess)))))
+                                 :guard-hints (("Goal" :do-not '(preprocess)
+                                                       :in-theory (disable unsigned-byte-p)))))
                 (cddddr inst-begin)))
         (inst-fixed (list* 'progn inst-begin-fixed (cddr inst-progn)))
         (wrapped
          `(encapsulate ()
+            (local
+             (in-theory (enable
+                         (:forward-chaining fn2-checkpoint-construction-wfp-of-fn2-core-checkpoint-construction)
+                         (:forward-chaining fn2-checkpoint-bytes-wfp-of-fn2-core-checkpoint-bytes))))
             (local
              (defthm fn2-checkpoint-builder-claimp-bounds-fc
                (implies (fn2-checkpoint-builder-claimp c token okind oslot ogen fn2-checkpoints)
@@ -27,8 +32,7 @@
                :hints (("Goal" :in-theory (enable fn2-checkpoint-builder-claimp)))))
             (local
              (defthm fn2-construction-next-ticket-u60
-               (implies (and (fn2-checkpoint-constructionp x)
-                             (fn2-checkpoint-construction-wfp x))
+               (implies (fn2-checkpoint-constructionp x)
                         (unsigned-byte-p 60 (fn2-construction-next-ticket x)))
                :hints (("Goal" :use ((:instance fn2-construction-next-ticket-natp (fn2-checkpoint-construction x))
                                      (:instance fn2-construction-next-ticket-bound (fn2-checkpoint-construction x)))
