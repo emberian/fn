@@ -162,7 +162,7 @@
                                    fn2-cns-article-next-natp-5 fn2-cns-article-next-natp-6
                                    fn2-cns-article-next-natp-7 fn2-cns-article-next-natp-8)))
                  '(:do-not '(preprocess)
-                   :in-theory (union-theories '(fn2-cns-article-next fn2-cns-item-answer-types natp)
+                   :in-theory (union-theories '(fn2-cns-article-next fn2-cns-item-answer-types)
                                 (union-theories (executable-counterpart-theory :here)
                                                 (theory 'minimal-theory)))))
                 ((and (consp ctx) (eq (cdr ctx) 'fn2-cns-decode-port-at-types))
@@ -172,7 +172,7 @@
                                                 (theory 'minimal-theory)))))
                 ((and (consp ctx) (eq (cdr ctx) 'fn2-cns-decode-port-types))
                  '(:do-not '(preprocess)
-                   :in-theory (union-theories '(fn2-cns-decode-port fn2-cns-decode-port-at-types natp)
+                   :in-theory (union-theories '(fn2-cns-decode-port fn2-cns-decode-port-at-types)
                                 (union-theories (executable-counterpart-theory :here)
                                                 (theory 'minimal-theory)))))
                 ((and (consp ctx)
