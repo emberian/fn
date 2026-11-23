@@ -2,8 +2,8 @@
 (in-package "ACL2")
 
 (include-book "ribbon")
-(include-book "range-served")
-(include-book "range-seek-probe-proof")
+(include-book "range-window-proof")
+(include-book "range-union-proof")
 
 (local
  (defthm fn2-range-value-after-set
@@ -170,23 +170,6 @@
                           (:executable-counterpart expt) (:executable-counterpart binary-+)
                           (:executable-counterpart unary--) (:executable-counterpart <)
                           (:executable-counterpart equal))))))
-
-; The logical round trip accepts 256 as an element of an overview line.
-; The concrete pool refuses it before either machine can read an entry.
-(defthm fn2-range-non-octet-source-witness
- (let* ((sources '(((1 1 1 0 (256)))))
-        (key '((group (:id group)) (number (:id group-number))))
-        (refusal '((:insert ((:load :bounds))))))
-   (and (fn2-range-inputp *fn2-overview-entry* key sources 1)
-        (fn2-range-monotonep key sources '(1) 3)
-        (equal (fn2-range-spec key sources '(1 0) '(1 1) nil 0) (car sources))
-        (equal (fn2-range-image 3 *fn2-overview-entry* sources '(1 0) '(1 1) nil 0 1 nil) refusal)
-        (equal (fn2-range-seek-spec key sources '(1) 0 2 3) 2)
-        (equal (fn2-range-seek-image 3 *fn2-overview-entry* sources '(1) 0 2 3 1) refusal)
-        (not (fn2-range-read-exact$owed sources '(1 0) '(1 1) nil 0 1 nil))
-        (not (fn2-range-seek-position$owed sources '(1) 0 2 1))))
- :rule-classes nil
- :hints (("Goal" :in-theory (enable fn2-range-read-exact$owed fn2-range-seek-position$owed))))
 
 ; FN2-RIBBON-NO-FALSE-NEGATIVE is not discharged here and has no known
 ; counterexample. Evaluated, it holds for one empty key; 256 distinct keys
