@@ -39,7 +39,7 @@
          (t (cons (fn2-subst-tree new old (car x))
                   (fn2-subst-tree new old (cdr x)))))))
 (make-event
- (mv-let (erp exp state)
+ (mv-let (erp exp)
    (macroexpand1-cmp '(fn2-upload-op-events) 'assembly-callbacks-d (w state) (default-state-vars nil))
    (if erp
        (er soft 'assembly-callbacks-d "macroexpand1-cmp failed on fn2-upload-op-events")

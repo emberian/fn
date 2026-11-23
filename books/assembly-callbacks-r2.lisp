@@ -150,6 +150,65 @@
                                                     ,@(fn2-columns-getter-runes
                                                         '(fn2-commit-member)
                                                         (w state))))))))
+            (local
+             (defthm fn2-format-retirement-scan-next-natp
+               (implies (natp next)
+                        (natp (mv-nth 1 (fn2-format-retirement-scan
+                                         fuel base phase pos v hi size ref payload next
+                                         slot gen end okind oslot ogen fn2-fields fn2-pool))))
+               :hints (("Goal"
+                        :induct (fn2-format-retirement-scan
+                                 fuel base phase pos v hi size ref payload next
+                                 slot gen end okind oslot ogen fn2-fields fn2-pool)
+                        :in-theory (e/d (fn2-format-retirement-scan)
+                                        (nth fn2-pool-read fn2-layout-store
+                                             fn2-format-retirement-byte
+                                             fn2-format-retirement-empty-p
+                                             fn2-format-retirement-field-index
+                                             fn2-format-retirement-next-phase
+                                             ,@(fn2-columns-getter-runes '(fn2-fields) (w state))))))))
+            (local
+             (defthm fn2-format-retirement-decode-step-next-natp
+               (implies (and (natp off)
+                             (fn2-fieldsp fn2-fields)
+                             (fn2-fields-wfp fn2-fields)
+                             (natp base)
+                             (< base (fn2-fields-rows fn2-fields)))
+                        (natp (mv-nth 1 (fn2-format-retirement-decode-step
+                                         base slot gen off end okind oslot ogen budget
+                                         fn2-fields fn2-pool))))
+               :hints (("Goal"
+                        :in-theory (e/d (fn2-format-retirement-decode-step)
+                                        (nth fn2-layout-range-code fn2-format-retirement-scan
+                                             ,@(fn2-columns-getter-runes '(fn2-fields) (w state))))))))
+            (local
+             (defthm fn2-format-retirement-decode-next-natp
+               (implies (and (natp off)
+                             (fn2-fieldsp fn2-fields)
+                             (fn2-fields-wfp fn2-fields)
+                             (natp base)
+                             (< base (fn2-fields-rows fn2-fields)))
+                        (and (natp (mv-nth 1 (fn2-format-retirement-decode
+                                              base slot gen off end okind oslot ogen
+                                              fn2-fields fn2-pool)))
+                             (acl2-numberp (mv-nth 1 (fn2-format-retirement-decode
+                                                      base slot gen off end okind oslot ogen
+                                                      fn2-fields fn2-pool)))))
+               :hints (("Goal"
+                        :in-theory (e/d (fn2-format-retirement-decode)
+                                        (fn2-format-retirement-start
+                                         fn2-format-retirement-decode-step))))))
+            (local
+             (defthm fn2-r2-core-child-shapes-rewrite
+               (and (implies (fn2-corep c) (fn2-fieldsp (fn2-core-fields c)))
+                    (implies (fn2-core-wfp c) (fn2-fields-wfp (fn2-core-fields c)))
+                    (implies (fn2-corep c) (fn2-poolp (fn2-core-pool c)))
+                    (implies (fn2-core-wfp c) (fn2-pool-wfp (fn2-core-pool c)))
+                    (implies (fn2-corep c) (fn2-extentsp (fn2-core-extents c)))
+                    (implies (fn2-core-wfp c) (fn2-extents-wfp (fn2-core-extents c)))
+                    (implies (fn2-corep c) (fn2-retirement-controlp (fn2-core-retirement-control c)))
+                    (implies (fn2-core-wfp c) (fn2-retirement-control-wfp (fn2-core-retirement-control c))))
+               :hints (("Goal" :in-theory (disable fn2-core-wfp)))))
             (encapsulate ()
               (make-event
                (value `(local (in-theory (disable nth
