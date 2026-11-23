@@ -23,6 +23,7 @@
    (implies (equal (fn2-cns-snapshot-read-code cns fn2-core) :ok)
             (and (fn2-machine-idp cns fn2-core)
                  (equal (fn2-machine-kind cns fn2-core) *fn2-cns-kind*)
+                 (equal (fn2-machine-phase-read-code cns fn2-core) :ok)
                  (equal (fn2-machine-generation-read-code cns fn2-core) :ok)
                  (< (fn2-machine-slot cns fn2-core) (fn2-cns-rows (fn2-cns-table fn2-core)))
                  (natp cns) (integerp cns) (<= 0 cns)
@@ -35,6 +36,7 @@
    (implies (equal (fn2-ctl-snapshot-read-code ctl fn2-core) :ok)
             (and (fn2-machine-idp ctl fn2-core)
                  (equal (fn2-machine-kind ctl fn2-core) *fn2-ctl-kind*)
+                 (equal (fn2-machine-phase-read-code ctl fn2-core) :ok)
                  (equal (fn2-machine-generation-read-code ctl fn2-core) :ok)
                  (< (fn2-machine-slot ctl fn2-core) (fn2-ctl-rows (fn2-ctl-table fn2-core)))
                  (natp ctl) (integerp ctl) (<= 0 ctl)
@@ -43,7 +45,9 @@
    :hints (("Goal" :in-theory (enable fn2-ctl-snapshot-read-code fn2-machine-idp
                                       fn2-machine-phase-read-code fn2-machine-generation-read-code)))))
 (local (in-theory (disable fn2-reads-rows fn2-fields-rows fn2-fc-rows fn2-id-decides-rows
-                           fn2-digests-rows fn2-b3-rows fn2-extents-rows fn2-cns-sources-rows)))
+                           fn2-digests-rows fn2-b3-rows fn2-extents-rows fn2-cns-sources-rows
+                           fn2-cns-snapshot-read-code fn2-ctl-snapshot-read-code
+                           fn2-machine-phase-read-code fn2-machine-generation-read-code)))
 (local (defun fn2-ecns-mentions-sym-p (sym x)
          (declare (xargs :guard (symbolp sym)))
          (if (atom x) (eq x sym)
