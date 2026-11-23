@@ -60,9 +60,10 @@ def local_imports(text):
 
 def parse_module_slice(text):
     """Extract (public_imports, all_imports, body) from an `as_module(..., expose=True)` file.
-    Returns None if the file uses custom structure or declares any `axiom`.
+    Returns None if the file uses custom structure or declares any `axiom`/`unsafe`/`sorry`/`admit`/`implemented_by`.
     """
-    if re.search(r'^\s*axiom\b', text, re.M):
+    uncommented = re.sub(r'--[^\n]*', '', text)
+    if re.search(r'\b(?:axiom|unsafe|sorry|admit|implemented_by)\b', uncommented):
         return None
     marker = '\n@[expose] public section\n'
     if marker not in text:
