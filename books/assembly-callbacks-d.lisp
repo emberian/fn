@@ -278,17 +278,21 @@
 (fn2-core-preserves fn2-upload-feed-pool (left start end mode discard raw rslot rgen rk rs rg slot sgen limit stop-header u ugen fn2-core)
   :position 6 :rows nil :hints (("Goal" :in-theory (disable nfix max))))
 (local
+ (defthm fn2-upload-snapshot-read-code-of-update-pool
+   (equal (fn2-upload-snapshot-read-code x (update-fn2-core-pool p fn2-core))
+          (fn2-upload-snapshot-read-code x fn2-core))
+   :hints (("Goal" :in-theory (e/d (fn2-upload-snapshot-read-code
+                                    fn2-machine-phase-read-code fn2-machine-idp
+                                    fn2-machine-kind fn2-machine-kind-read fn2-machine-kind-read-code
+                                    fn2-machine-slot fn2-machine-slot-read fn2-machine-slot-read-code)
+                                   (nth))))))
+(local
  (defthm fn2-upload-feed-pool-preserves-upload-snapshot
    (equal (fn2-upload-snapshot-read-code x
             (mv-nth 6 (fn2-upload-feed-pool left start end mode discard raw rslot rgen rk rs rg slot sgen limit stop-header u ugen fn2-core)))
           (fn2-upload-snapshot-read-code x fn2-core))
-   :hints (("Goal" :in-theory (union-theories
-                               '(fn2-upload-feed-pool fn2-upload-snapshot-read-code
-                                 fn2-machine-phase-read-code fn2-machine-idp
-                                 fn2-machine-kind fn2-machine-kind-read fn2-machine-kind-read-code
-                                 fn2-machine-slot fn2-machine-slot-read fn2-machine-slot-read-code
-                                 fn2-core-machines-of-update-fn2-core-pool)
-                               (theory 'minimal-theory))))))
+   :hints (("Goal" :in-theory (e/d (fn2-upload-feed-pool)
+                                   (fn2-upload-snapshot-read-code fn2-upload-feed-counted nfix max))))))
 (in-theory (disable fn2-upload-feed-pool))
 (local
  (defthm fn2-snapshot-ok-implies-generation-ok
