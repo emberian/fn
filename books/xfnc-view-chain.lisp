@@ -50,6 +50,44 @@
 (fn2-b3-word-frame fn2-xfnc-chain-feed-digest :stripe)
 (in-theory (disable fn2-xfnc-chain-feed-digest))
 
+(fn2-hash-row-frames fn2-b3-update-const fn2-digests fn2-b3)
+(fn2-b3-word-frame fn2-b3-update-const :stripe)
+
+; The same row keeps its hash workspace through every scalar and tag.
+(local
+ (defmacro fn2-xfnc-chain-ready (name call digest-pos hasher-pos &rest conditions)
+  (let ((dg (if (zp digest-pos) `(car ,call) `(mv-nth ,digest-pos ,call)))
+        (hasher `(mv-nth ,hasher-pos ,call)))
+   `(defthm ,name
+      (implies (and (fn2-b3-ready row fn2-b3 fn2-digests)
+                    (fn2-b3p fn2-b3) (fn2-digestsp fn2-digests) ,@conditions)
+       (and (fn2-digestsp ,dg) (fn2-b3p ,hasher) (fn2-b3-ready row ,hasher ,dg)
+            (fn2-digest-rowp (fn2-digest-slot row *fn2-xfnc-chain-region*) ,dg)))
+      :rule-classes (:rewrite (:forward-chaining :trigger-terms (,call)))
+      :hints (("Goal" :use fn2-b3-ready-word-stripe
+                :in-theory (disable fn2-b3-ready-word-stripe fn2-b3-word-stripep)))))))
+(local (fn2-xfnc-chain-ready fn2-xfnc-chain-ready-init
+ (fn2-b3-init row 0 key fn2-digests fn2-b3) 0 1 (fn2-digest-rowp key fn2-digests)))
+(local (fn2-xfnc-chain-ready fn2-xfnc-chain-ready-tag
+ (fn2-b3-update-const row tag 0 n fn2-digests fn2-b3) 2 3
+ (stringp tag) (natp n) (<= n (length tag)) (<= n 4096)))
+(local (fn2-xfnc-chain-ready fn2-xfnc-chain-ready-be
+ (fn2-xfnc-chain-feed-be row value width fn2-digests fn2-b3) 0 1))
+(local (fn2-xfnc-chain-ready fn2-xfnc-chain-ready-digest
+ (fn2-xfnc-chain-feed-digest row previous i fn2-digests fn2-b3) 0 1))
+
+(local (defthm fn2-xfnc-chain-ready-input
+ (implies (fn2-b3-ready row fn2-b3 fn2-digests)
+          (and (natp row) (fn2-b3-wfp fn2-b3) (fn2-digests-wfp fn2-digests)))
+ :rule-classes :forward-chaining))
+(local (defthm fn2-xfnc-chain-ready-region
+ (implies (and (fn2-b3-ready row fn2-b3 fn2-digests)
+               (natp region) (< region *fn2-digest-stride*))
+          (fn2-digest-rowp (fn2-digest-slot row region) fn2-digests))))
+(local (defthm fn2-xfnc-chain-region-after-stack
+ (<= (fn2-digest-slot row *fn2-b3-scratch*) (fn2-digest-slot row *fn2-xfnc-chain-region*))))
+(local (in-theory (disable fn2-b3-ready fn2-digest-rowp fn2-digest-slot)))
+
 (defun fn2-xfnc-chain-genesis (row history incarnation revision principal stream view interpretation fn2-digests fn2-b3)
  (declare (xargs :stobjs (fn2-digests fn2-b3)))
  (b* ((dst (fn2-digest-slot (nfix row) *fn2-xfnc-chain-region*))
@@ -104,8 +142,10 @@
 (defun fn2-xfnc-chain-item-finish (row fn2-digests fn2-b3)
  (declare (xargs :stobjs (fn2-digests fn2-b3)))
  (let ((dst (fn2-digest-slot (nfix row) *fn2-xfnc-chain-region*)))
-  (if (and (fn2-b3-ready row fn2-b3 fn2-digests) (fn2-digest-rowp dst fn2-digests))
-      (mv :ok (fn2-b3-finalize dst row fn2-digests fn2-b3))
+  (if (and (mbt (fn2-b3p fn2-b3)) (fn2-b3-ready row fn2-b3 fn2-digests)
+           (fn2-digest-rowp dst fn2-digests))
+      (let ((fn2-digests (fn2-b3-finalize dst row fn2-digests fn2-b3)))
+        (mv :ok fn2-digests))
     (mv :state fn2-digests))))
 
 (fn2-digests-preserves fn2-xfnc-chain-genesis
