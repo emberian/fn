@@ -193,11 +193,31 @@
                         (natp (mv-nth 1 (fn2-format-retirement-decode
                                          base slot gen off end okind oslot ogen
                                          fn2-fields fn2-pool))))
-               :rule-classes (:rewrite :type-prescription)
+               :rule-classes (:rewrite
+                              :type-prescription
+                              (:rewrite
+                               :corollary
+                               (implies (and (natp off)
+                                             (fn2-fieldsp fn2-fields)
+                                             (fn2-fields-wfp fn2-fields)
+                                             (natp base)
+                                             (< base (fn2-fields-rows fn2-fields)))
+                                        (acl2-numberp (mv-nth 1 (fn2-format-retirement-decode
+                                                                 base slot gen off end okind oslot ogen
+                                                                 fn2-fields fn2-pool))))))
                :hints (("Goal"
                         :in-theory (e/d (fn2-format-retirement-decode)
                                         (fn2-format-retirement-start
                                          fn2-format-retirement-decode-step))))))
+            (local
+             (defthm fn2-r2-fields-value-numberp
+               (implies (and (fn2-fieldsp fn2-fields)
+                             (fn2-fields-wfp fn2-fields)
+                             (natp i)
+                             (< i (fn2-fields-rows fn2-fields)))
+                        (acl2-numberp (fn2-fields-value i fn2-fields)))
+               :hints (("Goal" :use ((:instance fn2-fields-value-natp))
+                        :in-theory (disable fn2-fields-value fn2-fields-rows fn2-fields-wfp fn2-fieldsp)))))
             (local
              (defthm fn2-r2-core-child-shapes-rewrite
                (and (implies (fn2-corep c) (fn2-fieldsp (fn2-core-fields c)))
