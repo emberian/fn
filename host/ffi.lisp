@@ -39,10 +39,17 @@
   (path sb-sys:system-area-pointer) (mode sb-alien:unsigned-int))
 (sb-alien:define-alien-routine ("unlink" %fn2-native-unlink) sb-alien:int
   (path sb-sys:system-area-pointer))
-#+linux
 (sb-alien:define-alien-routine ("getsockopt" %fn2-native-getsockopt) sb-alien:int
   (fd sb-alien:int) (level sb-alien:int) (option sb-alien:int)
   (value sb-sys:system-area-pointer) (length sb-sys:system-area-pointer))
+(sb-alien:define-alien-routine ("connect" %fn2-native-connect) sb-alien:int
+  (fd sb-alien:int) (address sb-sys:system-area-pointer) (length sb-alien:unsigned-int))
+#+linux
+(sb-alien:define-alien-routine ("getrandom" %fn2-native-getrandom) sb-alien:long
+  (buffer sb-sys:system-area-pointer) (length sb-alien:unsigned-long) (flags sb-alien:unsigned-int))
+#+darwin
+(sb-alien:define-alien-routine ("getentropy" %fn2-native-getentropy) sb-alien:int
+  (buffer sb-sys:system-area-pointer) (length sb-alien:unsigned-long))
 #+darwin
 (sb-alien:define-alien-routine ("getpeereid" %fn2-native-getpeereid) sb-alien:int
   (fd sb-alien:int) (uid sb-sys:system-area-pointer) (gid sb-sys:system-area-pointer))
@@ -242,6 +249,130 @@
     (setf (sb-alien:deref linger 0) 1 (sb-alien:deref linger 1) 0)
     (fn2-native-syscall (%fn2-native-setsockopt fd #+linux 1 #+darwin #xffff
                                  #+linux 13 #+darwin #x80 (sb-alien:alien-sap linger) 8))))
+
+(defun %fn2-native-open-urandom ()
+  (sb-alien:alien-funcall
+   (sb-alien:extern-alien "open"
+     (function sb-alien:int sb-alien:c-string sb-alien:int &optional sb-alien:unsigned-int))
+   "/dev/urandom"
+   ;; O_RDONLY=0 | O_NONBLOCK | O_CLOEXEC
+   #+linux #x80800 #+darwin #x1000004 0))
+
+(defun fn2-native-urandom-fill (sap length)
+  "Nonblocking /dev/urandom fallback. Returns (values filled status errno)."
+  (multiple-value-bind (fd err) (fn2-native-syscall (%fn2-native-open-urandom))
+    (when (minusp fd) (return-from fn2-native-urandom-fill (values 0 :failed err)))
+    (unwind-protect
+         (let ((offset 0))
+           (loop while (< offset length) do
+             (multiple-value-bind (n rerr)
+                 (fn2-native-syscall (%fn2-native-read fd (sb-sys:sap+ sap offset) (- length offset)))
+               (cond ((plusp n) (incf offset n))
+                     ((zerop n) (return-from fn2-native-urandom-fill (values offset :failed 5)))
+                     ((or (= rerr 4) (= rerr 11) (= rerr 35))
+                      (return-from fn2-native-urandom-fill (values offset :again rerr)))
+                     (t (return-from fn2-native-urandom-fill (values offset :failed rerr))))))
+           (values length :ok 0))
+      (fn2-native-close fd))))
+
+(defun fn2-native-entropy (sap length)
+  "Fill LENGTH bytes at SAP from the OS CSPRNG without blocking.
+Returns (values filled status errno) where STATUS is :OK, :AGAIN, or :FAILED."
+  (when (zerop length) (return-from fn2-native-entropy (values 0 :ok 0)))
+  (let ((offset 0))
+    (loop while (< offset length) do
+      (let ((chunk (min 256 (- length offset))))
+        #+linux
+        (multiple-value-bind (n err)
+            ;; GRND_NONBLOCK = 1: never block the single-threaded reactor.
+            (fn2-native-syscall (%fn2-native-getrandom (sb-sys:sap+ sap offset) chunk 1))
+          (cond ((plusp n) (incf offset n))
+                ((zerop n) (return-from fn2-native-entropy (values offset :again 11)))
+                ((or (= err 4) (= err 11) (= err 35))
+                 (return-from fn2-native-entropy (values offset :again err)))
+                ((= err 38)
+                 (multiple-value-bind (u-filled u-status u-err)
+                     (fn2-native-urandom-fill (sb-sys:sap+ sap offset) (- length offset))
+                   (return-from fn2-native-entropy (values (+ offset u-filled) u-status u-err))))
+                (t (return-from fn2-native-entropy (values offset :failed err)))))
+        #+darwin
+        (multiple-value-bind (r err)
+            (fn2-native-syscall (%fn2-native-getentropy (sb-sys:sap+ sap offset) chunk))
+          (cond ((zerop r) (incf offset chunk))
+                ((= err 4) (return-from fn2-native-entropy (values offset :again err)))
+                (t (multiple-value-bind (u-filled u-status u-err)
+                       (fn2-native-urandom-fill (sb-sys:sap+ sap offset) (- length offset))
+                     (return-from fn2-native-entropy (values (+ offset u-filled) u-status u-err))))))))
+    (values length :ok 0)))
+
+(defun fn2-native-set-sap-word (sap at word)
+  (setf (sb-sys:sap-ref-8 sap at) (ldb (byte 8 24) word)
+        (sb-sys:sap-ref-8 sap (+ at 1)) (ldb (byte 8 16) word)
+        (sb-sys:sap-ref-8 sap (+ at 2)) (ldb (byte 8 8) word)
+        (sb-sys:sap-ref-8 sap (+ at 3)) (ldb (byte 8 0) word)))
+
+(defun fn2-native-sockaddr-in (sap port w0)
+  (dotimes (i 16) (setf (sb-sys:sap-ref-8 sap i) 0))
+  #+linux (setf (sb-sys:sap-ref-16 sap 0) 2)
+  #+darwin (setf (sb-sys:sap-ref-8 sap 0) 16 (sb-sys:sap-ref-8 sap 1) 2)
+  (setf (sb-sys:sap-ref-8 sap 2) (ldb (byte 8 8) port)
+        (sb-sys:sap-ref-8 sap 3) (ldb (byte 8 0) port))
+  (fn2-native-set-sap-word sap 4 w0)
+  16)
+
+(defun fn2-native-sockaddr-in6 (sap port w0 w1 w2 w3)
+  (dotimes (i 28) (setf (sb-sys:sap-ref-8 sap i) 0))
+  #+linux (setf (sb-sys:sap-ref-16 sap 0) 10)
+  #+darwin (setf (sb-sys:sap-ref-8 sap 0) 28 (sb-sys:sap-ref-8 sap 1) 30)
+  (setf (sb-sys:sap-ref-8 sap 2) (ldb (byte 8 8) port)
+        (sb-sys:sap-ref-8 sap 3) (ldb (byte 8 0) port))
+  (fn2-native-set-sap-word sap 8 w0)
+  (fn2-native-set-sap-word sap 12 w1)
+  (fn2-native-set-sap-word sap 16 w2)
+  (fn2-native-set-sap-word sap 20 w3)
+  28)
+
+(defun fn2-native-socket-error (fd)
+  "Read pending SO_ERROR on FD. Returns (values so-error call-errno)."
+  (sb-alien:with-alien ((err sb-alien:int 0)
+                        (length sb-alien:unsigned-int 4))
+    (multiple-value-bind (r e)
+        (fn2-native-syscall
+         (%fn2-native-getsockopt fd #+linux 1 #+darwin #xffff #+linux 4 #+darwin #x1007
+                                 (sb-alien:alien-sap (sb-alien:addr err))
+                                 (sb-alien:alien-sap (sb-alien:addr length))))
+      (if (minusp r) (values -1 e) (values err 0)))))
+
+(defun fn2-native-connect (family port w0 w1 w2 w3)
+  "Initiate nonblocking TCP connect. Returns (values fd status errno)."
+  (unless (and (or (eq family :inet) (eq family :inet6))
+               (integerp port) (< 0 port 65536))
+    (return-from fn2-native-connect (values -1 :failed 22)))
+  (let ((domain (if (eq family :inet) 2 #+linux 10 #+darwin 30)))
+    (multiple-value-bind (fd s-err) (fn2-native-syscall (%fn2-native-socket domain 1 0))
+      (when (minusp fd)
+        (return-from fn2-native-connect (values -1 :failed s-err)))
+      (multiple-value-bind (cr ce) (fn2-native-configure-socket fd)
+        (when (minusp cr)
+          (fn2-native-close fd)
+          (return-from fn2-native-connect (values -1 :failed ce))))
+      (sb-alien:with-alien ((addr-bytes (array sb-alien:unsigned-char 28)))
+        (let* ((sap (sb-alien:alien-sap addr-bytes))
+               (sa-len (if (eq family :inet)
+                           (fn2-native-sockaddr-in sap port w0)
+                         (fn2-native-sockaddr-in6 sap port w0 w1 w2 w3)))
+               (r (%fn2-native-connect fd sap sa-len))
+               (e (if (minusp r) (fn2-native-errno) 0)))
+          (cond ((>= r 0) (values fd :connected 0))
+                ((or (= e #+linux 115 #+darwin 36)
+                     (= e 4)
+                     (= e #+linux 114 #+darwin 37))
+                 (values fd :in-progress 0))
+                ((= e #+linux 106 #+darwin 56)
+                 (values fd :connected 0))
+                (t
+                 (fn2-native-close fd)
+                 (values -1 :failed e))))))))
 
 (defun fn2-native-clock (monotonicp)
   "Microseconds (the clock mailbox's unit; DATE reads realtime in microseconds)."
