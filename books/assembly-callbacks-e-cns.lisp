@@ -184,8 +184,7 @@
                                 '(fn2-cns-decode-port-at natp unsigned-byte-p integer-range-p nfix
                                   (:type-prescription fn2-ctl-fc-row)
                                   (:type-prescription fn2-core-history-values)
-                                  (:type-prescription fn2-cns-decode-port-pool)
-                                  (:type-prescription fn2-cns-dec-refuse))
+                                  (:type-prescription fn2-cns-decode-port-pool))
                                 (union-theories
                                  (set-difference-theories (executable-counterpart-theory :here)
                                                           '((:executable-counterpart bubble-down)))
