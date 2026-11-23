@@ -308,6 +308,7 @@
 (make-event
  (value (fn2-cb-patch-runs '(progn (defmachine-arms fn2-boot) (defmachine-run fn2-boot)))))
 
+(include-book "sched-timers")
 (defun fn2-issue-compress-start (cap-index cap-nonce slot gen off len okind oslot ogen principal fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (stobj-let ((fn2-pool (fn2-core-pool fn2-core))
@@ -322,7 +323,10 @@
   `(progn
      ,(fn2-issue-core-effect-event 'fn2-issue-compress-start '(cap-index cap-nonce slot gen off len okind oslot ogen principal fn2-core))
      ,(fn2-issue-core-issued-event 'fn2-issue-compress-start '(cap-index cap-nonce slot gen off len okind oslot ogen principal fn2-core))
-     (in-theory (disable fn2-issue-compress-start)))))
+     (in-theory (disable fn2-issue-compress-start))
+     ,@(fn2-arms-op-face-events 'fn2-tls-arm-timer 'fn2-sched-arm-delay-ms (w state))
+     ,@(fn2-arms-op-face-events 'fn2-tls-clear-timer 'fn2-sched-clear-deadline (w state))
+     ,@(fn2-arms-op-face-events 'fn2-tls-expired-p 'fn2-sched-timer-expired-p (w state)))))
 
 (table fn2-costs 'fn2-conn-run-greeting nil)
 (fn2-resolve :callbacks)
