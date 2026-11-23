@@ -277,6 +277,21 @@
          (t (cons (fn2-ecns-subst-sym new old (car x))
                   (fn2-ecns-subst-sym new old (cdr x)))))))
 (local
+ (defun fn2-ecns-fast-natp-outputs (name args idxs extra-runes)
+   (declare (xargs :mode :program))
+   (if (atom idxs) nil
+     (cons `(defthm ,(intern-in-package-of-symbol
+                      (concatenate 'string (symbol-name name) "-NATP-"
+                                   (coerce (explode-nonnegative-integer (car idxs) 10 nil) 'string))
+                      name)
+              (natp (mv-nth ,(car idxs) (,name ,@args)))
+              :rule-classes (:rewrite :type-prescription)
+              :hints (("Goal" :do-not '(preprocess)
+                              :in-theory (union-theories '(,name ,@extra-runes natp)
+                                           (union-theories (executable-counterpart-theory :here)
+                                                           (theory 'minimal-theory))))))
+           (fn2-ecns-fast-natp-outputs name args (cdr idxs) extra-runes)))))
+(local
  (defun fn2-ecns-patch-form (x wrld)
    (declare (xargs :mode :program))
    (cond ((atom x) x)
@@ -416,6 +431,12 @@
              (local (in-theory (disable nfix min posp floor mod
                                         fn2-cns-read-row fn2-read-stripe)))
              ,(cons (car x) (cons (cadr x) (cons (caddr x) (cons (cadddr x) (fn2-ecns-patch-form (nthcdr 4 x) wrld)))))))
+         ((and (eq (car x) 'fn2-cns-natp-outputs)
+               (consp (cdr x))
+               (eq (cadr x) 'fn2-cns-article-next))
+          (cons 'progn
+                (fn2-ecns-fast-natp-outputs (cadr x) (caddr x) (cadddr x)
+                                            '(fn2-cns-item-answer-types))))
          ((eq (car x) 'fn2-cns-natp-outputs)
           `(encapsulate ()
              (local (in-theory (disable nfix min posp floor mod
@@ -423,6 +444,31 @@
                                         fn2-cns-snapshot-read-code fn2-ctl-snapshot-read-code
                                         fn2-machine-phase-read-code)))
              ,x))
+         ((and (eq (car x) 'defthm) (eq (cadr x) 'fn2-cns-decode-port-at-types))
+          `(defthm fn2-cns-decode-port-at-types
+             ,(caddr x)
+             :hints (("Goal" :do-not '(preprocess)
+                             :in-theory (union-theories '(fn2-cns-decode-port-at natp unsigned-byte-p integer-range-p nfix)
+                                          (union-theories (executable-counterpart-theory :here)
+                                                          (theory 'minimal-theory)))))))
+         ((and (eq (car x) 'defthm) (eq (cadr x) 'fn2-cns-decode-port-types))
+          `(defthm fn2-cns-decode-port-types
+             ,(caddr x)
+             :hints (("Goal" :do-not '(preprocess)
+                             :in-theory (union-theories '(fn2-cns-decode-port fn2-cns-decode-port-at-types natp)
+                                          (union-theories (executable-counterpart-theory :here)
+                                                          (theory 'minimal-theory)))))))
+         ((and (eq (car x) 'fn2-core-preserves)
+               (consp (cdr x))
+               (eq (cadr x) 'fn2-cns-article-next))
+          `(encapsulate ()
+             (local (in-theory (disable nfix min posp floor mod
+                                        fn2-cns-snapshot-read-code fn2-ctl-snapshot-read-code
+                                        fn2-machine-phase-read-code
+                                        fn2-read-stripe
+                                        |(< x (if a b c))| |(< (if a b c) x)|)))
+             (fn2-core-preserves ,(cadr x) ,(caddr x)
+               :position 9 :rows nil :hints (("Goal" :do-not '(preprocess) :in-theory (disable nfix))))))
          ((and (eq (car x) 'fn2-core-preserves)
                (consp (cdr x))
                (eq (cadr x) 'fn2-cns-stream-source-open))
