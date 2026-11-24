@@ -791,14 +791,16 @@
   ; a declaration's name is a symbol, never a keyword
   (declare (xargs :verify-guards nil))
   (list :wait (fn2-columns-sym 'fn2-wait (concatenate 'string "-" (symbol-name kind)))))
-(defmacro defwait (kind &key ready grant park tables doc)
+; A source may also have pending work that can only be settled by stopping
+; on a corrupt entry. READY still promises a row. PENDING covers both cases.
+(defmacro defwait (kind &key ready pending grant park tables doc)
   ; TABLES: the children the grant may change (defcost :tables; control is
   ; implicit), the frame its constraint states and its attachment proves
-  (if (not (and (keywordp kind) (symbolp ready) ready (symbolp grant) grant (symbolp park) (stringp doc)
+  (if (not (and (keywordp kind) (symbolp ready) ready (symbolp pending) (symbolp grant) grant (symbolp park) (stringp doc)
                 (consp tables) (true-listp tables)
                 (assoc-eq kind *fn2-resource-order*)))
       (er hard 'defwait "~x0: (defwait K :ready R :grant G [:park OP] :tables (CHILD ...) :doc \"...\") for a D0 kind K." kind)
-    (fn2-declare (fn2-machine-wait-id kind) (list :kind kind :ready ready :grant grant :park park :tables tables :doc doc) nil nil)))
+    (fn2-declare (fn2-machine-wait-id kind) (list :kind kind :ready ready :pending pending :grant grant :park park :tables tables :doc doc) nil nil)))
 (defun fn2-machine-wait-kinds (rows)
   (declare (xargs :verify-guards nil))
   (if (atom rows) nil (cons (fn2-decl-get :kind (cdar rows)) (fn2-machine-wait-kinds (cdr rows)))))
@@ -809,15 +811,18 @@
 (defun fn2-machine-wait-get (kind key world)
   (declare (xargs :verify-guards nil))
   (fn2-decl-get key (fn2-decl-row (fn2-machine-wait-id kind) world)))
+(defun fn2-machine-wait-service-test (kind world)
+  (declare (xargs :verify-guards nil))
+  (or (fn2-machine-wait-get kind :pending world) (fn2-machine-wait-get kind :ready world)))
 (defun fn2-machine-wait-ready-calls (waits world)
   (declare (xargs :verify-guards nil))
   (if (atom waits) nil
-    (cons `(,(fn2-machine-wait-get (car waits) :ready world) fn2-core)
+    (cons `(,(fn2-machine-wait-service-test (car waits) world) fn2-core)
           (fn2-machine-wait-ready-calls (cdr waits) world))))
 (defun fn2-machine-wait-grant-clauses (waits world)
   (declare (xargs :verify-guards nil))
   (if (atom waits) nil
-    (cons `((,(fn2-machine-wait-get (car waits) :ready world) fn2-core)
+    (cons `((,(fn2-machine-wait-service-test (car waits) world) fn2-core)
             (,(fn2-machine-wait-get (car waits) :grant world) fn2-core))
           (fn2-machine-wait-grant-clauses (cdr waits) world))))
 
@@ -2663,14 +2668,20 @@
   (declare (xargs :verify-guards nil))
   (if (atom waits) nil
     (let* ((r (fn2-machine-wait-get (car waits) :ready world)) (g (fn2-machine-wait-get (car waits) :grant world))
+           (pending (fn2-machine-wait-get (car waits) :pending world))
            (s (fn2-machine-wait-children (car waits) world)) (m (fn2-arm-frame-m world))
            (dir-hints '(("Goal" :in-theory (enable fn2-machines-directory-keeps-refl)))))
       (list*
        `(encapsulate
          (((,r fn2-core) => * :formals (fn2-core) :guard (fn2-core-wfp fn2-core))
+          ,@(and pending `(((,pending fn2-core) => * :formals (fn2-core) :guard (fn2-core-wfp fn2-core))))
           ((,g fn2-core) => (mv * fn2-core) :formals (fn2-core) :guard (fn2-core-wfp fn2-core)))
          (local (defun ,r (fn2-core)
                   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)) (ignore fn2-core)) nil))
+         ,@(and pending
+                `((local (defun ,pending (fn2-core)
+                           (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)) (ignore fn2-core))
+                           nil))))
          (local (defun ,g (fn2-core)
                   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core))) (mv *fn2-none* fn2-core)))
          (defthm ,(fn2-columns-sym g "-TYPE")
@@ -2680,6 +2691,14 @@
          ;; sees a ready source forever (an attachment proves this of its pair).
          (defthm ,(fn2-columns-sym g "-LIVE")
            (implies (,r fn2-core) (not (equal (mv-nth 0 (,g fn2-core)) *fn2-none*))))
+         ,@(and pending
+                `((defthm ,(fn2-columns-sym r "-PENDING")
+                    (implies (,r fn2-core) (,pending fn2-core)))
+                  (defthm ,(fn2-columns-sym g "-PENDING-REFUSAL")
+                    (implies (and (,pending fn2-core) (not (,r fn2-core)))
+                             (and (equal (mv-nth 0 (,g fn2-core)) *fn2-none*)
+                                  (fn2-core-stopped-p (mv-nth 1 (,g fn2-core)))))
+                    :rule-classes nil)))
          (defthm ,(fn2-columns-sym g "-SHAPE")
            (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
                     (and (fn2-corep (mv-nth 1 (,g fn2-core))) (fn2-core-wfp (mv-nth 1 (,g fn2-core))))))
@@ -2695,7 +2714,9 @@
           (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)) (ignore fn2-core)) nil)
        `(defun ,(fn2-columns-sym g "-DEFAULT") (fn2-core)
           (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core))) (mv *fn2-none* fn2-core))
-       `(defattach (,r ,(fn2-columns-sym r "-DEFAULT")) (,g ,(fn2-columns-sym g "-DEFAULT")) :hints ,dir-hints)
+       `(defattach (,r ,(fn2-columns-sym r "-DEFAULT"))
+                   ,@(and pending `((,pending ,(fn2-columns-sym r "-DEFAULT"))))
+                   (,g ,(fn2-columns-sym g "-DEFAULT")) :hints ,dir-hints)
        `(in-theory (disable ,(fn2-columns-sym g "-ARM-KIDS") ,(fn2-columns-sym g "-KEEPS-DIRECTORY")))
        (fn2-machine-wait-source-events (cdr waits) world)))))
 ;; The grants' derived contracts (row frame; a constrained hook's, as
