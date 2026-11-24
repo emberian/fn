@@ -122,3 +122,25 @@
                      fn2-run-key-order-spec fn2-overlays-slot fn2-overlays-gen fn2-overlays-fill fn2-overlays-ibase
                      fn2-overlay-index-off fn2-overlays-okind fn2-overlays-oslot fn2-overlays-ogen fn2-overlays-count
                      unsigned-byte-p nth)))))
+
+(defthm fn2-ov-indexed-entry-reads-address
+  (let* ((read (fn2-ov-entry o pos eb ov ix f pool)) (after (mv-nth 2 read))
+         (slot (fn2-overlays-slot o ov)) (gen (fn2-overlays-gen o ov))
+         (off (fn2-overlay-index-off (+ (fn2-overlays-ibase o ov) pos) ix)) (end (fn2-overlays-fill o ov))
+         (pk (fn2-overlays-okind o ov)) (ps (fn2-overlays-oslot o ov)) (pg (fn2-overlays-ogen o ov)))
+    (implies (and (fn2-ov-overview-reader-p o eb qbase ov ix f) (natp n) (natp pos) (< pos n)
+                  (<= n (fn2-overlays-count o ov)) (fn2-ov-indexed-rows-p n rows o eb ov ix f pool))
+             (and (fn2-run-overview-row-atp 0 (nth pos rows) eb slot gen off end pk ps pg f pool)
+                  (equal read (fn2-run-layout-decode 3 0 eb slot gen off end pk ps pg f pool))
+                  (fn2-ov-overview-reader-p o eb qbase ov ix after)
+                  (fn2-ov-indexed-rows-p n rows o eb ov ix after pool))))
+  :rule-classes nil
+  :hints (("Goal" :do-not '(preprocess)
+           :use (fn2-ov-reads-selected-position fn2-ov-indexed-position
+                 (:instance fn2-ov-indexed-rows-use-capacity (f2 (mv-nth 2 (fn2-ov-entry o pos eb ov ix f pool))))
+                 (:instance fn2-ov-entry-shape (fn2-overlays ov) (fn2-overlay-index ix) (fn2-fields f) (fn2-pool pool)))
+           :in-theory (e/d (fn2-ov-indexed-row-p fn2-ov-overview-reader-p)
+            (fn2-ov-indexed-rows-p fn2-run-overview-row-atp fn2-ov-entry fn2-run-layout-decode
+             fn2-ov-okp fn2-overlays-count fn2-overlays-ibase fn2-overlays-schema fn2-overlays-slot fn2-overlays-gen
+             fn2-overlay-index-off fn2-overlays-fill fn2-overlays-okind fn2-overlays-oslot fn2-overlays-ogen
+             fn2-fields-rows fn2-fieldsp fn2-fields-wfp nth)))))
