@@ -54,3 +54,11 @@
                           (fn2-run-parser-span fn2-layout-scan fn2-layout-parse fn2-layout-octets
                            fn2-run-read-bytes fn2-pool-base fn2-layout-range-code
                            fn2-poolp fn2-pool-wfp fn2-fields-rows fn-b3-octet-listp)))))
+
+(defthmd fn2-run-readable-page-prefix
+ (implies (and (natp off) (natp bound) (natp end) (<= off bound) (<= bound end)
+               (eq (fn2-layout-range-code slot gen off end nil pk ps pg pool) :ok))
+          (equal (fn2-layout-range-code slot gen off bound nil pk ps pg pool) :ok))
+ :hints (("Goal" :in-theory
+          (e/d (fn2-layout-range-code) (fn2-pool-readable-code fn2-pool-slot-base
+                                         fn2-pool-slot-fill fn2-pool-capacity-bytes)))))

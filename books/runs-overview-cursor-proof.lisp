@@ -5,14 +5,6 @@
 (include-book "runs-page-scan-proof")
 (include-book "runs-page-row-budget-proof")
 
-(defthmd fn2-run-readable-page-prefix
- (implies (and (natp off) (natp bound) (natp end) (<= off bound) (<= bound end)
-               (eq (fn2-layout-range-code slot gen off end nil pk ps pg pool) :ok))
-          (equal (fn2-layout-range-code slot gen off bound nil pk ps pg pool) :ok))
- :hints (("Goal" :in-theory
-          (e/d (fn2-layout-range-code) (fn2-pool-readable-code fn2-pool-slot-base
-                                         fn2-pool-slot-fill fn2-pool-capacity-bytes)))))
-
 (defthm fn2-run-overview-page-row-boundary
  (let* ((indexp (and (integerp level) (< 0 level)))
         (layout (if indexp *fn2-overview-index* *fn2-overview-entry*))
