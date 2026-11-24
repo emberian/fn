@@ -29,7 +29,8 @@
 (assert-event (and (<= (+ *fn2-idc-rb* *fn2-run-reader-fields*) *fn2-idc-stride*)
                    (<= (+ *fn2-idc-rb* *fn2-run-entry-rows*) *fn2-idc-stride*)
                    (<= (+ (* (- *fn2-succ-slots* 1) *fn2-succ-block*) *fn2-run-entry-rows*) *fn2-idc-stride*)
-                   (equal (fn2-b-field-rows '((:t . 3) (:format-slots . 2))) (+ (* 2 *fn2-idc-b-stripe*) (* 3 *fn2-idc-stride*) *fn2-b-seal-field-rows*))))
+                   (equal (fn2-b-field-rows '((:t . 3) (:format-slots . 2))) (+ (* 2 *fn2-idc-b-stripe*) (* 3 *fn2-idc-stride*)
+                      *fn2-b-seal-field-rows* (* 2 *fn2-b-seal-field-rows*)))))
 
 ;; The overlay rows a profile gets when it names none (:identity-overlays):
 ;; a batch takes one private overlay per schema it writes, and a POST
@@ -69,6 +70,7 @@
       (unsigned-byte-p 32 (* *fn2-run-max-levels* (+ (nfix (fn2-profile-t profile)) (* 9 (fn2-b-read-rows profile)) *fn2-idc-seal-cursors*)))
       (<= (+ (* *fn2-idc-b-stripe* (nfix (fn2-b-format-slots profile)))
              (* *fn2-idc-stride* (nfix (fn2-profile-t profile))) *fn2-b-seal-field-rows*
+             *fn2-b-checkpoint-field-rows*
              (* *fn2-b-read-stride* (fn2-b-read-rows profile)))
           (nfix (fn2-b-capacity :format-field-slots (fn2-b-field-rows profile) profile)))))
 

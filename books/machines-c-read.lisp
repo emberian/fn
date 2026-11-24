@@ -62,7 +62,8 @@
                    (equal (fn2-b-read-rows '((:x . 4))) 0) (equal (fn2-b-read-rows '((:x . 4) (:reading . t))) 8)
                    (equal (fn2-b-read-rows '((:x . 4) (:reading . t) (:cns . 3))) 11)
                    (equal (fn2-b-field-rows '((:t . 3) (:x . 2) (:reading . t) (:format-slots . 3)))
-                          (+ (* 3 *fn2-idc-b-stripe*) (* 3 *fn2-idc-stride*) *fn2-b-seal-field-rows* (* 4 *fn2-b-read-stride*)))))
+                          (+ (* 3 *fn2-idc-b-stripe*) (* 3 *fn2-idc-stride*) *fn2-b-seal-field-rows*
+                             (* 2 *fn2-b-seal-field-rows*) (* 4 *fn2-b-read-stride*)))))
 
 ; A read row: the operation it holds (one at a time), the schema, the
 ; owner its octet key fields are read under (QSET once given), and the
