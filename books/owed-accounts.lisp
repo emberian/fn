@@ -59,7 +59,7 @@
                       (equal (mv-nth 1 (fn2-account-core-ends p c2)) next)
                       (equal (fn2-machine-wait-reason id c2) *fn2-wait-none*)))))
   :schema :assertion :from (:operation-set fn2-account-requests)
-  :teeth (fn2-account-test-grant-exact fn2-account-test-grant-exact-negative)
+  :teeth (fn2-account-test-grant-exact fn2-account-test-grant-exact-negative fn2-rqu-exact-without-readiness)
   :doc "D7 4/n-a: the ledger's grant acquires the reservation of the FIFO head of the principal its cursor chose, dequeues it and clears its wait in one transition, or stops the core (:machine-write) when the FIFO and the ledger disagree; nothing else is granted.")
 
 ; The bounded wait (the liveness statement): a head whose request fits, and
@@ -71,7 +71,7 @@
   (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (fn2-account-core-invariantp fn2-core))
            (mv-nth 0 (fn2-account-granted-within (fn2-account-core-rows fn2-core) p h fn2-core)))
   :schema :invariant :from (:operation-set fn2-account-requests)
-  :teeth (fn2-account-test-bounded-wait fn2-account-test-bounded-wait-negative)
+  :teeth (fn2-account-test-bounded-wait fn2-account-test-bounded-wait-negative fn2-rqu-wait-without-stop-reason)
   :doc "D7 4/n-a: a request at the head of its principal's FIFO whose reservation fits is granted within P+1 grants (the ledger's rows) while it keeps fitting; a visit bound, not request completion.")
 
 ; Settled once: a granted request is not granted again before it parks
@@ -84,5 +84,5 @@
              (or (not (equal (fn2-core-stop-reason c2) *fn2-stop-reason-none*))
                  (not (equal (mv-nth 0 (fn2-account-grant-take c2)) id)))))
   :schema :assertion :from (:operation-set fn2-account-requests)
-  :teeth (fn2-account-test-once fn2-account-test-once-negative)
+  :teeth (fn2-account-test-once fn2-account-test-once-negative fn2-rqu-once-without-readiness)
   :doc "D7 4/n-a: each parked request is granted at most once per park; a second grant returns another row or none.")

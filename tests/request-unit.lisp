@@ -177,7 +177,49 @@
   (with-local-stobj fn2-core
     (mv-let (ok fn2-core) (fn2-rqu-stopped missing-reason fn2-core) ok)))
 
-(assert-event (and (fn2-rqu-stopped-result nil) (fn2-rqu-stopped-result t)))
+(defun fn2-rqu-wait-without-stop-reason ()
+  (declare (xargs :verify-guards nil))
+  (fn2-rqu-stopped-result t))
+
+(assert-event (and (fn2-rqu-stopped-result nil) (fn2-rqu-wait-without-stop-reason)))
+
+; Drop readiness from exactness on a coherently stopped core. Principal 2
+; still has a fitting head. Taking a grant leaves that head and its hold intact.
+(defun fn2-rqu-exact-without-readiness ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-core
+    (mv-let (ok fn2-core)
+      (b* ((fn2-core (fn2-init-executor *fn2-rqu-profile* :null nil fn2-core))
+           ((mv pk fn2-core) (fn2-account-request-park-on 2 6 fn2-core))
+           (fn2-core (fn2-core-kind-stop 0 1 fn2-core))
+           (remaining (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+                           (fn2-account-core-invariantp fn2-core) (not (fn2-account-grant-ready fn2-core))))
+           (p (fn2-account-core-grant-next fn2-core))
+           ((mv & head &) (fn2-account-core-ends p fn2-core))
+           ((mv id fn2-core) (fn2-account-grant-take fn2-core)))
+        (mv (and (eq pk :ok) remaining (equal p 2) (equal head 6)
+                 (not (equal id head))
+                 (not (equal (fn2-core-stop-reason fn2-core) *fn2-stop-reason-machine-write*)))
+            fn2-core))
+      ok)))
+(assert-event (fn2-rqu-exact-without-readiness))
+
+; Drop readiness from the once claim. Both takes on an empty running core
+; return the sentinel, with the same recorded stop reason.
+(defun fn2-rqu-once-without-readiness ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-core
+    (mv-let (ok fn2-core)
+      (b* ((fn2-core (fn2-init-executor *fn2-rqu-profile* :null nil fn2-core))
+           (remaining (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+                           (fn2-account-core-invariantp fn2-core) (not (fn2-account-grant-ready fn2-core))))
+           ((mv first fn2-core) (fn2-account-grant-take fn2-core))
+           (reason (fn2-core-stop-reason fn2-core))
+           ((mv second fn2-core) (fn2-account-grant-take fn2-core)))
+        (mv (and remaining (equal first *fn2-none*) (equal second first)
+                 (equal reason *fn2-stop-reason-none*)) fn2-core))
+      ok)))
+(assert-event (fn2-rqu-once-without-readiness))
 
 ; A self-link in an otherwise fitting one-row FIFO is a pending refusal.
 (defun fn2-rqu-self-link ()
