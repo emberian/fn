@@ -97,12 +97,11 @@
    :hints (("Goal" :in-theory (e/d (fn2-run-build-closing-at-p fn2-run-writerp)
                         (fn2-run-scan fn2-fields-wfp fn2-run-writers-wfp fn2-run-restarts-wfp))))))
 
-(local
- (defthm fn2-run-heading-phase-after-close
-   (equal (fn2-run-writers-phase w (fn2-run-writers-set-phase w *fn2-run-writer-phase-heading* writers))
-          *fn2-run-writer-phase-heading*)
-   :hints (("Goal" :in-theory (e/d (fn2-run-writers-phase fn2-run-writers-set-phase
-                                    update-fn2-run-writers-phase$ai nth-update-nth) (nth update-nth))))))
+(defthm fn2-run-heading-phase-after-close
+  (equal (fn2-run-writers-phase w (fn2-run-writers-set-phase w *fn2-run-writer-phase-heading* writers))
+         *fn2-run-writer-phase-heading*)
+  :hints (("Goal" :in-theory (e/d (fn2-run-writers-phase fn2-run-writers-set-phase
+                                   update-fn2-run-writers-phase$ai nth-update-nth) (nth update-nth)))))
 
 (local
  (defthm fn2-run-padding-move-keeps-schedule
@@ -150,14 +149,12 @@
            :in-theory (union-theories (theory 'minimal-theory)
                         '(mv-nth car-cons cdr-cons (:e mv-nth) (:e zp) (:e binary-+) (:e equal) (:e consp))))))
 
-(local
- (defmacro fn2-run-padding-close ()
-   '(fn2-run-close-step (+ l (fn2-run-builds-wbase 0 builds)) 4096 writers restarts f pool)))
+(defmacro fn2-run-padding-close ()
+  '(fn2-run-close-step (+ l (fn2-run-builds-wbase 0 builds)) 4096 writers restarts f pool))
 
-(local
- (defmacro fn2-run-padding-loop (fuel writers pool)
-   `(fn2-run-run-loop ,fuel layout entries src sg off unit pages builds curs paths cache
-                     ,writers restarts f ,pool fc ctx b3 ds)))
+(defmacro fn2-run-padding-loop (fuel writers pool)
+  `(fn2-run-run-loop ,fuel layout entries src sg off unit pages builds curs paths cache
+                    ,writers restarts f ,pool fc ctx b3 ds))
 
 (local
  (defthm fn2-run-padding-includes-close-readiness
@@ -165,52 +162,49 @@
             (fn2-run-closing-page-ready-p w writers restarts pool))
    :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(fn2-run-padding-window-p))))))
 
-(local
- (defthm fn2-run-padding-step-continues-or-heads
-   (let* ((w (+ l (fn2-run-builds-wbase 0 builds)))
-          (count (fn2-run-writer-close-steps w writers))
-          (close (fn2-run-padding-close)) (after (mv-nth 1 close)) (pool2 (mv-nth 3 close)))
-     (implies (and (fn2-run-build-closing-at-p l builds writers restarts f fc ctx)
-                   (fn2-run-padding-window-p w slot gen pk ps pg at size writers restarts pool))
-              (and (posp count) (<= count 18)
-                   (equal (fn2-run-writer-close-steps w after) (1- count))
-                   (equal (fn2-run-read-bytes size slot gen at pk ps pg pool2)
-                          (fn2-run-read-bytes size slot gen at pk ps pg pool))
-                   (if (equal count 1) (equal (fn2-run-writers-phase w after) *fn2-run-writer-phase-heading*)
-                     (and (fn2-run-build-closing-at-p l builds after restarts f fc ctx)
-                          (fn2-run-padding-window-p w slot gen pk ps pg at size after restarts pool2))))))
-   :rule-classes nil
-   :hints (("Goal" :do-not '(preprocess)
-            :use ((:instance fn2-run-builder-decreases-close-count (inoff off))
-                  (:instance fn2-run-builder-preserves-padding-window (inoff off))
-                  (:instance fn2-run-padding-preserves-window (w (+ l (fn2-run-builds-wbase 0 builds))))
-                  fn2-run-adapter-performs-close-step)
-            :in-theory (union-theories (theory 'minimal-theory)
-              '(fn2-run-padding-includes-close-readiness mv-nth car-cons cdr-cons (:e member-equal)
-                (:e mv-nth) (:e zp) (:e binary-+) (:e equal) (:e consp)))))))
+(defthm fn2-run-padding-step-continues-or-heads
+  (let* ((w (+ l (fn2-run-builds-wbase 0 builds)))
+         (count (fn2-run-writer-close-steps w writers))
+         (close (fn2-run-padding-close)) (after (mv-nth 1 close)) (pool2 (mv-nth 3 close)))
+    (implies (and (fn2-run-build-closing-at-p l builds writers restarts f fc ctx)
+                  (fn2-run-padding-window-p w slot gen pk ps pg at size writers restarts pool))
+             (and (posp count) (<= count 18)
+                  (equal (fn2-run-writer-close-steps w after) (1- count))
+                  (equal (fn2-run-read-bytes size slot gen at pk ps pg pool2)
+                         (fn2-run-read-bytes size slot gen at pk ps pg pool))
+                  (if (equal count 1) (equal (fn2-run-writers-phase w after) *fn2-run-writer-phase-heading*)
+                    (and (fn2-run-build-closing-at-p l builds after restarts f fc ctx)
+                         (fn2-run-padding-window-p w slot gen pk ps pg at size after restarts pool2))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not '(preprocess)
+           :use ((:instance fn2-run-builder-decreases-close-count (inoff off))
+                 (:instance fn2-run-builder-preserves-padding-window (inoff off))
+                 (:instance fn2-run-padding-preserves-window (w (+ l (fn2-run-builds-wbase 0 builds))))
+                 fn2-run-adapter-performs-close-step)
+           :in-theory (union-theories (theory 'minimal-theory)
+             '(fn2-run-padding-includes-close-readiness mv-nth car-cons cdr-cons (:e member-equal)
+               (:e mv-nth) (:e zp) (:e binary-+) (:e equal) (:e consp))))))
 
-(local
- (defthm fn2-run-padding-loop-takes-close-step
-   (let* ((w (+ l (fn2-run-builds-wbase 0 builds))) (close (fn2-run-padding-close)))
-     (implies (and (posp fuel) (fn2-run-build-closing-at-p l builds writers restarts f fc ctx)
-                   (fn2-run-padding-window-p w slot gen pk ps pg at size writers restarts pool))
-              (equal (fn2-run-padding-loop fuel writers pool)
-                     (fn2-run-padding-loop (1- fuel) (mv-nth 1 close) (mv-nth 3 close)))))
-   :rule-classes nil
-   :hints (("Goal" :do-not '(preprocess)
-            :expand ((fn2-run-padding-loop fuel writers pool))
-            :use ((:instance fn2-run-padding-preserves-window (w (+ l (fn2-run-builds-wbase 0 builds))))
-                  fn2-run-adapter-performs-close-step)
-            :in-theory (union-theories (theory 'minimal-theory)
-              '(posp zp not mv-nth car-cons cdr-cons (:e member-equal) (:e mv-nth) (:e zp)
-                (:e binary-+) (:e equal) (:e consp)))))))
+(defthm fn2-run-padding-loop-takes-close-step
+  (let* ((w (+ l (fn2-run-builds-wbase 0 builds))) (close (fn2-run-padding-close)))
+    (implies (and (posp fuel) (fn2-run-build-closing-at-p l builds writers restarts f fc ctx)
+                  (fn2-run-padding-window-p w slot gen pk ps pg at size writers restarts pool))
+             (equal (fn2-run-padding-loop fuel writers pool)
+                    (fn2-run-padding-loop (1- fuel) (mv-nth 1 close) (mv-nth 3 close)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not '(preprocess)
+           :expand ((fn2-run-padding-loop fuel writers pool))
+           :use ((:instance fn2-run-padding-preserves-window (w (+ l (fn2-run-builds-wbase 0 builds))))
+                 fn2-run-adapter-performs-close-step)
+           :in-theory (union-theories (theory 'minimal-theory)
+             '(posp zp not mv-nth car-cons cdr-cons (:e member-equal) (:e mv-nth) (:e zp)
+               (:e binary-+) (:e equal) (:e consp))))))
 
-(local
- (defun-nx fn2-run-padding-induct (fuel l builds writers restarts f pool)
-   (declare (xargs :measure (nfix fuel)))
-   (if (or (zp fuel) (equal fuel 1)) (list writers pool)
-     (let ((close (fn2-run-padding-close)))
-       (fn2-run-padding-induct (1- fuel) l builds (mv-nth 1 close) restarts f (mv-nth 3 close))))))
+(defun-nx fn2-run-padding-induct (fuel l builds writers restarts f pool)
+  (declare (xargs :measure (nfix fuel)))
+  (if (or (zp fuel) (equal fuel 1)) (list writers pool)
+    (let ((close (fn2-run-padding-close)))
+      (fn2-run-padding-induct (1- fuel) l builds (mv-nth 1 close) restarts f (mv-nth 3 close)))))
 
 (defun-nx fn2-run-headed-padding-result-p (result w pages builds curs paths cache restarts f fc ctx b3 ds
                                                slot gen pk ps pg at size bytes)
