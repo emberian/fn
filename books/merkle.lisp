@@ -305,10 +305,16 @@
  :teeth (fn2-mk-root-positive fn2-mk-root-negative)
  :schema :g1 :claim :representation
  :doc "Actual initialized append/root over canonical leaf hashes equals the RFC 6962 recursive MTH. Unproved.")
+; A proof row is read as eight words, each reduced to 32 bits, so the bytes a
+; node hashes are the bytes its recorded opening names.
+(defun fn2-mk-proof-row (row)
+ (declare (xargs :verify-guards nil))
+ (list (fn-b3-word (nth 0 row)) (fn-b3-word (nth 1 row)) (fn-b3-word (nth 2 row)) (fn-b3-word (nth 3 row))
+       (fn-b3-word (nth 4 row)) (fn-b3-word (nth 5 row)) (fn-b3-word (nth 6 row)) (fn-b3-word (nth 7 row))))
 (defun fn2-mk-load-proof (proof at fn2-digests)
  (declare (xargs :stobjs fn2-digests :verify-guards nil))
  (if (atom proof) fn2-digests
-  (let ((fn2-digests (fn2-digest-load at (car proof) fn2-digests))) (fn2-mk-load-proof (cdr proof) (+ 1 (nfix at)) fn2-digests))))
+  (let ((fn2-digests (fn2-digest-load at (fn2-mk-proof-row (car proof)) fn2-digests))) (fn2-mk-load-proof (cdr proof) (+ 1 (nfix at)) fn2-digests))))
 (defun fn2-mk-proof-openings (fn2-digests fn2-mk)
  (declare (xargs :stobjs (fn2-digests fn2-mk) :verify-guards nil))
  (let* ((i (fn2-mk-next 0 fn2-mk)) (f (fn2-mk-pf 0 fn2-mk)) (s (fn2-mk-ps 0 fn2-mk))
@@ -359,7 +365,7 @@
    (eq (car (fn2-mk-consistency-observation old new proof)) :ok))
   (equal old (take (len old) new)))
  :teeth (fn2-mk-consistency-positive fn2-mk-consistency-negative) :schema :invariant
- :doc "Actual consistency verifier implies prefix under finite A-INTEGRITY-EVIDENCE on tree openings and actual verifier node inputs. Unproved; no real hash collision-resistance claim.")
+ :doc "Actual consistency verifier implies prefix under finite A-INTEGRITY-EVIDENCE on tree openings and actual verifier node inputs. No real hash collision-resistance claim.")
 (assert-event (eq (symbol-class 'fn2-mk-init (w state)) :common-lisp-compliant))
 (assert-event (eq (symbol-class 'fn2-mk-leaf-start (w state)) :common-lisp-compliant))
 (assert-event (eq (symbol-class 'fn2-mk-leaf (w state)) :common-lisp-compliant))

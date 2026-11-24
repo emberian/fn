@@ -264,6 +264,10 @@ ACL2_BOOKS = \
   books/machines-c-successor \
   books/machines-directory \
   books/merkle \
+  books/merkle-owed-proof \
+  books/merkle-consistency-model \
+  books/merkle-consistency-run \
+  books/merkle-consistency-proof \
   books/native-b3-correspondence \
   books/native-b3-evidence \
   books/nntp-grammar \
