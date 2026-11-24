@@ -1,4 +1,4 @@
-"""A failed native build must not start ACL2 or create node state."""
+"""Native startup refusal and resource-opening controls."""
 import importlib.util
 from pathlib import Path
 import subprocess
@@ -13,6 +13,12 @@ spec.loader.exec_module(admin)
 
 
 class NativeStartupTests(unittest.TestCase):
+    def test_executor_initialization_precedes_resource_open(self):
+        result = subprocess.run(
+            ["sbcl", "--script", "tests/native-stopped-init.lsp"],
+            cwd=ROOT, capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def test_init_build_failure_leaves_no_image(self):
         with tempfile.TemporaryDirectory() as directory:
             image = Path(directory) / "node.img"

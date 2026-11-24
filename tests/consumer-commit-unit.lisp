@@ -26,7 +26,7 @@
 ; The cursor register issues consumer 1 (version 1, epoch 1, at 0), and the
 ; mutations of a prefix, each (verb frame reply position): the register at
 ; 0, the append (operation 9) at commit position 2, then the ack to 2.
-(defconst *fn2-ccu-cursor* (fnc-issued 1 0 1 1 0))
+(defconst *fn2-ccu-cursor* (fnc-issued 1 *fnc-fixture-owner-pid* 1 1 0))
 (defconst *fn2-ccu-article*
   '("From: mini@example.invalid" "Subject: r1" "Newsgroups: local.test" "" "report r1"))
 (defconst *fn2-ccu-mutations*
@@ -50,7 +50,7 @@
 (defun fn2-ccu-bypass-ack (to fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
   (b* (((mv & fn2-core) (fn2-successor-release 0 fn2-core))
-       ((mv c0 fn2-core) (fn2-consumer-cursor-ack 0 0 (consumer 1) (epoch 1) (to to) fn2-core))
+       ((mv c0 fn2-core) (fn2-consumer-cursor-ack 0 0 (principal *fnc-fixture-owner-pid*) (consumer 1) (expected-epoch 1) (to to) fn2-core))
        ((unless (eq c0 :ok)) (mv (list :put c0) fn2-core))
        ((mv rc fn2-core) (fn2-cns-resolve-loop 32 0 fn2-core))
        ((unless (eq rc :ok)) (mv (list :resolve rc) fn2-core))
@@ -183,7 +183,7 @@
            ((mv sd fn2-core) (fn2-ccu-seed-addr 1 4 fn2-core))
            ((mv s2 w2 & fn2-core) (fn2-ccu-session 1 (list (fnc-status 1) (fnc-control 5)) fn2-core))
            ((mv & pub2) (fn2-successor-published fn2-core))
-           ((mv c0 f0 fn2-core) (fn2-cns-stream-frontier 0 0 fn2-core))
+           ((mv c0 f0 fn2-core) (fn2-cns-stream-frontier *fnc-fixture-owner-pid* 0 fn2-core))
            ((mv c1 f1 fn2-core) (fn2-cns-stream-frontier 1 0 fn2-core)))
         (mv (list (fnc-replies (append (fn2-ccu-verbs *fn2-ccu-mutations*) '(status ack)) w1)
                   (fnc-replies '(status) w2)

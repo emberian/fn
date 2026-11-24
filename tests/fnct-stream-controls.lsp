@@ -1,0 +1,45 @@
+; Execute the actual bounded trailer operations against a retained-window
+; pool stub. This is a source control, not BLAKE3 or composed ACL2 evidence.
+(defpackage "ACL2" (:use "CL"))
+(in-package "ACL2")
+(declaim (declaration xargs))
+(defun nfix (x) (if (and (integerp x) (<= 0 x)) x 0))
+(defun natp (x) (and (integerp x) (<= 0 x)))
+(defun zp (x) (<= (nfix x) 0))
+(defmacro mv (&rest xs) `(values ,@xs))
+(defmacro mv-let (names form &body body) `(multiple-value-bind ,names ,form ,@body))
+(defconstant *fn2-b3-result* 0)
+(defun fn2-digest-slot (row index) (+ row index))
+(defun fn2-digest-rowp (dst digests) (and (= dst 0) (= (length digests) 32)))
+(defun fn2-digest-word (dst word digests)
+ (declare (ignore dst))
+ (loop for i below 4 sum (ash (aref digests (+ (* word 4) i)) (* 8 i))))
+(defun fn2-fc-word-byte (word index) (ldb (byte 8 (* 8 index)) word))
+(defun fn2-pool-read (slot gen off kind owner ogen pool)
+ (if (and (= slot 2) (= gen 3) (= kind 4) (= owner 5) (= ogen 6)
+          (natp off) (< off (length pool)))
+     (values :ok (aref pool off)) (values :bounds 0)))
+(with-open-file (in "books/fnct-stream.lisp")
+ (loop for form = (read in nil :end) until (eq form :end) do
+  (when (and (eq (car form) 'defun)
+             (member (cadr form) '(fn2-fnct-stream-trailer-part fn2-fnct-stream-trailer)))
+   (eval form))))
+(let ((digest (coerce (loop for i below 32 collect (+ 100 i)) 'vector)))
+ ;; All possible receive splits include the empty first prefix and full last
+ ;; byte; the trailer is never verified before all32 bytes have matched.
+ (loop for split from 0 to 32 do
+  (multiple-value-bind (code count)
+    (fn2-fnct-stream-trailer 0 0 2 3 0 split 4 5 6 digest (subseq digest 0 split))
+   (assert (= count split))
+   (assert (eq code (if (= split 32) :verified :more))))
+  (multiple-value-bind (code count)
+    (fn2-fnct-stream-trailer 0 split 2 3 0 (- 32 split) 4 5 6 digest (subseq digest split))
+   (assert (eq code :verified)) (assert (= count (- 32 split)))))
+ ;; A bad byte in every possible position refuses, including split suffixes.
+ (loop for bad below 32 do
+  (let ((window (subseq digest bad)))
+   (incf (aref window 0))
+   (assert (eq (fn2-fnct-stream-trailer 0 bad 2 3 0 (length window) 4 5 6 digest window) :frame))))
+ (assert (eq (fn2-fnct-stream-trailer 0 33 2 3 0 0 4 5 6 digest #()) :bounds))
+ (assert (eq (fn2-fnct-stream-trailer 0 0 2 99 0 32 4 5 6 digest digest) :frame)))
+(format t "FNCT STREAM TRAILER SOURCE CONTROLS PASS: 33 splits, 32 corrupt suffixes, bounds and stale loan~%")

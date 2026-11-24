@@ -335,35 +335,46 @@
          (or (equal got want) (cw "two-chunks ~x0~%want ~x1~%" got want)))))
 (assert-event (fn2-txn-test-two-chunks))
 
-; Stored octets longer than one extent (12 KiB) are stored block by block and
-; named through their source manifest (article-manifest.lisp): a POST of
-; 15,745 octets, under :article-max, at a profile whose window (two 16 KiB
-; chunks) admits it, answers 240, and ARTICLE and BODY read every posted octet
-; back, the line that starts with "." stuffed again; the transcript is fed
-; whole (4096-octet segments) and in 7-octet segments.
+; Exercise manifest readback both within one payload extent and across its
+; 64 KiB boundary. Both cases require exact ARTICLE and BODY wire bytes,
+; including dot transparency, with 4096-octet and 7-octet input segments.
 (defconst *fn2-tu-big-profile*
-  (put-assoc-equal :pool-classes '((8 . 1024) (128 . 16384) (64 . 65536)) *fn2-tu-read-profile*))
+  (put-assoc-equal :article-max 98304 *fn2-tu-read-profile*))
+(assert-event (fn2-core-profilep *fn2-tu-big-profile*))
 (defconst *fn2-tu-big-head* (list "From: a@example.invalid" "Subject: hello" "Newsgroups: local.test"
                                   "Message-ID: <big@example.invalid>"))
-(defconst *fn2-tu-big* (append *fn2-tu-big-head* (list "") (fn2-tu-long-body 250)))
-(defun fn2-txn-test-big (k)
+(defconst *fn2-tu-manifest-lines* 250)
+(defconst *fn2-tu-cross-extent-lines* 1100)
+(defconst *fn2-tu-manifest-article*
+  (append *fn2-tu-big-head* (list "") (fn2-tu-long-body *fn2-tu-manifest-lines*)))
+(defun fn2-txn-test-manifest (n k crosses-extent profile)
   (declare (xargs :verify-guards nil))
-  (let* ((lines (append '("POST") (fn2-tu-stuff *fn2-tu-big*) '(".")
+  (let* ((article (append *fn2-tu-big-head* (list "") (fn2-tu-long-body n)))
+         (stored (len (fn2-tu-text article)))
+         (lines (append '("POST") (fn2-tu-stuff article) '(".")
                         '("GROUP local.test" "ARTICLE 1" "BODY <big@example.invalid>" "QUIT")))
          (octets (fn2-tu-text lines))
-         (body (fn2-tu-stuff (fn2-tu-long-body 250)))
+         (body (fn2-tu-stuff (fn2-tu-long-body n)))
          (expect (append (list *fn2-tu-greeting* *fn2-tu-340* "240 article received OK" "211 1 1 1 local.test"
                                "220 1 <big@example.invalid> article follows" "Xref: fn2.invalid local.test:1")
                          *fn2-tu-big-head* (list "") body
                          (list "." "222 0 <big@example.invalid> body follows")
                          body (list "." *fn2-tu-205*)))
          (want (list :ok :quiet 0 (fn2-tu-text expect) t))
-         (r (fn2-tu-run *fn2-tu-big-profile* nil (list (list octets (fn2-tu-sizes (len octets) k)))))
+         (r (fn2-tu-run profile nil (list (list octets (fn2-tu-sizes (len octets) k)))))
          (got (list (car r) (nth 1 r) (nth 3 r) (car (car (nth 2 r))) (cadr (car (nth 2 r))))))
-    (and (< *fn2-commit-extent-bytes* (len (fn2-tu-text *fn2-tu-big*)))
-         (< (len (fn2-tu-text *fn2-tu-big*)) *fn2-upload-article-max*)
-         (or (equal got want) (cw "big ~x0 ~x1~%want ~x2~%" k got want)))))
-(assert-event (and (fn2-txn-test-big 4096) (fn2-txn-test-big 7)))
+    (and (fn2-am-manifestp stored)
+         (if crosses-extent
+             (< *fn2-commit-extent-bytes* stored)
+           (< stored *fn2-commit-extent-bytes*))
+         (<= stored (fn2-upload-profile-article-max profile))
+         (or (equal got want)
+             (cw "manifest lines ~x0 segment ~x1 status ~x2 reply octets ~x3 want ~x4~%"
+                 n k (take 3 got) (len (nth 3 got)) (len (nth 3 want)))))))
+(assert-event (and (fn2-txn-test-manifest *fn2-tu-manifest-lines* 4096 nil *fn2-tu-read-profile*)
+                   (fn2-txn-test-manifest *fn2-tu-manifest-lines* 7 nil *fn2-tu-read-profile*)))
+(assert-event (and (fn2-txn-test-manifest *fn2-tu-cross-extent-lines* 4096 t *fn2-tu-big-profile*)
+                   (fn2-txn-test-manifest *fn2-tu-cross-extent-lines* 7 t *fn2-tu-big-profile*)))
 
 ; A Read that fails after the 22x line went closes the connection (it
 ; replaced the core's stop :machine-phase): the second storage unit of every
@@ -415,15 +426,15 @@
           (fn2-tu-corrupt-second-units (- n 1)))))
 (defun fn2-txn-test-big-corrupt ()
   (declare (xargs :verify-guards nil))
-  (let* ((lines (append '("POST") (fn2-tu-stuff *fn2-tu-big*) '(".") '("GROUP local.test" "ARTICLE 1" "QUIT")))
+  (let* ((lines (append '("POST") (fn2-tu-stuff *fn2-tu-manifest-article*) '(".") '("GROUP local.test" "ARTICLE 1" "QUIT")))
          (octets (fn2-tu-text lines))
          (said (fn2-tu-text (list *fn2-tu-greeting* *fn2-tu-340* "240 article received OK" "211 1 1 1 local.test"
                                   "220 1 <big@example.invalid> article follows" "Xref: fn2.invalid local.test:1")))
          (whole (fn2-tu-text (append (list *fn2-tu-greeting* *fn2-tu-340* "240 article received OK" "211 1 1 1 local.test"
                                            "220 1 <big@example.invalid> article follows" "Xref: fn2.invalid local.test:1")
-                                     *fn2-tu-big-head* (list "") (fn2-tu-stuff (fn2-tu-long-body 250))
+                                     *fn2-tu-big-head* (list "") (fn2-tu-stuff (fn2-tu-long-body *fn2-tu-manifest-lines*))
                                      (list "." *fn2-tu-205*))))
-         (r (fn2-tu-run-on *fn2-tu-big-profile* nil (list (list octets (fn2-tu-sizes (len octets) 4096)))
+         (r (fn2-tu-run-on *fn2-tu-read-profile* nil (list (list octets (fn2-tu-sizes (len octets) 4096)))
                            (fn2-tu-corrupt-second-units 64)))
          (wire (car (car (nth 2 r)))) (closed (cadr (car (nth 2 r)))))
     (or (and (equal (car r) :ok) (equal (nth 1 r) :quiet) (equal (nth 3 r) 0)

@@ -1,0 +1,51 @@
+; Dependency/registration gate only. The actual initialized whole-trace
+; witness is the selected native control-death campaign, still pending.
+(in-package "ACL2")
+(include-book "../sim/native-device-envelope")
+(include-book "native-device-bindings-unit")
+
+; The actual consumer calls this ordered join before reading the logical loan.
+; Whole initialized replay remains the separate native campaign obligation.
+(assert-event
+ (let* ((a *fn2-nde-write-take*)
+        (b (update-nth 1 5 a))
+        (records '((:submit 1 (17 5 7 :write 100 3 (8 9 10) 0 1 1))
+                   (:submit 2 (17 4 7 :write 100 3 (8 9 10) 0 1 1)))))
+  (and (fn2-nde-submit-join-p b records '(1 2) (list a) :fdatasync)
+       (not (fn2-nde-submit-join-p a records '(1 2) (list b) :fdatasync)))))
+(assert-event
+ (and (fn2-nde-submit-join-p *fn2-nde-write-take* nil nil nil :fdatasync)
+      (fn2-nde-submit-join-p *fn2-nde-write-take* nil nil '((:ack 1)) :fdatasync)
+      (not (fn2-nde-submit-join-p *fn2-nde-write-take* nil '(1) nil :fdatasync))
+      (not (fn2-nde-submit-join-p *fn2-nde-write-take* nil nil '((:ack 1) (:turn 0)) :fdatasync))))
+
+; Physical return order is independent of submit identity coverage. Refuse a
+; later completion first; leaving an unposted suffix is a valid terminal cut.
+(assert-event
+ (let* ((records '((:submit 1 (17 4 7 :write 100 3 (8 9 10) 0 1 1))
+                   (:submit 2 (17 5 7 :write 100 3 (8 9 10) 0 1 1))
+                   (:begin 1) (:return 1 3 0 nil)
+                   (:begin 2) (:return 2 3 0 nil)))
+        (unposted (fn2-nde-returned-ids records))
+        (a (list :post 0 4 7 *fn2-event-write-result* *fn2-outcome-done*
+                 *fn2-reason-none* 3 0 0 0 '(0 0 0 0 0) nil))
+        (b (update-nth 2 5 a)))
+  (and (equal unposted '(1 2))
+       (fn2-nde-post-join-p a records unposted)
+       (not (fn2-nde-post-join-p b records unposted))
+       (fn2-nde-post-join-p b records (cdr unposted))
+       (not (fn2-nde-post-join-p a records nil)))))
+
+; Use the real constructor widths (especially Post's cell before slot/gen).
+; Shape rejection precedes all replay positional access and state mutation.
+(assert-event
+ (and (fn2-nde-control-shape-p *fn2-nde-write-take*)
+      (fn2-nde-control-shape-p *fn2-nde-write-post*)
+      (fn2-nde-control-shape-p '(:clock 1 2 1))
+      (fn2-nde-control-shape-p '(:ack 1))
+      (not (fn2-nde-control-shape-p (take 10 *fn2-nde-write-post*)))
+      (not (fn2-nde-control-shape-p (append *fn2-nde-write-post* '(extra))))
+      (not (fn2-nde-control-shape-p (append *fn2-nde-write-post* 'dotted)))
+      (not (fn2-nde-control-shape-p '(:clock 1 2)))
+      (not (fn2-nde-control-shape-p '(:ack 1 extra)))
+      (not (fn2-nde-control-shape-p '(:unknown 1)))))

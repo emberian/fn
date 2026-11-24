@@ -1,5 +1,7 @@
 ; Concrete dispatcher over the intrusive scheduler. No fusion.
 (in-package "ACL2")
+(include-book "checkpoint-working-credit-init")
+(include-book "checkpoint-geometry")
 (include-book "executor-wake")
 (include-book "executor-services")
 (include-book "assembly")
@@ -7,6 +9,7 @@
 (include-book "executor-loop-events")
 
 (fn2-executor-loop-events)
+(fn2-checkpoint-working-credit-init-events)
 
 ;; Genesis (MACHINE-FORM G3, C gap 5): each kind's :genesis arm runs once on
 ;; each of its rows at init, from the row's initial phase, so a row's first
@@ -84,13 +87,23 @@
       (fn2-profile-get :listener-local-target profile)
     (fn2-profile-get :listener-targets profile)))
 
+(defun fn2-init-credit-boundary (profile fn2-core)
+ (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+ (if (not (fn2-profile-get :image-boot profile)) (mv :ok fn2-core)
+  (if (not (fn2-profilep profile)) (mv :profile fn2-core)
+   (fn2-checkpoint-working-credit-init profile fn2-core))))
+(fn2-core-preserves fn2-init-credit-boundary (profile fn2-core) :position 1 :rows nil)
+
 (defun fn2-init-executor (profile mode scribe-p fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-profilep profile)
     :guard-hints (("Goal" :use
       (:instance fn2-machine-kind-base-natp (kind *fn2-listener-kind*)
         (fn2-core (fn2-listener-set-mode-all (if (eq mode :null) 0 1)
-                    (fn2-init-engine profile (fn2-core-init profile fn2-core)))))))))
+                    (fn2-init-engine profile
+                     (mv-nth 1 (fn2-init-credit-boundary profile (fn2-core-init profile fn2-core)))))))))))
   (b* ((fn2-core (fn2-core-init profile fn2-core))
+       ((mv credit fn2-core) (fn2-init-credit-boundary profile fn2-core))
+       ((unless (eq credit :ok)) (fn2-core-stop *fn2-stop-reason-engine-genesis* fn2-core))
        (fn2-core (fn2-init-engine profile fn2-core))
        (fn2-core (fn2-listener-set-mode-all (if (eq mode :null) 0 1) fn2-core))
        (fn2-core (fn2-listener-set-target-all
@@ -112,9 +125,7 @@
 
 (defun fn2-image-sizep (size extents groups)
  (declare (xargs :guard t))
- (and (unsigned-byte-p 60 size) (equal (mod size 4096) 0)
-      (unsigned-byte-p 32 extents) (posp extents) (unsigned-byte-p 32 groups)
-      (<= (+ (* 12288 extents) (* 4096 (+ groups 3))) size)))
+ (fn2-checkpoint-image-sizep size extents groups))
 
 (defun fn2-image-create-request (size profile)
  (declare (xargs :guard t))
@@ -128,10 +139,13 @@
                     (equal (fn2-machine-phase id fn2-core) *fn2-boot-state-free*)
                     (unsigned-byte-p 60 size) (equal (mod size 4096) 0)))
        (mv :geometry fn2-core))
-      ((mv base total) (stobj-let ((fn2-boot-config (fn2-core-boot-config fn2-core))) (base total)
-                        (mv (* 12288 (nfix (fn2-boot-config-extents fn2-boot-config)))
-                            (fn2-boot-config-count fn2-boot-config)) (mv base total)))
-      ((unless (fn2-image-sizep size (/ base 12288) total)) (mv :geometry fn2-core))
+      ((mv extents total)
+       (stobj-let ((fn2-boot-config (fn2-core-boot-config fn2-core))) (extents total)
+        (mv (fn2-boot-config-extents fn2-boot-config)
+            (fn2-boot-config-count fn2-boot-config))
+        (mv extents total)))
+      ((unless (fn2-image-sizep size extents total)) (mv :geometry fn2-core))
+      (base (* *fn2-storage-extent-bytes* extents))
       (gen (fn2-machine-generation id fn2-core))
       (class (stobj-let ((fn2-pool (fn2-core-pool fn2-core))) (class) (fn2-pool-class-for 4096 fn2-pool) class))
       ((unless class) (mv :window fn2-core))

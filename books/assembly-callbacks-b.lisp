@@ -3,5 +3,6 @@
 (include-book "assembly-callbacks-a")
 ;; the stored owners, which the commit hooks writing an owner table keep
 (include-book "dispatch-owners")
+(local (in-theory (disable fn2-alloc-frozenp fn2-alloc-snapshot-activep)))
 (fn2-commit-hook-events)
 (fn2-commit-events)

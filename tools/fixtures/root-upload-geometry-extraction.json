@@ -1,0 +1,499 @@
+{
+  "baseline": "07e40b063",
+  "moves": [
+    {
+      "source": "books/upload-kind.lisp",
+      "target": "books/source-manifest-codec.lisp",
+      "head": "defconst",
+      "name": "*fn2-am-block-bytes*",
+      "needle": null,
+      "form": "(defconst *fn2-am-block-bytes* *fn2-commit-unit-bytes*)",
+      "sha256": "c6740b8474cad574630c14c23a291a304142b8af2be1f478fcd3242f6ac459a1"
+    },
+    {
+      "source": "books/upload-kind.lisp",
+      "target": "books/source-manifest-codec.lisp",
+      "head": "defconst",
+      "name": "*fn2-am-header-max*",
+      "needle": null,
+      "form": "(defconst *fn2-am-header-max* (fn2-layout-max-size *fn2-format-source-manifest-header*))",
+      "sha256": "2ed90a514900324bb97685456e74fb36724487b6846fd44c063de7bd265c686a"
+    },
+    {
+      "source": "books/upload-kind.lisp",
+      "target": "books/source-manifest-codec.lisp",
+      "head": "defconst",
+      "name": "*fn2-am-entry-max*",
+      "needle": null,
+      "form": "(defconst *fn2-am-entry-max* (fn2-layout-max-size *fn2-format-source-manifest-entry*))",
+      "sha256": "e9590cb218839ea4db883a269bf2f929799c3041ecf9d68dcdfe31728c5984c6"
+    },
+    {
+      "source": "books/upload-kind.lisp",
+      "target": "books/source-manifest-codec.lisp",
+      "head": "defconst",
+      "name": "*fn2-am-entries-per-unit*",
+      "needle": null,
+      "form": "(defconst *fn2-am-entries-per-unit*\n  (floor (- *fn2-commit-unit-bytes* *fn2-am-header-max*) *fn2-am-entry-max*))",
+      "sha256": "41afcfeca569be196cb1aa8268890483375b3118e0ca07cb148052370c41b746"
+    },
+    {
+      "source": "books/upload-kind.lisp",
+      "target": "books/source-manifest-codec.lisp",
+      "head": "defconst",
+      "name": "*fn2-am-stored-max*",
+      "needle": null,
+      "form": "(defconst *fn2-am-stored-max*\n  (* *fn2-am-block-bytes* *fn2-am-entries-per-unit* *fn2-commit-write-resources*))",
+      "sha256": "ec32c70d31e9ff5f26906157808fc1d76c3e933bca1027ba48d689b08489f979"
+    },
+    {
+      "source": "books/upload-kind.lisp",
+      "target": "books/source-manifest-codec.lisp",
+      "head": "assert-event",
+      "name": null,
+      "needle": "(equal *fn2-am-stored-max* 380928)",
+      "form": "(assert-event (equal *fn2-am-stored-max* 380928))",
+      "sha256": "a4d7bdbc7e438fd01c7afa2af084b4a86750afcdb2bb9bae3dfc67f3e7df9b24"
+    },
+    {
+      "source": "books/article-manifest.lisp",
+      "target": "books/source-manifest-codec.lisp",
+      "head": "defconst",
+      "name": "*fn2-am-header-fields*",
+      "needle": null,
+      "form": "(defconst *fn2-am-header-fields* *fn2-format-source-manifest-header-num-fields*)",
+      "sha256": "08a6c352d8493897b7810a419a75d77db6c7bdf0a1b34a43d5a2bba09abe27ab"
+    },
+    {
+      "source": "books/article-manifest.lisp",
+      "target": "books/source-manifest-codec.lisp",
+      "head": "defconst",
+      "name": "*fn2-am-entry-fields*",
+      "needle": null,
+      "form": "(defconst *fn2-am-entry-fields* *fn2-format-source-manifest-entry-num-fields*)",
+      "sha256": "92ed154a3adf082f778e91e1e234799a4afdcd74a7b3cd0ee554cdc334ca3a6f"
+    },
+    {
+      "source": "books/article-manifest.lisp",
+      "target": "books/source-manifest-codec.lisp",
+      "head": "assert-event",
+      "name": null,
+      "needle": "(equal *fn2-am-entries-per-unit* 31)",
+      "form": "(assert-event (equal *fn2-am-entries-per-unit* 31))",
+      "sha256": "71e6d5bb089fb1a8d642726dd65eb7c5e1debb1fbb7aaf7d85f49875a0f70121"
+    },
+    {
+      "source": "books/article-manifest.lisp",
+      "target": "books/source-manifest-codec.lisp",
+      "head": "assert-event",
+      "name": null,
+      "needle": "(<= *fn2-am-entry-max* *fn2-commit-unit-bytes*)",
+      "form": "(assert-event (<= *fn2-am-entry-max* *fn2-commit-unit-bytes*))",
+      "sha256": "3aa9051c0794e4531ad01cad5de04ddb0d27e92a9cc64acf4a68ce2fff158bbf"
+    },
+    {
+      "source": "books/article-manifest.lisp",
+      "target": "books/source-manifest-codec.lisp",
+      "head": "defun",
+      "name": "fn2-am-blocks",
+      "needle": null,
+      "form": "(defun fn2-am-blocks (total)\n  (declare (xargs :guard t))\n  (ceiling (nfix total) *fn2-am-block-bytes*))",
+      "sha256": "277f57e6153c3c4de26c5a60842edb4f14611cbaafb176e73f6935be7c129ead"
+    },
+    {
+      "source": "books/article-manifest.lisp",
+      "target": "books/source-manifest-codec.lisp",
+      "head": "defun",
+      "name": "fn2-am-units",
+      "needle": null,
+      "form": "(defun fn2-am-units (total)\n  (declare (xargs :guard t))\n  (ceiling (fn2-am-blocks total) *fn2-am-entries-per-unit*))",
+      "sha256": "1a6f5174526523523421969f0375e163821a79e2a50be0679bc033744606b3f1"
+    },
+    {
+      "source": "books/article-manifest.lisp",
+      "target": "books/source-manifest-codec.lisp",
+      "head": "defthm",
+      "name": "fn2-am-units-natp",
+      "needle": null,
+      "form": "(defthm fn2-am-units-natp (natp (fn2-am-units total)) :rule-classes :type-prescription)",
+      "sha256": "9b676f91e7f94b6bfe88a0a72ce08cc718067b870723674a6d355c6d09471096"
+    },
+    {
+      "source": "books/article-manifest.lisp",
+      "target": "books/source-manifest-codec.lisp",
+      "head": "defun",
+      "name": "fn2-am-manifestp",
+      "needle": null,
+      "form": "(defun fn2-am-manifestp (total)\n  (declare (xargs :guard t))\n  (< *fn2-commit-extent-bytes* (nfix total)))",
+      "sha256": "1cbee7602a61f6c89363cd1aa8356e9e649c496d5ef92418acc0f6425a255575"
+    },
+    {
+      "source": "books/article-manifest.lisp",
+      "target": "books/source-manifest-codec.lisp",
+      "head": "defun",
+      "name": "fn2-am-fits",
+      "needle": null,
+      "form": "(defun fn2-am-fits (total)\n  (declare (xargs :guard t))\n  (<= (fn2-am-units total) *fn2-commit-write-resources*))",
+      "sha256": "5a265520172bdc5694b0b5ce76b8368671be79925c6a98455bc6b107932e2d36"
+    },
+    {
+      "source": "books/article-manifest.lisp",
+      "target": "books/source-manifest-codec.lisp",
+      "head": "assert-event",
+      "name": null,
+      "needle": "(fn2-am-fits *fn2-am-stored-max*)",
+      "form": "(assert-event (and (fn2-am-fits *fn2-am-stored-max*) (not (fn2-am-fits (+ 1 *fn2-am-stored-max*)))))",
+      "sha256": "e6d3d5f5dba12b1d7b7fe5879ab0ccc8e90538b3c7ba5d78be74d11e5de8d878"
+    },
+    {
+      "source": "books/article-manifest.lisp",
+      "target": "books/source-manifest-codec.lisp",
+      "head": "defun",
+      "name": "fn2-am-entry-at",
+      "needle": null,
+      "form": "(defun fn2-am-entry-at (off)\n  (declare (xargs :guard t))\n  (let* ((off (nfix off)) (room (- *fn2-commit-unit-bytes* (mod off *fn2-commit-unit-bytes*))))\n    (if (< room *fn2-am-entry-max*) (+ off room) off)))",
+      "sha256": "4c97827a04902db99e0a495724dddd1d9c4a87a24a72b3309bae033724301b4d"
+    },
+    {
+      "source": "books/article-manifest.lisp",
+      "target": "books/source-manifest-codec.lisp",
+      "head": "defthm",
+      "name": "fn2-am-entry-at-natp",
+      "needle": null,
+      "form": "(defthm fn2-am-entry-at-natp (natp (fn2-am-entry-at off)) :rule-classes :type-prescription)",
+      "sha256": "9712301fb151ba42d1b8cb5f862fcdb51f198116f0ac78a30a4e32da60cd880a"
+    },
+    {
+      "source": "books/article-manifest.lisp",
+      "target": "books/source-manifest-codec.lisp",
+      "head": "defthm",
+      "name": "fn2-am-entry-at-bound",
+      "needle": null,
+      "form": "(defthm fn2-am-entry-at-bound (<= (nfix off) (fn2-am-entry-at off)) :rule-classes :linear)",
+      "sha256": "165e1a7ded6d776e4126666f292bbc613d192618e57aed04fb297348c4fc6810"
+    },
+    {
+      "source": "books/article-manifest.lisp",
+      "target": "books/source-manifest-codec.lisp",
+      "head": "in-theory",
+      "name": null,
+      "needle": "fn2-am-blocks fn2-am-units",
+      "form": "(in-theory (disable fn2-am-blocks fn2-am-units fn2-am-manifestp fn2-am-fits fn2-am-entry-at))",
+      "sha256": "eb902d41f2f13eb0ffc17d0b97b5c7f0f4959ce4ac2b52bae135ab7b89840d22"
+    },
+    {
+      "source": "books/article-manifest.lisp",
+      "target": "books/source-manifest-codec.lisp",
+      "head": "defun",
+      "name": "fn2-am-get-entry",
+      "needle": null,
+      "form": "(defun fn2-am-get-entry (base slot gen off end okind oslot ogen fn2-fields fn2-pool)\n  (declare (xargs :stobjs (fn2-fields fn2-pool) :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))\n  (if (not (and (natp base) (<= (+ base *fn2-am-entry-fields*) (fn2-fields-rows fn2-fields))))\n      (mv :bounds 0 0 0 0 0 0 fn2-fields)\n    (mv-let (code next fn2-fields)\n      (fn2-format-source-manifest-entry-decode base slot gen off end okind oslot ogen fn2-fields fn2-pool)\n      (if (not (eq code :ok)) (mv (if (eq code :more) :bounds code) 0 0 0 0 0 0 fn2-fields)\n        (mv :ok (nfix next)\n            (nfix (fn2-fields-value (+ base *fn2-format-source-manifest-entry-field-logical-offset*) fn2-fields))\n            (nfix (fn2-fields-value (+ base *fn2-format-source-manifest-entry-field-length*) fn2-fields))\n            (nfix (fn2-fields-value (+ base *fn2-format-source-manifest-entry-field-block-physical-unit*) fn2-fields))\n            (nfix (fn2-fields-value (+ base *fn2-format-source-manifest-entry-field-block-writer-epoch*) fn2-fields))\n            (nfix (fn2-fields-value (+ base *fn2-format-source-manifest-entry-field-block-allocation*) fn2-fields))\n            fn2-fields)))))",
+      "sha256": "9c5bf4667405acafdf2ee3111e32361694624ad6f8f5f3be4367efb286c78a02"
+    },
+    {
+      "source": "books/article-manifest.lisp",
+      "target": "books/source-manifest-codec.lisp",
+      "head": "fn2-fc-shape",
+      "name": "fn2-am-get-entry-shape",
+      "needle": null,
+      "form": "(fn2-fc-shape fn2-am-get-entry-shape\n  (fn2-am-get-entry base slot gen off end okind oslot ogen fn2-fields fn2-pool)\n  (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))\n  ((fn2-fields 7)))",
+      "sha256": "184374f162ee4d49c1808cba72c3f610f2b54005d5135371cedd8c958e040c03"
+    },
+    {
+      "source": "books/article-manifest.lisp",
+      "target": "books/source-manifest-codec.lisp",
+      "head": "defthm",
+      "name": "fn2-am-get-entry-naturals",
+      "needle": null,
+      "form": "(defthm fn2-am-get-entry-naturals\n  (and (natp (mv-nth 1 (fn2-am-get-entry base slot gen off end okind oslot ogen fn2-fields fn2-pool)))\n       (natp (mv-nth 2 (fn2-am-get-entry base slot gen off end okind oslot ogen fn2-fields fn2-pool)))\n       (natp (mv-nth 3 (fn2-am-get-entry base slot gen off end okind oslot ogen fn2-fields fn2-pool)))\n       (natp (mv-nth 4 (fn2-am-get-entry base slot gen off end okind oslot ogen fn2-fields fn2-pool)))\n       (natp (mv-nth 5 (fn2-am-get-entry base slot gen off end okind oslot ogen fn2-fields fn2-pool)))\n       (natp (mv-nth 6 (fn2-am-get-entry base slot gen off end okind oslot ogen fn2-fields fn2-pool)))))",
+      "sha256": "c002b60e7c46146c79df438fdea3e5dea76550e20baa1d1ab4660fa583a88461"
+    },
+    {
+      "source": "books/article-manifest.lisp",
+      "target": "books/source-manifest-codec.lisp",
+      "head": "in-theory",
+      "name": null,
+      "needle": "(disable fn2-am-get-entry)",
+      "form": "(in-theory (disable fn2-am-get-entry))",
+      "sha256": "64a743f2fe406654ba20125f22ee98df9e6a1f576ffc6a3045d5dc20c90168fe"
+    },
+    {
+      "source": "books/article-manifest.lisp",
+      "target": "books/source-manifest-codec.lisp",
+      "head": "defun",
+      "name": "fn2-am-get-header",
+      "needle": null,
+      "form": "(defun fn2-am-get-header (base total slot gen off end okind oslot ogen fn2-fields fn2-pool)\n  (declare (xargs :stobjs (fn2-fields fn2-pool) :guard (and (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))\n  (if (not (and (natp base) (<= (+ base *fn2-am-header-fields*) (fn2-fields-rows fn2-fields))))\n      (mv :bounds 0 fn2-fields)\n    (mv-let (code next fn2-fields)\n      (fn2-format-source-manifest-header-decode base slot gen off end okind oslot ogen fn2-fields fn2-pool)\n      (cond ((not (eq code :ok)) (mv (if (eq code :more) :bounds code) 0 fn2-fields))\n            ((not (and (equal (fn2-fields-value (+ base *fn2-format-source-manifest-header-field-source-length*) fn2-fields) total)\n                       (equal (fn2-fields-value (+ base *fn2-format-source-manifest-header-field-block-size*) fn2-fields)\n                              *fn2-am-block-bytes*)))\n             (mv :bounds 0 fn2-fields))\n            (t (mv :ok (nfix next) fn2-fields))))))",
+      "sha256": "f4fbd71a291f01290c95f6783ae0a4e6c8693fff36db8ecd0f4e5c68b0770e0a"
+    },
+    {
+      "source": "books/article-manifest.lisp",
+      "target": "books/source-manifest-codec.lisp",
+      "head": "fn2-fc-shape",
+      "name": "fn2-am-get-header-shape",
+      "needle": null,
+      "form": "(fn2-fc-shape fn2-am-get-header-shape\n  (fn2-am-get-header base total slot gen off end okind oslot ogen fn2-fields fn2-pool)\n  (and (fn2-fieldsp fn2-fields) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))\n  ((fn2-fields 2)))",
+      "sha256": "fe9b203d93c0b046978edd1c9eaa9bdcc9ac0a405cee3f6ce25781a273984049"
+    },
+    {
+      "source": "books/article-manifest.lisp",
+      "target": "books/source-manifest-codec.lisp",
+      "head": "defthm",
+      "name": "fn2-am-get-header-natp",
+      "needle": null,
+      "form": "(defthm fn2-am-get-header-natp\n  (natp (mv-nth 1 (fn2-am-get-header base total slot gen off end okind oslot ogen fn2-fields fn2-pool)))\n  :rule-classes :type-prescription)",
+      "sha256": "a890da9923ae2545cf0ce6fd62844ab335cc0e0c789abe90f93338f36a957f63"
+    },
+    {
+      "source": "books/article-manifest.lisp",
+      "target": "books/source-manifest-codec.lisp",
+      "head": "in-theory",
+      "name": null,
+      "needle": "(disable fn2-am-get-header)",
+      "form": "(in-theory (disable fn2-am-get-header))",
+      "sha256": "227374285a449458f904c17b3a9ca747dd44b4a2962b45b347cd565b1f1e2832"
+    },
+    {
+      "source": "books/ordered.lisp",
+      "target": "books/upload-page-geometry.lisp",
+      "head": "defconst",
+      "name": "*fn2-article-location-hashes-max*",
+      "needle": null,
+      "form": "(defconst *fn2-article-location-hashes-max* (* 32 *fn2-commit-write-resources*))",
+      "sha256": "6f7a4f7ba0780ffa9c4ca780801ed3177085f72369580765bedc3828631a8a14"
+    },
+    {
+      "source": "books/upload-kind.lisp",
+      "target": "books/upload-page-geometry.lisp",
+      "head": "defconst",
+      "name": "*fn2-upload-chunk-class*",
+      "needle": null,
+      "form": "(defconst *fn2-upload-chunk-class* 1)",
+      "sha256": "657338441c5fa549cb00588f5535c72d8e39a9afbd905b83b8b8f8650347e5ee"
+    },
+    {
+      "source": "books/upload-kind.lisp",
+      "target": "books/upload-page-geometry.lisp",
+      "head": "defconst",
+      "name": "*fn2-upload-article-max*",
+      "needle": null,
+      "form": "(defconst *fn2-upload-article-max* 32768)",
+      "sha256": "f0c40d1075c862ba56a496bd2be74bdabdf0c76a920b1ca068445b32d6b0a584"
+    },
+    {
+      "source": "books/upload-kind.lisp",
+      "target": "books/upload-page-geometry.lisp",
+      "head": "defconst",
+      "name": "*fn2-upload-digest-octets*",
+      "needle": null,
+      "form": "(defconst *fn2-upload-digest-octets* 32)",
+      "sha256": "5fa97082af1e35475c9808ad0d0791aacc4b8826df8dbee4e012ff997c674d04"
+    },
+    {
+      "source": "books/upload-kind.lisp",
+      "target": "books/upload-page-geometry.lisp",
+      "head": "defconst",
+      "name": "*fn2-upload-mid-field-octets*",
+      "needle": null,
+      "form": "(defconst *fn2-upload-mid-field-octets* 12)",
+      "sha256": "8879468b10b641887f1e059f195a30ca783aa298f4931668fdfc35377af98ee2"
+    },
+    {
+      "source": "books/upload-kind.lisp",
+      "target": "books/upload-page-geometry.lisp",
+      "head": "defconst",
+      "name": "*fn2-upload-mid-template*",
+      "needle": null,
+      "form": "(defconst *fn2-upload-mid-template*\n  (concatenate 'string \"Message-ID: <fn2.\" (string (code-char 1)) \".\" (string (code-char 1)) \"@\"))",
+      "sha256": "36065caa440a3e137e6fab33382263903008948a661cdea7425b92b9102e392d"
+    },
+    {
+      "source": "books/upload-kind.lisp",
+      "target": "books/upload-page-geometry.lisp",
+      "head": "defconst",
+      "name": "*fn2-upload-mid-close*",
+      "needle": null,
+      "form": "(defconst *fn2-upload-mid-close* (coerce (list #\\> (code-char 13) (code-char 10)) 'string))",
+      "sha256": "7ab19d06cac9808c4ead58c20a4310a81aeefae2f21c72fe0d0d0e9efca44272"
+    },
+    {
+      "source": "books/upload-kind.lisp",
+      "target": "books/upload-page-geometry.lisp",
+      "head": "defconst",
+      "name": "*fn2-upload-op-mid-template*",
+      "needle": null,
+      "form": "(defconst *fn2-upload-op-mid-template*\n  (concatenate 'string \"Message-ID: <op-\" (string (code-char 1)) \"-\" (string (code-char 1)) \"@\"))",
+      "sha256": "798be9bbd1859a3f6c51b2dd75e654193ae396886040d33048dfad098a4ab6f0"
+    },
+    {
+      "source": "books/upload-kind.lisp",
+      "target": "books/upload-page-geometry.lisp",
+      "head": "assert-event",
+      "name": null,
+      "needle": "(<= (length *fn2-upload-op-mid-template*)",
+      "form": "(assert-event (<= (length *fn2-upload-op-mid-template*) (length *fn2-upload-mid-template*)))",
+      "sha256": "88e3befc527ac9a7a6c4bb435619e80514acabcecbc8f57be5e2d20fdfa17c3d"
+    },
+    {
+      "source": "books/upload-kind.lisp",
+      "target": "books/upload-page-geometry.lisp",
+      "head": "defconst",
+      "name": "*fn2-upload-mid-line-max*",
+      "needle": null,
+      "form": "(defconst *fn2-upload-mid-line-max*\n  (+ (- (length *fn2-upload-mid-template*) 2) 40 *fn2-profile-path-identity-max* (length *fn2-upload-mid-close*)))",
+      "sha256": "685adc26c67f91193c87036a6ecbc773ab177863fe5182882c89b3d38c0b6d26"
+    },
+    {
+      "source": "books/upload-kind.lisp",
+      "target": "books/upload-page-geometry.lisp",
+      "head": "assert-event",
+      "name": null,
+      "needle": "(equal (- *fn2-upload-mid-line-max*",
+      "form": "(assert-event (equal (- *fn2-upload-mid-line-max* (+ *fn2-upload-mid-field-octets* 2)) 250))",
+      "sha256": "de3f4ee5bcc1098260bf5f367562b29505ceef9fa602f707e229b07108141c6a"
+    },
+    {
+      "source": "books/upload-kind.lisp",
+      "target": "books/upload-page-geometry.lisp",
+      "head": "assert-event",
+      "name": null,
+      "needle": "(<= (+ *fn2-upload-article-max*",
+      "form": "(assert-event (<= (+ *fn2-upload-article-max* *fn2-upload-mid-line-max*) *fn2-am-stored-max*))",
+      "sha256": "1eb83db50f5412189e6708f488cc48900442d210e9746aac4c28155cec160a83"
+    },
+    {
+      "source": "books/upload.lisp",
+      "target": "books/upload-page-geometry.lisp",
+      "head": "defconst",
+      "name": "*fn2-upload-page-stored-source*",
+      "needle": null,
+      "form": "(defconst *fn2-upload-page-stored-source* (* 64 (ceiling *fn2-upload-mid-line-max* 64)))",
+      "sha256": "768e20c929602867b5125958d9357b0658dbec1e992eaebcc1c0aee15bb053a0"
+    },
+    {
+      "source": "books/upload.lisp",
+      "target": "books/upload-page-geometry.lisp",
+      "head": "defconst",
+      "name": "*fn2-upload-page-location-hashes*",
+      "needle": null,
+      "form": "(defconst *fn2-upload-page-location-hashes* (+ *fn2-upload-page-stored-source* 64))",
+      "sha256": "b759042cfb450c2a0b0a6de4686a3eb445b0ab5753e5388d7cd14ee868965073"
+    },
+    {
+      "source": "books/upload.lisp",
+      "target": "books/upload-page-geometry.lisp",
+      "head": "defconst",
+      "name": "*fn2-upload-page-stage*",
+      "needle": null,
+      "form": "(defconst *fn2-upload-page-stage*\n  (+ *fn2-upload-page-location-hashes* (* 64 (ceiling *fn2-article-location-hashes-max* 64))))",
+      "sha256": "0573f947f712ad47a60b8e20587ef08ec6c3bdf20cb3402d09fd7c61ca3c1f04"
+    },
+    {
+      "source": "books/upload.lisp",
+      "target": "books/upload-page-geometry.lisp",
+      "head": "defconst",
+      "name": "*fn2-upload-page-hash*",
+      "needle": null,
+      "form": "(defconst *fn2-upload-page-hash* (+ *fn2-upload-page-stage* *fn2-commit-unit-bytes*))",
+      "sha256": "6ba158c7582fe9384aa75f27d561447dd4a32cc8ed4b5338d58ff86238ffd2ca"
+    },
+    {
+      "source": "books/upload.lisp",
+      "target": "books/upload-page-geometry.lisp",
+      "head": "defconst",
+      "name": "*fn2-upload-page-manifest*",
+      "needle": null,
+      "form": "(defconst *fn2-upload-page-manifest* (+ *fn2-upload-page-hash* 64))",
+      "sha256": "b6fcc75a8b731795f25033e14f86960171d8d032b24ec26590203d230ccba73c"
+    },
+    {
+      "source": "books/upload.lisp",
+      "target": "books/upload-page-geometry.lisp",
+      "head": "defconst",
+      "name": "*fn2-upload-head-bytes*",
+      "needle": null,
+      "form": "(defconst *fn2-upload-head-bytes* (+ 32 *fn2-am-header-max*))",
+      "sha256": "2932def3a891cd6c3085b1b94c5a363197792d7a71c5b713bc4b47c57df00d95"
+    },
+    {
+      "source": "books/upload.lisp",
+      "target": "books/upload-page-geometry.lisp",
+      "head": "defconst",
+      "name": "*fn2-upload-entry-bytes*",
+      "needle": null,
+      "form": "(defconst *fn2-upload-entry-bytes* (+ 64 (* 2 *fn2-am-entry-max*)))",
+      "sha256": "d8946e17ae778c460599f83c52a6b2c71f051842d4a032f5335d3fae6d2d2a74"
+    },
+    {
+      "source": "books/upload.lisp",
+      "target": "books/upload-page-geometry.lisp",
+      "head": "defun",
+      "name": "fn2-upload-page-bytes",
+      "needle": null,
+      "form": "(defun fn2-upload-page-bytes (total)\n  (declare (xargs :guard t))\n  (if (fn2-am-manifestp total)\n      (+ *fn2-upload-page-manifest* (* *fn2-commit-unit-bytes* (fn2-am-units total)))\n    *fn2-upload-page-manifest*))",
+      "sha256": "938f6bf86e32412b20edc66e5c86d0a30954f6a655df65765b60c7e2dab9d65e"
+    }
+  ],
+  "rewrites": [
+    {
+      "book": "books/upload.lisp",
+      "name": "fn2-upload-bound",
+      "original": "(defun fn2-upload-bound (cap0 cap1 fn2-core)\n  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))\n  (stobj-let ((fn2-input-config (fn2-core-input-config fn2-core)))\n    (max)\n    (if (and (fn2-input-config-wfp fn2-input-config) (natp (fn2-input-config-rows fn2-input-config))\n             (< 0 (fn2-input-config-rows fn2-input-config)))\n        (fn2-input-config-article-max 0 fn2-input-config) 0)\n    (min (nfix max) (nfix (- (+ (nfix cap0) (nfix cap1)) (+ 1 *fn2-upload-digest-octets*))))))",
+      "sha256": "c2dd444120abb14df96f3cae6acd1c316b48fbee547ccd04426cba6932045bf6",
+      "substitutions": [
+        [
+          "(min (nfix max) (nfix (- (+ (nfix cap0) (nfix cap1)) (+ 1 *fn2-upload-digest-octets*))))",
+          "(fn2-upload-input-bound max cap0 cap1)"
+        ]
+      ]
+    },
+    {
+      "book": "books/upload-kind.lisp",
+      "name": "fn2-input-config-profilep",
+      "original": "(defun fn2-input-config-profilep (profile)\n  (declare (xargs :guard t))\n  (and (booleanp (fn2-profile-get :posting-interim profile))\n       (booleanp (fn2-profile-get :peering-interim profile))\n       ;; article input needs the chunk class and a hasher row per window\n       (or (not (fn2-profile-get :posting-interim profile))\n           (and (true-listp (fn2-profile-get :pool-classes profile))\n                (< *fn2-upload-chunk-class* (len (fn2-profile-get :pool-classes profile)))\n                (< 0 (fn2-b-upload-windows profile))))\n       (or (null (fn2-profile-get :article-max profile))\n           (and (natp (fn2-profile-get :article-max profile))\n                (<= (+ (fn2-profile-get :article-max profile) *fn2-upload-mid-line-max*) *fn2-am-stored-max*)))))",
+      "sha256": "2754f82c5dcc3f42ba0b4f74d56407b62e8d4d7fcfb1f08f7817a7b83004e44d",
+      "substitutions": [
+        [
+          "(or (null (fn2-profile-get :article-max profile))\n           (and (natp (fn2-profile-get :article-max profile))\n                (<= (+ (fn2-profile-get :article-max profile) *fn2-upload-mid-line-max*) *fn2-am-stored-max*)))",
+          "(fn2-upload-article-profilep profile)"
+        ]
+      ]
+    },
+    {
+      "book": "books/upload-kind.lisp",
+      "name": "fn2-input-config-from",
+      "original": "(defun fn2-input-config-from (profile fn2-input-config)\n  (declare (xargs :stobjs fn2-input-config :guard (fn2-input-config-profilep profile)))\n  (let* ((fn2-input-config (fn2-input-config-init 1 fn2-input-config))\n         (max (fn2-profile-get :article-max profile)))\n    ;; posting is served only when a POST can succeed: under the interim and\n    ;; with a row of fn2-txn in the profile's T share (else an upload would\n    ;; park on a transaction row that never exists, its request unanswered)\n    (fn2-input-config-put 0 (posting (if (and (fn2-profile-get :posting-interim profile)\n                                              (< 0 (fn2-txn-capacity profile)))\n                                         1 0))\n                          (peering (if (fn2-profile-get :peering-interim profile) 1 0))\n                          (article-max (if (unsigned-byte-p 32 max) max *fn2-upload-article-max*)))))",
+      "sha256": "21aa462199322c914258e5ef9e2c9dc8ff01fd6d1b25a051d3a7c670ccac410c",
+      "substitutions": [
+        [
+          "\n         (max (fn2-profile-get :article-max profile))",
+          ""
+        ],
+        [
+          "(if (unsigned-byte-p 32 max) max *fn2-upload-article-max*)",
+          "(fn2-upload-profile-article-max profile)"
+        ]
+      ]
+    }
+  ],
+  "physical_geometry": [
+    {
+      "book": "books/commit-geometry.lisp",
+      "name": "*fn2-commit-extent-bytes*",
+      "form": "(defconst *fn2-commit-extent-bytes* *fn2-storage-extent-bytes*)",
+      "sha256": "e1d48c405dbc2c61b47d3fda55a189501541fbdc1b39e8e745e68b4f3c55c16f"
+    },
+    {
+      "book": "books/format-base.lisp",
+      "name": "*fn2-storage-extent-bytes*",
+      "form": "(defconst *fn2-storage-extent-bytes* *fn2-format-page-size*)",
+      "sha256": "decc342c10445079867772736733fa059dda5b899d6cb75d70e7a077bf4eec1d"
+    },
+    {
+      "book": "books/format-base.lisp",
+      "name": "*fn2-format-page-size*",
+      "form": "(defconst *fn2-format-page-size* 65536)",
+      "sha256": "e3af29cb82a720077a92655a4224329a99c820e43630bcc876798e2ffa67f238"
+    }
+  ]
+}

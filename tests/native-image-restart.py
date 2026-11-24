@@ -18,17 +18,21 @@ import time
 from harness.launcher import require_launcher_sigkill
 
 ROOT = Path(__file__).resolve().parents[1]
+PAYLOAD_EXTENT_BYTES = 64 * 1024
+ARTICLE_MAX = 96 * 1024
 
 
 class Node:
-    def __init__(self, directory, image, mode, label, control_sock=None, env=None):
+    def __init__(self, directory, image, mode, label, control_sock=None, env=None, startup_args=(),
+                 launcher=None):
         self.log = (directory / f"{label}.log").open("wb")
         self.pidfile = directory / f"{label}.node.pid"
         self.node_pid = None
         self.pending = b""
-        cmd = ["timeout", "600", str(ROOT / "fn"), mode, str(image)]
+        cmd = ["timeout", "600", *(launcher or [str(ROOT / "fn")]), mode, str(image)]
         if control_sock is not None:
             cmd.extend(["--control-sock", str(control_sock)])
+        cmd.extend(startup_args)
         self.proc = subprocess.Popen(
             cmd, cwd=ROOT,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, start_new_session=True,
@@ -133,14 +137,19 @@ def multiline(stream):
             return b"".join(lines)
 
 
-def read_back(port, articles):
+def read_back(port, articles, group="local.test", xrefs=None):
+    group = group.encode("ascii")
     sock, stream = connect(port)
     try:
-        sock.sendall(b"GROUP local.test\r\n")
-        assert stream.readline() == b"211 2 1 2 local.test\r\n"
+        sock.sendall(b"GROUP " + group + b"\r\n")
+        count = str(len(articles)).encode()
+        expected_group = b"211 " + count + b" 1 " + count + b" " + group + b"\r\n"
+        assert stream.readline() == expected_group
         transcript = bytearray()
         for number, (mid, head, whole) in enumerate(articles, 1):
-            xref = f"Xref: fn2.invalid local.test:{number}".encode()
+            pairs = xrefs[mid] if xrefs is not None else b" " + group + b":" + str(number).encode()
+            assert group + b":" + str(number).encode() in pairs.split(), (group, number, pairs)
+            xref = b"Xref: fn2.invalid" + pairs
             for verb, code, suffix, lines in ((b"ARTICLE", b"220", b"article follows", whole),
                                               (b"HEAD", b"221", b"headers follow", head)):
                 sock.sendall(verb + f" {number}\r\n".encode())
@@ -163,19 +172,21 @@ def main():
     directory = args.directory or ROOT / "build" / f"image-restart-{time.time_ns()}"
     directory.mkdir(parents=True, exist_ok=False)
     image = directory / "node.img"
-    node = Node(directory, image, "init", "init")
+    env = dict(os.environ, FN2_ARTICLE_MAX=str(ARTICLE_MAX))
+    node = Node(directory, image, "init", "init", env=env)
     try:
         node.marker(b"INITIALIZED")
         assert node.proc.wait(timeout=30) == 0
     finally:
         node.close()
     articles = []
-    for mid, n in ((b"<small@example.invalid>", 100), (b"<big@example.invalid>", 250)):
+    for mid, n in ((b"<small@example.invalid>", 100), (b"<big@example.invalid>", 1100)):
         head, whole = article(mid, n)
         articles.append((mid, head, whole))
-    assert len(wire(articles[0][2])) < 12288 < len(wire(articles[1][2]))
+    assert len(wire(articles[0][2])) < PAYLOAD_EXTENT_BYTES
+    assert PAYLOAD_EXTENT_BYTES < len(wire(articles[1][2])) <= ARTICLE_MAX
     ctl_sock = Path(f"/tmp/fn2-nir-{os.getpid()}-{time.time_ns()}.sock")
-    node = Node(directory, image, "serve", "post", control_sock=ctl_sock)
+    node = Node(directory, image, "serve", "post", control_sock=ctl_sock, env=env)
     try:
         port = int(node.marker(b"LISTENING ").split()[1])
         node.marker(b"LISTENING-LOCAL ")
@@ -210,7 +221,7 @@ def main():
                 p.unlink()
     previous = None
     for label in ("restart-1", "restart-2"):
-        node = Node(directory, image, "serve", label)
+        node = Node(directory, image, "serve", label, env=env)
         try:
             port = int(node.marker(b"LISTENING ").split()[1])
             actual = read_back(port, articles)

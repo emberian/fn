@@ -1,5 +1,6 @@
 """Exact-byte acceptance controls for the native APPEND/FETCH restart fixture."""
 import importlib.util
+import io
 from pathlib import Path
 import unittest
 import os
@@ -15,15 +16,177 @@ spec.loader.exec_module(campaign)
 
 
 class ExactFetch(unittest.TestCase):
+    def test_genesis_must_follow_the_entire_native_arena(self):
+        header = b"F2BT\x02\x00\x00".ljust(4096, b"\x00")
+        group = b"F2BT\x02\x01\x01local.test".ljust(4096, b"\x00")
+        with tempfile.TemporaryDirectory() as tmp:
+            image = Path(tmp) / "node.img"
+            with image.open("wb") as store:
+                store.truncate(32 * 1024 * 1024)
+                store.seek(1_572_864)  # old BOOT address, inside extent 24
+                store.write(header + group)
+            with self.assertRaisesRegex(AssertionError, "missing genesis header"):
+                campaign.read_genesis(image)
+            with image.open("r+b") as store:
+                store.seek(8_388_608)
+                store.write(header + group)
+            self.assertEqual(campaign.read_genesis(image), (header, group))
+
+    def test_unterminated_file_requires_framing_refusal_and_unpublished_mid(self):
+        mid = "<eof@example.invalid>"
+        article = campaign.crossing_article(mid)
+        absent = b"430 no article with that message-id\r\n"
+        refused = dict(outcome="refused", reason="framing", op=70)
+        empty = dict(outcome="accepted", more=False, cursor="start", items=[])
+        for reply, page, stat, succeeds in (
+            (refused, empty, absent, True),
+            (dict(refused, outcome="uncertain"), empty, absent, False),
+            (dict(refused, reason="unavailable"), empty, absent, False),
+            (refused, dict(empty, items=[dict(message_id=mid, position=8)]), absent, False),
+            (refused, empty, b"223 0 <eof@example.invalid>\r\n", False),
+        ):
+            with self.subTest(reply=reply, page=page, stat=stat), tempfile.TemporaryDirectory() as tmp:
+                directory = Path(tmp)
+                valid = directory / "submitted.article"
+                valid.write_bytes(article)
+                sock = mock.MagicMock()
+                with mock.patch.object(campaign, "run_fn", side_effect=[reply, page]) as run, \
+                     mock.patch.object(campaign.restart, "connect", return_value=(sock, io.BytesIO(stat))):
+                    args = directory, "control", 1, "reader", dict(cursor="start", position=0), (mid, article, valid)
+                    if succeeds:
+                        campaign.check_unterminated_file(*args)
+                        sock.sendall.assert_called_once_with(b"STAT " + mid.encode() + b"\r\n")
+                    else:
+                        with self.assertRaises(AssertionError):
+                            campaign.check_unterminated_file(*args)
+                    bad = directory / "unterminated.article"
+                    self.assertEqual(bad.read_bytes() + b"\r\n", valid.read_bytes())
+                    self.assertEqual(run.call_args_list[0],
+                                     mock.call(directory, "unterminated", "stream", "append", "--as", "reader",
+                                               "--file", bad, "--op", "70", "--control-sock", "control", expected=1))
+
+    def test_crosspost_receipt_must_match_the_fixture_allocation(self):
+        mid = "<crosspost@example.invalid>"
+        expected = b" local.test:2 local.other:1"
+        receipt = b"\x01" + b"".join(n.to_bytes(8, "big") for n in (711, 712, 1, 25))
+        accepted = dict(outcome="accepted", evidence="committed", message_id=mid, position=25,
+                        receipt=receipt.hex(), numbers=expected.hex())
+        campaign.checked_append_receipt(accepted, mid, expected)
+        for wrong in (b" local.other:1 local.test:2", b" local.test:1 local.other:2",
+                      expected + b" local.spurious:1", b" local.test:2"):
+            with self.subTest(wrong=wrong), self.assertRaises(AssertionError):
+                campaign.checked_append_receipt(dict(accepted, numbers=wrong.hex()), mid, expected)
+
+    def test_reopened_crosspost_numbers_use_each_groups_actual_nntp_number(self):
+        mid = b"<crosspost@example.invalid>"
+        headers = (b"Newsgroups: local.test,local.other",)
+        whole = headers + (b"", b"body")
+        xref = b"Xref: fn2.invalid local.test:2 local.other:1"
+        response = (b"211 1 1 1 local.other\r\n"
+                    + b"220 1 " + mid + b" article follows\r\n"
+                    + campaign.restart.wire([xref, *whole, b"."])
+                    + b"221 1 " + mid + b" headers follow\r\n"
+                    + campaign.restart.wire([xref, *headers, b"."]))
+        article = [(mid, headers, whole)]
+        for claimed in (b" local.test:2 local.other:1",
+                        b" local.test:2 local.other:2", b" local.test:7 local.other:1", b""):
+            with self.subTest(claimed=claimed):
+                peer = mock.Mock()
+                with mock.patch.object(campaign.restart, "connect", return_value=(peer, io.BytesIO(response))):
+                    if b"Xref: fn2.invalid" + claimed == xref:
+                        campaign.restart.read_back(1, article, group="local.other", xrefs={mid: claimed})
+                        self.assertEqual(peer.sendall.call_args_list,
+                                         [mock.call(b"GROUP local.other\r\n"),
+                                          mock.call(b"ARTICLE 1\r\n"), mock.call(b"HEAD 1\r\n")])
+                    else:
+                        with self.assertRaises(AssertionError):
+                            campaign.restart.read_back(1, article, group="local.other", xrefs={mid: claimed})
+
     def test_status_binds_committed_occurrences_and_survives_restart(self):
-        articles = [dict(domain=712, position=41), dict(domain=712, position=42)]
-        reply = dict(outcome="accepted", domain=712, position=0, frontier=42, gap=0)
+        articles = [dict(domain=0, position=41), dict(domain=0, position=42)]
+        reply = dict(outcome="accepted", domain=0, position=0, frontier=42, gap=42)
         before = campaign.checked_status(reply, articles, 0)
         self.assertEqual(campaign.checked_status(dict(reply), articles, 0, before), before)
-        for field, value in (("outcome", "refused"), ("domain", 713),
-                             ("position", 1), ("frontier", 41), ("gap", 1)):
+        for field, value in (("outcome", "refused"), ("domain", 712),
+                             ("position", 1), ("frontier", 41), ("gap", 0)):
             with self.subTest(field=field), self.assertRaises(AssertionError):
                 campaign.checked_status(dict(reply, **{field: value}), articles, 0, before)
+        # Stable across a restart can still be wrong. The later commit has
+        # no addr entry, and a zero gap contradicts the unchanged position.
+        for wrong in (dict(reply, frontier=43, gap=43), dict(reply, gap=0)):
+            stable = {key: wrong[key] for key in before}
+            with self.subTest(wrong=wrong), self.assertRaises(AssertionError):
+                campaign.checked_status(wrong, articles, 0, stable)
+
+    def test_socket_race_completes_both_frames_with_the_current_transport(self):
+        sessions = [mock.create_autospec(campaign.client.ControlSession, instance=True) for _ in range(2)]
+        for session in sessions:
+            session.__enter__.return_value = session
+            session.bind_as.return_value = {"outcome": "accepted"}
+            session.sock = mock.Mock()
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(campaign.client, "ControlSession", side_effect=sessions), \
+             mock.patch.object(campaign.client, "decode_cns_reply", side_effect=[{}, {}]):
+            replies = campaign.race_appends(Path(tmp), "race", "sock", "reader", 71,
+                                            [("<a>", b"source", None)] * 2)
+        self.assertEqual(replies, [{"op": 71}] * 2)
+        expected = campaign.client.build_cns_request("append", op=71, article=b"source")
+        for session in sessions:
+            self.assertEqual(session.sock.sendall.call_args_list, [mock.call(expected[:-32]), mock.call(expected[-32:])])
+            session._recv_frame.assert_called_once_with()
+
+    def test_unread_append_requires_independent_publication_before_socket_close(self):
+        mid = "<unread@example.invalid>"
+        previous = dict(domain=0, position=20)
+        observation = dict(message_id=mid, domain=0, position=25)
+        item = dict(observation, type="reference")
+        for items, valid in (([item], True), ([], False), ([item, item], False), ([dict(item, type="gap")], False),
+                             ([dict(item, message_id="<other>")], False), ([dict(item, position=20)], False)):
+            with self.subTest(items=items), mock.patch.object(campaign.client, "ControlSession") as session, \
+                 mock.patch.object(campaign, "run_fn") as observer:
+                events = []
+                sender = session.return_value.__enter__.return_value
+                sender.bind_as.return_value = {"outcome": "accepted"}
+                sender.sock.sendall.side_effect = lambda frame: events.append("submitted")
+                session.return_value.__exit__.side_effect = lambda *_: events.append("closed")
+                def wait_for_publication(*args):
+                    if "wait" in args:
+                        self.assertEqual(args[args.index("--cursor") + 1], "old-tail")
+                        events.append("observed")
+                        return {"outcome": "accepted", "items": items}
+                    self.assertIn("fetch", args)
+                    self.assertEqual(args[args.index("--position") + 1], 25)
+                    events.append("fetched")
+                    return {"outcome": "accepted", "octets": 6, "article_hex": b"source".hex()}
+                observer.side_effect = wait_for_publication
+                args = (Path("."), "sock", "reader", "old-tail", previous, (mid, b"source", None), 75)
+                if valid:
+                    self.assertEqual(campaign.observe_unread_append(*args), observation)
+                else:
+                    with self.assertRaises(AssertionError):
+                        campaign.observe_unread_append(*args)
+                self.assertEqual(events, ["submitted", "observed"] + (["fetched"] if valid else []) + ["closed"])
+                sender._recv_frame.assert_not_called()
+                sender.sock.recv.assert_not_called()
+
+    def test_occurrence_enumeration_follows_cursor_and_checks_terminal_page(self):
+        registered = dict(cursor="origin", position=0)
+        articles = [dict(message_id="<one>", position=20), dict(message_id="<two>", position=21)]
+        first = dict(outcome="accepted", more=True, cursor="first", next=20, items=articles[:1])
+        second = dict(outcome="accepted", more=True, cursor="second", next=21, items=articles[1:])
+        terminal = dict(outcome="accepted", more=False, cursor="tail", next=21, items=[])
+        with mock.patch.object(campaign, "run_fn", side_effect=[first, second, terminal]) as run:
+            self.assertEqual(campaign.check_retry_occurrences(None, "test", None, None, registered, articles), "tail")
+            self.assertEqual([c.args[c.args.index("--cursor") + 1] for c in run.call_args_list],
+                             ["origin", "first", "second"])
+        for invalid in (
+            [dict(first, more=False)],
+            [dict(first, cursor="origin")],
+            [dict(first, next=0)],
+            [first, second, dict(terminal, items=[dict(message_id="<loser>", position=22)])],
+        ):
+            with self.subTest(invalid=invalid), mock.patch.object(campaign, "run_fn", side_effect=invalid):
+                with self.assertRaises(AssertionError):
+                    campaign.check_retry_occurrences(None, "test", None, None, registered, articles)
 
     def test_init_timeout_stops_owned_child_and_grandchild(self):
         real_popen = subprocess.Popen

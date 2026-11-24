@@ -8,6 +8,7 @@
 (in-package "ACL2")
 (load "host/device.lisp")
 (load "host/tls.lisp")
+(load "host/compress.lisp")
 
 ;; Op record states.
 (defconstant +fn2-n-free+ 0)
@@ -20,6 +21,7 @@
   (address 0 :type fixnum) (len 0 :type fixnum) (target 0) (target-gen 0)
   (outcome 0) (reason 0) (count 0) (aux0 0) (aux1 0)
   (tls-started nil) (tls-record (create-fn2-tls-record))
+  (compress-record nil)
   (family :none) (port 0) (w0 0) (w1 0) (w2 0) (w3 0) (octets nil) (offset 0) (fua 0))
 
 ;; A capability: index 0 is the listener (its TCP socket, and the owner-only
@@ -27,10 +29,11 @@
 ;; capability, so the listener machine is the same for both); connections from 1.
 (defstruct fn2-ncap
   (fd -1 :type fixnum) (nonce 0) (family :none) (port 0) (w0 0) (w1 0) (w2 0) (w3 0)
-  (rx 0) (eof nil) (tx 0) (closed nil) (seq 0) tls)
+  (rx 0) (eof nil) (tx 0) (closed nil) (seq 0) tls compress)
 
 (defstruct fn2-nhost
   core bytes ops caps mux (listen-port 0)
+  compress-settings
   tls-config (tls-window 0) (tls-quantum 0) (tls-seed-capacity 0) (tls-turns 0)
   ;; Memory device for existing seeded sessions. An image session uses
   ;; STORAGE's FIFO worker instead; the memory table makes no durability claim.
@@ -70,10 +73,17 @@
   (let ((trace (fn2-nhost-trace host)))
     (and trace (coerce (subseq trace 0 (fn2-nhost-trace-count host)) 'list))))
 
-(defun fn2-n-boundary (host label)
+(defvar *fn2-n-boundary-observer* nil) ; Test-only diagnostic, never a decision input.
+(defun fn2-n-boundary (host label &optional slot generation)
   "Death cuts at every take, ack, syscall and post: FN2_KILL_AT=N exits at the Nth."
   (sb-thread:with-mutex ((fn2-nhost-boundary-lock host))
     (incf (fn2-nhost-boundaries host))
+    ;; Observe the actual ordinal inside its serialization lock, before death.
+    ;; A recorder failure refuses the test rather than inventing a shorter cut.
+    (when *fn2-n-boundary-observer*
+      (funcall *fn2-n-boundary-observer* host (fn2-nhost-boundaries host)
+               label slot generation
+               (= (fn2-nhost-boundaries host) (fn2-nhost-kill-at host))))
     (when (= (fn2-nhost-boundaries host) (fn2-nhost-kill-at host))
       (format t "FN2 KILL boundary=~d label=~a~%" (fn2-nhost-boundaries host) label)
       (finish-output)
@@ -134,13 +144,27 @@
           (fn2-tls-transport-selected-p (fn2-nop-cap op) (fn2-ncap-nonce cap)
                                         (fn2-native-tls-transport (fn2-ncap-tls cap)))
           (or (= (fn2-nop-kind op) *fn2-action-receive*) (= (fn2-nop-kind op) *fn2-action-send*)))))
+(defun fn2-n-compress-op-p (op cap)
+ (or (= (fn2-nop-kind op) *fn2-action-compress-start*)
+     (and cap (fn2-ncap-compress cap)
+          (fn2-compress-transport-selected-p (fn2-nop-cap op) (fn2-ncap-nonce cap)
+           (fn2-native-compress-transport (fn2-ncap-compress cap)))
+          (or (= (fn2-nop-kind op) *fn2-action-receive*) (= (fn2-nop-kind op) *fn2-action-send*)))))
 (defun fn2-n-op-interest (op cap)
+ (when (fn2-n-compress-op-p op cap)
+  (return-from fn2-n-op-interest
+   (if (= (fn2-nop-kind op) *fn2-action-compress-start*) 0
+    (nth-value 0 (fn2-native-compress-wait op (fn2-ncap-compress cap) (fn2-ncap-tls cap))))))
  (if (fn2-n-tls-op-p op cap)
      (if (= (fn2-nop-kind op) *fn2-action-tls-start*)
          (if (and cap (fn2-ncap-tls cap)) (fn2-native-tls-interest (fn2-ncap-tls cap)) 1)
        (nth-value 0 (fn2-tls-record-wait (fn2-native-tls-transport (fn2-ncap-tls cap)) (fn2-nop-tls-record op))))
    (if (= (fn2-nop-kind op) *fn2-action-send*) 4 1)))
 (defun fn2-n-tls-kick-p (op cap)
+ (when (fn2-n-compress-op-p op cap)
+  (return-from fn2-n-tls-kick-p
+   (if (= (fn2-nop-kind op) *fn2-action-compress-start*) t
+    (nth-value 1 (fn2-native-compress-wait op (fn2-ncap-compress cap) (fn2-ncap-tls cap))))))
  (and (fn2-n-tls-op-p op cap)
       (if (= (fn2-nop-kind op) *fn2-action-tls-start*)
           (or (not (fn2-nop-tls-started op))
@@ -215,6 +239,9 @@
 
 (defun fn2-n-start-ready (host slot cap)
   (let* ((op (aref (fn2-nhost-ops host) slot)) (kind (fn2-nop-kind op)) (fd (fn2-ncap-fd cap)))
+    (when (fn2-n-compress-op-p op cap)
+      (fn2-n-compress-ready host slot cap)
+      (return-from fn2-n-start-ready nil))
     (when (fn2-n-tls-op-p op cap)
       (fn2-n-tls-ready host slot cap)
       (return-from fn2-n-start-ready nil))
@@ -282,7 +309,7 @@
                                     (fn2-device-backend (fn2-nhost-storage host))) :perform)
       (fn2-n-complete host slot :unsupported 0)
       (return-from fn2-n-storage-submit nil))
-    (fn2-n-boundary host "device-submit")
+    (fn2-n-boundary host "device-submit" slot (fn2-nop-gen op))
     (fn2-device-submit
      (fn2-nhost-storage host)
      (make-fn2-device-job :slot slot :gen (fn2-nop-gen op)
@@ -298,7 +325,7 @@
         (unless job (return))
         (let ((op (aref (fn2-nhost-ops host) (fn2-device-job-slot job))))
           (assert (= (fn2-nop-gen op) (fn2-device-job-gen job)))
-          (fn2-n-boundary host "device-return")
+          (fn2-n-boundary host "device-return" (fn2-device-job-slot job) (fn2-device-job-gen job))
           (multiple-value-bind (code count)
               (fn2-device-io-observation (fn2-device-job-result job) (fn2-device-job-errno job))
             (fn2-n-complete host (fn2-device-job-slot job) code count 0 nil
@@ -318,15 +345,21 @@
          (when cap
            (fn2-native-mux-interest (fn2-nhost-mux host) (fn2-nop-cap op) (fn2-ncap-fd cap) 0)
            (fn2-native-tls-close (fn2-ncap-tls cap) (fn2-nop-cap op) (fn2-ncap-nonce cap) host)
+           (fn2-native-compress-close host (fn2-ncap-compress cap) (fn2-ncap-tls cap)
+            (fn2-nop-cap op) (fn2-ncap-nonce cap))
 
            (fn2-native-close (fn2-ncap-fd cap))
            (setf (fn2-ncap-fd cap) -1 (fn2-ncap-closed cap) t)
            ;; Other waiting uses keep their loans until the core cancels them;
            ;; no syscall ran for them, so no result is invented.
-           (loop for other across (fn2-nhost-ops host)
+           (loop for other across (fn2-nhost-ops host) for other-slot from 0
                  when (and (not (eq other op)) (= (fn2-nop-state other) +fn2-n-waiting+)
                            (eql (fn2-nop-cap other) (fn2-nop-cap op)) (eql (fn2-nop-nonce other) (fn2-nop-nonce op)))
-                   do (setf (fn2-nop-state other) +fn2-n-closed-waiting+)))
+                   do (cond ((fn2-ncap-compress cap)
+                             (fn2-native-compress-mark-closed host other-slot (fn2-ncap-compress cap)))
+                            ((fn2-ncap-tls cap)
+                             (fn2-native-tls-mark-closed host other-slot (fn2-ncap-tls cap))))
+                      (setf (fn2-nop-state other) +fn2-n-closed-waiting+)))
          ;; Close always completes (the vocabulary has no failure for it).
          (fn2-n-complete host slot :ok 0)))
       ((= kind *fn2-action-cancel*)
@@ -343,12 +376,18 @@
                     ;; state. The logical retirement keeps TLS selection sticky
                     ;; after freeing the handle, before releasing the loan.
                     (let ((cap (fn2-n-cap host other)))
-                      (when (and cap (fn2-n-tls-op-p other cap))
+                      (when (and cap (or (fn2-n-compress-op-p other cap) (fn2-n-tls-op-p other cap)))
 
                         (fn2-native-tls-close (fn2-ncap-tls cap) (fn2-nop-cap other) (fn2-ncap-nonce cap) host)
-                        ))
-                    (fn2-n-complete host target :cancelled 0)
-                    (fn2-n-complete host slot :ok 0 0 t))
+                        (fn2-native-compress-close host (fn2-ncap-compress cap) (fn2-ncap-tls cap)
+                         (fn2-nop-cap other) (fn2-ncap-nonce cap))
+                        (if (fn2-ncap-compress cap)
+                            (fn2-native-compress-mark-closed host target (fn2-ncap-compress cap))
+                          (fn2-native-tls-mark-closed host target (fn2-ncap-tls cap)))))
+                    (unless (or (fn2-native-compress-cancel-result host slot other)
+                                (fn2-native-tls-cancel-result host slot other))
+                     (fn2-n-complete host target :cancelled 0)
+                     (fn2-n-complete host slot :ok 0 0 t)))
            (fn2-n-complete host slot :ok 0 0 nil))))
       ((= kind *fn2-action-write*)
        ;; the loaned octets onto the device at the storage offset
@@ -372,7 +411,7 @@
   (or (= kind *fn2-action-arm-wake*) (= kind *fn2-action-trace*) (= kind *fn2-action-service-posture*)))
 (defun fn2-n-readiness-p (kind)
   (or (= kind *fn2-action-accept*) (= kind *fn2-action-receive*) (= kind *fn2-action-send*)
-      (= kind *fn2-action-tls-start*)))
+      (= kind *fn2-action-tls-start*) (= kind *fn2-action-compress-start*)))
 
 ;;; Take the outbox prefix: peek, copy the descriptor and its validated span,
 ;;; acknowledge (from here the op is submitted and ours to execute).
@@ -440,7 +479,7 @@
         (setf (aref (fn2-nhost-ops host) slot) (make-fn2-nop)
               (fn2-nhost-chead host) (mod (1+ (fn2-nhost-chead host)) (length queue)))
         (decf (fn2-nhost-pending host))
-        (fn2-n-boundary host "post")))))
+        (fn2-n-boundary host "post" slot (fn2-nop-gen op))))))
 
 ;;; Interests: a waiting Accept or Receive wants readable, a Send writable.
 (defun fn2-n-interests (host)
@@ -659,6 +698,11 @@ the image launcher always opens its persisted device instead."
                      (fn2-nhost-tls-window host) window (fn2-nhost-tls-quantum host) quantum
                      (fn2-nhost-tls-seed-capacity host) seed-capacity (fn2-nhost-tls-turns host) turns)))
             (otherwise (error "fn2 native: TLS profile refused"))))
+        (multiple-value-bind (code iq oq ratio burst capacity) (fn2-native-compress-settings profile)
+          (case code
+            (:off nil)
+            (:ok (setf (fn2-nhost-compress-settings host) (list iq oq ratio burst capacity)))
+            (otherwise (error "fn2 native: compression profile refused"))))
         (unless device-path (fn2-n-device-put host memory-store))
         (when device-path
           (multiple-value-bind (fd size backend) (fn2-device-open device-path :create-size create-size)
@@ -670,7 +714,8 @@ the image launcher always opens its persisted device instead."
               (setf (fn2-nhost-storage host)
                     (fn2-device-start cap observed-size observed-backend n
                       (lambda () (fn2-native-mux-signal (fn2-nhost-mux host)))
-                      (lambda (label) (fn2-n-boundary host label)))))))
+                      (lambda (label job)
+                        (fn2-n-boundary host label (fn2-device-job-slot job) (fn2-device-job-gen job))))))))
         (when path
           (setf (fn2-nhost-local-fd host) (fn2-native-listen-local path)
                 (fn2-nhost-local-path host) path))
@@ -702,6 +747,8 @@ the image launcher always opens its persisted device instead."
   (when device-path (setf profile (fn2-image-profile profile)))
   (let ((core (fn2-n-live-core)))
     (fn2-init-executor profile :echo nil core)
+    (when (fn2-host-stopped-p core)
+      (error "fn2 executor initialization stopped: ~d" (fn2-host-stop-reason core)))
     (fn2-n-open-host profile core :control-fd control-fd :trace-capacity trace-capacity
                      :kill-at kill-at :device-path device-path :create-size create-size)))
 
@@ -716,6 +763,8 @@ the image launcher always opens its persisted device instead."
   (when (fn2-nhost-storage host) (fn2-device-stop (fn2-nhost-storage host)))
   (loop for cap across (fn2-nhost-caps host) for cap-index from 0
         do (fn2-native-tls-close (fn2-ncap-tls cap) cap-index (fn2-ncap-nonce cap) host)
+           (fn2-native-compress-close host (fn2-ncap-compress cap) (fn2-ncap-tls cap)
+            cap-index (fn2-ncap-nonce cap))
 
         when (>= (fn2-ncap-fd cap) 0) do (fn2-native-close (fn2-ncap-fd cap)))
   (when (fn2-nhost-tls-config host)

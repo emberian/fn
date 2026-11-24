@@ -6,6 +6,7 @@
 ; here depends on the assembled core.
 (in-package "ACL2")
 (include-book "pool-ranges")
+(include-book "pool-dimensions")
 (include-book "vocab")
 (include-book "exec-state")
 (include-book "machines-directory")
@@ -60,6 +61,7 @@
            (mv code off fn2-pool)))
         (t (mv :ok 0 fn2-pool))))
 (fn2-pool-preserves fn2-core-lease (kind slot gen off len opslot opgen okind oslot ogen fn2-pool) :position 2 :disable nil)
+(fn2-pool-dimensions fn2-core-lease :opaque (fn2-pool-lease-in fn2-pool-lease-out))
 (in-theory (disable fn2-core-lease))
 
 (defun fn2-issue-children (kind cap-index cap-nonce offset fua slot gen off len
@@ -107,10 +109,15 @@
         may-release target-slot target-gen okind oslot ogen principal fn2-pool fn2-ops fn2-control)
   :carriers ((fn2-pool 3 :prefix "-POOL") (fn2-ops 4 :prefix "-OPS") (fn2-control 5 :prefix "-CONTROL")))
 
+; Explicit unconditional dimension interface: the only pool-producing call in
+; ISSUE is CORE-LEASE, whose existing public ROWS equation is unconditional.
+
+(fn2-pool-dimensions fn2-issue-children :opaque (fn2-core-lease))
+
 ; One per action, with the action's own descriptor fields (core.lisp's
 ; fn2-core-issue-wrapper makes each one's core face).
 (defmacro fn2-issue-children-wrapper (name args kind cap-index cap-nonce offset fua
-                                           slot gen off len may-release target-slot target-gen)
+                                           slot gen off len may-release target-slot target-gen &key (dimensions 'nil))
   `(progn
      (defun ,name (,@args okind oslot ogen principal fn2-pool fn2-ops fn2-control)
        (declare (xargs :stobjs (fn2-pool fn2-ops fn2-control)
@@ -120,6 +127,7 @@
                            fn2-pool fn2-ops fn2-control))
      (fn2-pool-preserves ,name (,@args okind oslot ogen principal fn2-pool fn2-ops fn2-control)
        :carriers ((fn2-pool 3 :prefix "-POOL") (fn2-ops 4 :prefix "-OPS") (fn2-control 5 :prefix "-CONTROL")))
+     ,@(and dimensions `((fn2-pool-dimensions ,name :observations ,dimensions :opaque (fn2-issue-children))))
      (table fn2-issue-child-wrappers ',name t)))
 (fn2-issue-children-wrapper fn2-issue-receive-children (cap-index cap-nonce slot gen len)
   *fn2-action-receive* cap-index cap-nonce 0 0 slot gen 0 len 0 0 0)
@@ -130,9 +138,9 @@
 (fn2-issue-children-wrapper fn2-issue-compress-start-children (cap-index cap-nonce slot gen off len)
   *fn2-action-compress-start* cap-index cap-nonce 0 0 slot gen off len 0 0 0)
 (fn2-issue-children-wrapper fn2-issue-read-children (offset slot gen len)
-  *fn2-action-read* 0 0 offset 0 slot gen 0 len 0 0 0)
+  *fn2-action-read* 0 0 offset 0 slot gen 0 len 0 0 0 :dimensions (:rows :data))
 (fn2-issue-children-wrapper fn2-issue-write-children (offset slot gen off len fua)
-  *fn2-action-write* 0 0 offset fua slot gen off len 0 0 0)
+  *fn2-action-write* 0 0 offset fua slot gen off len 0 0 0 :dimensions (:rows :data))
 (fn2-issue-children-wrapper fn2-issue-fence-children ()
   *fn2-action-fence* 0 0 0 0 0 0 0 0 0 0 0)
 (fn2-issue-children-wrapper fn2-issue-accept-children (cap-index cap-nonce)

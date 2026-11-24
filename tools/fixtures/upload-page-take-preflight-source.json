@@ -1,0 +1,30 @@
+{
+  "source": "7247c935fd00ece21317ff9f70392fa3f5d2bfc8",
+  "root_comparison": "ce4a9f308a5e86dcffcd2dd8d50bf1041dc884c6",
+  "world": "plain",
+  "qualification": "source/key comparison only; no cert-cache entries inspected; no compute",
+  "roots": {
+    "tests/machine-range-provider-unit": {
+      "count": 25,
+      "key": "d60f7c675a574cdb372a6e2b32825948734c686574e5c8428ed8e5080d554fc5"
+    },
+    "tests/upload-page-take-unit": {
+      "count": 248,
+      "key": "674ed0af0820824fdd4ce162b6521356adc1ae93587beaad3ae3a2931f7057df"
+    },
+    "tests/root-working-credit-init-unit": {
+      "count": 250,
+      "key": "f1f2ffeb523f2784f623dc2d1806a37a52fb6e1d4cad131778f3c368179e4223"
+    },
+    "tests/upload-uncertainty-served-unit": {
+      "count": 248,
+      "key": "96b988388d2d5a780fdf2d7959c2fbb4c1dfa7e4f229f83a7cdaac2bad656d1a"
+    },
+    "tests/upload-stream-abort-served-unit": {
+      "count": 249,
+      "key": "f054f3b671d93f7c3e234417e3e1eefcf5679856f7881f4599c491d3b44ae8aa"
+    }
+  },
+  "union_count": 269,
+  "note": "same source/key is only a reuse candidate; qualified cache metadata was not inspected"
+}

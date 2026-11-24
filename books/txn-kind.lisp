@@ -18,6 +18,8 @@
 (defconst *fn2-txn-location-source-manifest* 1)
 (defconst *fn2-txn-counts-sid* 5)
 (defconst *fn2-txn-outcome-sid* 9)
+(defconst *fn2-txn-outcome-accepted* 1)
+(defconst *fn2-txn-outcome-conflict* 2)
 
 ;; Successor write-slot geometry in C-S3 (*fn2-succ-slots*):
 ;; 0..7 are fixed per-POST slots, *fn2-txn-slot-depend* (20) holds the authority
@@ -29,6 +31,13 @@
   (floor (- *fn2-succ-slots* (+ 1 *fn2-txn-slot-accepts*)) 2))
 (assert-event (and (posp *fn2-txn-groups-max*)
                    (< *fn2-txn-slot-depend* *fn2-succ-slots*)))
+
+ ;; The existing namespace scratch encoding is one u8 length followed by
+;; that many name octets. Its supported group-slot bound fits the rolling
+;; body workspace even before an oversized overview is refused.
+(defconst *fn2-txn-name-span-max* (expt 2 8))
+(defconst *fn2-txn-names-bytes-max* (* *fn2-txn-groups-max* *fn2-txn-name-span-max*))
+(assert-event (<= *fn2-txn-names-bytes-max* *fn2-upload-body-window-bytes*))
 
 ;; Profile-configured cross-post group limit (:max-groups-per-article, D27):
 ;; a D core child read by fn2-txn instead of a compile-time literal.
@@ -95,15 +104,15 @@
           (tmode (:enum fn2-txn-mode (:article :evidence)))
           (ecommit (:enum fn2-txn-ecommit (:none :committed :uncertain :refused)))
           (batch :u60) (bevent :u60)
-          (word :u8) (offered :bool) (prepared :bool) (filed :bool) (counted :u60) (lines :u32)
-          (gcur :u32) (gskip :bool) (ngroups :u8)
+          (word :u8) (outcome-checked :bool) (offered :bool) (prepared :bool) (filed :bool) (counted :u60) (lines :u32)
+          (gcur :u32) (gskip :bool) (ngroups :u8) (numbers-off :u32) (numbers-len :u32)
           ;; the append check in progress for the group at GCUR (its group
           ;; XGROUP; XSTEP 0 the name lookup, K > 0 fn2-authority-allows'
           ;; step K - 1 with the head and grant it carries)
           (xstep :u8) (xgroup :u60) (xhead :u60) (xgrant :u60)
           (stopped :bool) (next-free :link))
  :links ((upload :kind fn2-upload :slot upload :gen upload-gen :back (txn txn-gen)
-                 :reads (phase word inj ml mo c0-slot c0-gen c1-slot c1-gen hashed scan-off no nl pext pepoch palloc ilen lslot lgen mfill op)))
+                 :reads (phase word inj ml mo c0-slot c0-gen c1-slot c1-gen hashed source-lines nlines scan-off no nl pext pepoch palloc ilen lslot lgen mfill op request-principal)))
  :stops (:txn-uncertain)
  :holds ((:admit :transaction-row) (:reserve :transaction-row)
          (:lookup :transaction-row :identity-reservation) (:prepare :transaction-row :identity-reservation)
@@ -116,8 +125,8 @@
  :capacity (fn2-txn-capacity profile)
  :taken (:phase :admit :rows :transaction-row :ranges ()
          :copy (upload upload-gen conn conn-gen request rule principal-slot)
-         :clear (tmode ecommit batch bevent word offered prepared filed counted lines gcur gskip ngroups
-                xstep xgroup xhead xgrant stopped))
+         :clear (tmode ecommit batch bevent word outcome-checked offered prepared filed counted lines gcur gskip ngroups
+                numbers-off numbers-len xstep xgroup xhead xgrant stopped))
  :initial ((generation fn2-machine-initial-generation) (ready-prev *fn2-none*) (ready-next *fn2-none*)
            (upload *fn2-none*) (conn *fn2-none*) (account-ref *fn2-none*) (next-free fn2-machine-initial-next-free))
  :arms ((:free) (:admit) (:reserve) (:lookup) (:prepare) (:ready) (:batched)

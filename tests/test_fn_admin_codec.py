@@ -18,8 +18,8 @@ import fn_admin  # noqa: E402
 CURSOR = (ROOT / "tests/fixtures/consumer-position/five-field-v1.fncu").read_bytes()
 
 
-def cns_reply(result: bytes) -> bytes:
-    payload = b"\x00" + fn_admin.octets16(b"") + fn_admin.octets32(result)
+def cns_reply(result: bytes, outcome: str = "accepted", reason: bytes = b"") -> bytes:
+    payload = bytes([fn_admin.CLASSES.index(outcome)]) + fn_admin.octets16(reason) + fn_admin.octets32(result)
     return fn_admin.fnct_seal(fn_admin.KIND_CNS_REPLY, payload)
 
 
@@ -46,9 +46,21 @@ class ReplyDecoding(unittest.TestCase):
                         fn_admin.cursor_position(malformed)
 
     def test_truncated_accepted_results_never_decode_as_accepted(self) -> None:
-        for verb in ("register", "position", "ack", "status", "read", "wait", "append", "fetch"):
+        for verb in ("register", "rebase", "position", "ack", "status", "read", "wait", "append", "fetch"):
             with self.subTest(verb=verb), self.assertRaises(fn_admin.WireError):
                 fn_admin.decode_cns_reply(verb, cns_reply(b""))
+
+    def test_rebase_sends_issued_cursor_and_decodes_replacement(self) -> None:
+        for start, tag in (("keep", b"\x00"), ("history", b"\x02")):
+            with self.subTest(start=start):
+                request = fn_admin.build_cns_request("rebase", cursor=CURSOR, start=start)
+                kind, body = fn_admin.fnct_open(request)
+                self.assertEqual(kind, fn_admin.KIND_CNS_REQ)
+                self.assertEqual(body, b"\x0c" + fn_admin.octets16(CURSOR) + bytes(2) + tag)
+        replacement = fn_admin.cursor_propose(CURSOR, 0)
+        result = fn_admin.decode_cns_reply("rebase", cns_reply(replacement))
+        self.assertEqual((result["outcome"], result["position"], result["cursor"]),
+                         ("accepted", 0, replacement.hex()))
 
     def test_fetch_canonical_widths_and_exact_binary_reply(self) -> None:
         mid = b"<fetch@example.invalid>"
@@ -224,6 +236,56 @@ class InvalidReplyOutcome(unittest.TestCase):
         )
         self.assertEqual(proc.returncode, 2, (proc.stdout, proc.stderr))
         self.assertEqual(json.loads(proc.stdout)["outcome"], "error")
+
+    def test_conflict_reports_evidence_separately_from_article_refusal(self) -> None:
+        args = ("stream", "append", "--group", "local.test", "--body", "hello", "--op", "71")
+        mid = b"<conflict@example.invalid>"
+        def result(evidence, event, identity=mid, numbers=b"", receipt=b""):
+            return (fn_admin.octets16(identity) + bytes(4) + event.to_bytes(8, "big")
+                    + fn_admin.octets16(numbers) + fn_admin.octets16(receipt)
+                    + bytes([fn_admin.EVIDENCE_TYPES.index(evidence)]))
+
+        for evidence, event in (("committed", 4294967297), ("uncertain", 0), ("refused", 0)):
+            with self.subTest(evidence=evidence):
+                detail = result(evidence, event)
+                proc = self.run_command(cns_reply(detail, "refused", b"conflict"), *args)
+                self.assertEqual(proc.returncode, 1, proc.stdout)
+                self.assertEqual(json.loads(proc.stdout), dict(outcome="refused", reason="conflict",
+                                 message_id=mid.decode(), domain=0, position=event, numbers="",
+                                 receipt="", evidence=evidence, op=71))
+        detail = result("committed", 71)
+        for invalid, reason in ((b"", b"conflict"), (detail[:-1], b"conflict"),
+                                (result("none", 0), b"conflict"), (result("committed", 0), b"conflict"),
+                                (result("refused", 71), b"conflict"), (result("committed", 71, b""), b"conflict"),
+                                (result("committed", 71, numbers=b"x"), b"conflict"),
+                                (result("committed", 71, receipt=b"x"), b"conflict"),
+                                (detail, b"operation-reused")):
+            with self.subTest(detail=invalid, reason=reason):
+                proc = self.run_command(cns_reply(invalid, "refused", reason), *args)
+                self.assertEqual(proc.returncode, 3, proc.stdout)
+                self.assertEqual(json.loads(proc.stdout)["op"], 71)
+
+    def test_accepted_append_requires_its_settled_receipt(self) -> None:
+        args = ("stream", "append", "--group", "local.test", "--body", "hello", "--op", "7")
+        event = (2**32 + 7).to_bytes(8, "big")
+        numbers = b" local.test:2 local.other:1"
+        receipt = b"\x01" + b"".join(i.to_bytes(8, "big") for i in (711, 712, 1)) + event
+
+        def result(mid=b"<ok@test>", pairs=numbers, reference=receipt, pos=event, evidence="committed"):
+            return (fn_admin.octets16(mid) + bytes(4) + pos + fn_admin.octets16(pairs)
+                    + fn_admin.octets16(reference) + bytes([fn_admin.EVIDENCE_TYPES.index(evidence)]))
+
+        proc = self.run_command(cns_reply(result()), *args)
+        self.assertEqual(proc.returncode, 0, proc.stdout)
+        reply = json.loads(proc.stdout)
+        self.assertEqual((bytes.fromhex(reply["numbers"]), bytes.fromhex(reply["receipt"])), (numbers, receipt))
+        for invalid in (result(mid=b""), result(pairs=b""), result(reference=b""), result(reference=receipt[:-1]),
+                        result(reference=b"\x02" + receipt[1:]), result(pos=bytes(8)),
+                        result(pos=(8).to_bytes(8, "big")), result(evidence="uncertain")):
+            with self.subTest(result=invalid):
+                proc = self.run_command(cns_reply(invalid), *args)
+                self.assertEqual(proc.returncode, 3, proc.stdout)
+                self.assertEqual(json.loads(proc.stdout)["op"], 7)
 
     def test_invalid_principal_create_reply_is_uncertain(self) -> None:
         proc = self.run_command(

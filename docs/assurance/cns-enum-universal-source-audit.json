@@ -1,0 +1,52 @@
+{
+  "status": "source-only-proposed-unadmitted",
+  "old_ref": "4c46607449f33dc604d944d81ea614661eba04e3",
+  "new_ref": "969065e2f",
+  "current_raw_sha256": "2b8c32ea4f65ab5fe5be512f7d6511b1a58b45ff707e3da31923461d8bae9b9e",
+  "current_fragments_equal_frozen_new": true,
+  "raw_sha256": "8aa01d1a7d7ddb15ce9f6bcd110dfca0df66f1798f6c1e2cdbf645e963433981",
+  "state_sha256": "49e2cd0b868355ea73ad23bf2ecc62b7fb78abf6fae7a77688f9960386452513",
+  "fixture_sha256": "251861111de3bf4d8e2e4dbd4d40f68b7a9d1cf728b52fa47c1049007bb91d7c",
+  "phase_column": 0,
+  "stage_column": 45,
+  "declaration_columns": 49,
+  "fragments": [
+    {
+      "function": "fn2-cns-source-issue-children",
+      "continuing_source_binding": 19,
+      "cached_getter_bindings": {
+        "phase": 1,
+        "stage": 2
+      },
+      "cached_hypotheses": [
+        "phase",
+        "stage"
+      ],
+      "other_body_bindings_and_return_unchanged": true,
+      "preceding_continuing_mv_outputs_exclude_sources": true,
+      "scope": "whole returned sources carrier of the actual extracted fragment; not the complete function return/effect tuple"
+    },
+    {
+      "function": "fn2-cns-source-harvest",
+      "continuing_source_binding": 4,
+      "cached_getter_bindings": {
+        "stage": 3
+      },
+      "cached_hypotheses": [
+        "stage"
+      ],
+      "other_body_bindings_and_return_unchanged": true,
+      "preceding_continuing_mv_outputs_exclude_sources": true,
+      "scope": "whole returned sources carrier of the actual extracted fragment; not the complete function return/effect tuple"
+    },
+    {
+      "function": "fn2-cns-source-next-children",
+      "continuing_source_binding": 18,
+      "cached_getter_bindings": {},
+      "cached_hypotheses": [],
+      "other_body_bindings_and_return_unchanged": true,
+      "preceding_continuing_mv_outputs_exclude_sources": true,
+      "scope": "whole returned sources carrier of the actual extracted fragment; not the complete function return/effect tuple"
+    }
+  ]
+}

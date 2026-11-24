@@ -7,4 +7,5 @@
 (include-book "cns")
 (include-book "authority")
 (fn2-auth-read-events)
+(fn2-authority-depend-events)
 (fn2-cns-events)

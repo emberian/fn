@@ -9,6 +9,15 @@
 (include-book "../sim/commit-resources")
 (fn2-book-layer :b)
 
+; Extent 1's dependency and second log are each misclassified by the
+; old three-sector modulus. Padding and unaligned offsets are no write role.
+(assert-event
+ (and (equal (fn2-b-write-role 65536) 0)
+      (equal (fn2-b-write-role 69632) 1)
+      (equal (fn2-b-write-role 73728) 2)
+      (not (fn2-b-write-role 77824))
+      (not (fn2-b-write-role 65537))))
+
 ; Termination depends only on bounded test counters, not unfolded core state.
 (local (defthm fn2-b-scenario-countdown
  (implies (not (zp fuel)) (o< (nfix (- fuel 1)) (nfix fuel))) :rule-classes nil))
@@ -313,8 +322,10 @@
                 ; late fence completion are separate process-death boundaries.
                 (mv hit nil 0 fn2-core fn2-sim fn2-own))
                (dependency-target (eq (fn2-b-write-fault-target seed) :dependency))
-               (log-write (and (= kind *fn2-action-write*)
-                               (not (= (mod (fn2-sim-storage-offset slot fn2-sim) 12288) 0))))
+               (role (and (= kind *fn2-action-write*)
+                          (= (fn2-sim-owner-kind slot fn2-sim) *fn2-commit-kind*)
+                          (fn2-b-write-role (fn2-sim-storage-offset slot fn2-sim))))
+               (log-write (member-equal role '(1 2)))
                ((when (and (not hit) (member-eq scenario '(:partial :eio :enospc)) log-write (not dependency-target)
                            (< (fn2-machine-cb-issued (fn2-sim-owner-slot slot fn2-sim) fn2-core) 2)))
                 ; Let the runnable issuer submit its sibling before harvesting
@@ -326,7 +337,7 @@
                ; The seed alternates dependency faults and concurrent-log faults.
                ; A log sibling completion must retain the first failure.
                (write-ready (if dependency-target
-                                  (and (= kind *fn2-action-write*) (not log-write))
+                                  (equal role 0)
                                 (and log-write
                                   (= (fn2-machine-cb-issued (fn2-sim-owner-slot slot fn2-sim) fn2-core) 2)
                                   (= (fn2-machine-cb-done (fn2-sim-owner-slot slot fn2-sim) fn2-core) 0))))
@@ -377,7 +388,8 @@
 ; choose the fault profile, the post-death faults and the device size.
 (defun fn2-b-case (profile seed cut scenario mode members post fn2-core fn2-sim fn2-own)
   (declare (xargs :stobjs (fn2-core fn2-sim fn2-own) :verify-guards nil))
-  (b* ((profile (fn2-b-test-profile (put-assoc-equal :sim-sectors (if post (nth 2 post) 8) profile) mode))
+  (b* ((sectors (if post (nth 2 post) (* 2 *fn2-storage-extent-units*)))
+       (profile (fn2-b-test-profile (put-assoc-equal :sim-sectors sectors profile) mode))
        (fn2-core (fn2-init-executor profile :null nil fn2-core))
        ; Recovery fixture: the preceding writer epoch fence has completed.
        ; B3 does not implement or claim this bootstrap protocol.

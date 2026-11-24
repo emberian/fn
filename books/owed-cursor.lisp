@@ -201,7 +201,7 @@
   (b* (((mv c & fn2-core) (fn2-successor-stage 0 fn2-core))
        ((unless (eq c :ok)) (mv (list :stage c) fn2-core))
        ((mv & fn2-core) (fn2-txn-prebind 0 fn2-core))
-       ((mv c fn2-core) (if (zp k) (mv :ok fn2-core) (fn2-txn-xref 0 k c0 g0 c1 g1 ov-off 200 0 1 fn2-core)))
+       ((mv c & & fn2-core) (if (zp k) (mv :ok 0 0 fn2-core) (fn2-txn-xref 0 k c0 g0 c1 g1 ov-off 200 0 1 fn2-core)))
        ((unless (eq c :ok)) (mv (list :xref c) fn2-core))
        ((mv c elen fn2-core) (fn2-successor-emit 0 c1 g1 0 (fn2-upload-chunk-cap c1 fn2-core) 200 0 1 fn2-core))
        ((unless (eq c :ok)) (mv (list :emit c) fn2-core))
@@ -255,7 +255,7 @@
        ((mv & & & h & &) (fn2-identity-facts 0 fn2-core))
        ((mv c lines fn2-core) (fn2-cs-count 64 c0 g0 c1 g1 scanned hashed 0 fn2-core))
        ((unless (eq c :ok)) (mv (list :count c) nil store fn2-core))
-       ((mv c fn2-core) (fn2-txn-put-post-for 0 c0 g0 mo ml c0 g0 c1 g1 scanned hashed 0 h 0 lines e epoch counter
+       ((mv c fn2-core) (fn2-txn-put-post-for 0 c0 g0 mo ml c0 g0 scanned hashed 0 ds dg 0 h 0 lines e epoch counter
                                               ds dg 0 32 (len location-hashes) 0 200 0 1 fn2-core))
        ((unless (eq c :ok)) (mv (list :post c) nil store fn2-core))
        ((mv c k fn2-core) (fn2-cs-groups 64 no nl 0 nil 0 c0 g0 c1 g1 fn2-core))

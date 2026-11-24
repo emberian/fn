@@ -12,8 +12,13 @@ class MemberRefutationPlumbing(unittest.TestCase):
         self.assertIn('(not (fn2-checkpoint-installation-pack-member-fields-type$owed', source)
         self.assertIn(':use fn2-checkpoint-member-fields-type-readonly-removal-ground', source)
         self.assertIn('fn2-checkpoint-installation-pack-member-fields-type-under-guard', source)
-        self.assertIn('(include-book "tests/checkpoint-member-refutation-unit")',
+        # The qualified guarded bundle exports both the original refutation
+        # and its distinct supported-domain interface. Keep the full chain.
+        self.assertIn('(include-book "tests/checkpoint-member-guarded-evidence-unit")',
                       (ROOT / 'tools/owed-export.lsp').read_text())
+        guarded = (ROOT / 'tests/checkpoint-member-guarded-evidence-unit.lisp').read_text()
+        self.assertIn('(include-book "checkpoint-member-refutation-unit")', guarded)
+        self.assertIn('(include-book "checkpoint-member-interface-unit")', guarded)
         self.assertIn('link unverified', (ROOT / 'books/owed-report.lisp').read_text())
     def test_actual_member_sources_parse(self):
         for path in ['tests/checkpoint-member-refutation-unit.lisp',

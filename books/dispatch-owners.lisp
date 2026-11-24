@@ -27,18 +27,20 @@
 ;; every column to 0 and then to N rows of its :initially (not the commit
 ;; kind); each core child's init leaves the other owner tables; an owner
 ;; table's init (its -INIT-FOR or prepare) is that -INIT and then owner-chain
-;; functions (fn2-cursor-initialize-rows stores conn-kind 0).
-(defun fn2-dh-owner-init-forms (owners world)
+;; functions (fn2-cursor-initialize-rows stores conn-kind 0). Use the
+;; generated INIT-NTH equation so the proof is independent of resize chunks.
+(defun fn2-dh-owner-init-forms (owners)
   (declare (xargs :mode :program))
   (if (atom owners) nil
     (let* ((e (car owners)) (init (fn2-columns-sym (car e) "-INIT")))
       (cons `(defthm ,(fn2-columns-sym init "-OWNERS")
                (fn2-dh-col-ok *fn2-commit-kind* ',(nth 1 e) (,init n ,(car e)))
-               :hints (("Goal" :in-theory '(,init ,@(all-fnnames (getpropc init 'unnormalized-body nil world))
-                                            fn2-dh-col-ok-of-update-nth fn2-dh-avoids-resize-list fn2-dh-resize-list-0
-                                            nth-update-nth (:e fn2-dh-avoids) (:e nfix) (:e equal)))))
-            (fn2-dh-owner-init-forms (cdr owners) world)))))
-(make-event (value (cons 'progn (fn2-dh-owner-init-forms (fn2-dh-owners (w state)) (w state)))))
+               :hints (("Goal" :in-theory '(fn2-dh-col-ok
+                                            ,(fn2-columns-sym init "-NTH")
+                                            fn2-dh-avoids-resize-list
+                                            (:e fn2-dh-avoids) (:e nfix) (:e equal)))))
+            (fn2-dh-owner-init-forms (cdr owners))))))
+(make-event (value (cons 'progn (fn2-dh-owner-init-forms (fn2-dh-owners (w state))))))
 
 (defun fn2-dh-init-frame-forms1 (init acc owner-accs)
   (declare (xargs :mode :program))

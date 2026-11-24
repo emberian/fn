@@ -171,13 +171,36 @@ accepted in both cases (K6).
 **Served (L, fkind 7):** the frame is cmd, 7, N (0-8), the operation identity in N octets big-endian,
 then the article's CR LF lines (not dot-stuffed) to the frame's end. fn2-cns `:append` takes an fn2-upload
 row over those octets (fn2-upload-feed-run, raw), the upload and fn2-txn run exactly as for a POST, and
-the transaction posts its word and commit position back to the request (fn2-cns-post-outcome); the
-six-octet reply is (outcome, the D word as reason, position, 0, 0, 0). An article without a Message-ID gets
-`<op-PRINCIPAL-OP@node>`, PRINCIPAL the principal slot, and fn2-outcome is keyed (principal, op). The
-grant check is the named seam fn2-authority-allows (a stub in txn.lisp, one call per destination group at its lookup; `:ok` until
-the authority lane fills it). Not yet served: the read of fn2-outcome before the grant (a retry is refused
-`duplicate` by its Message-ID, not answered its outcome), `operation-reused`, the Message-ID and numbers
-in the reply, and an article past one receive (the six-octet L frame is one frame per receive).
+the transaction posts its word and commit position back to the request (fn2-cns-post-outcome). The
+kind 28 success result carries the assigned Message-ID, position, group number pairs and local receipt.
+For a supplied nonzero operation ID, an article without a Message-ID gets
+`<op-PRINCIPAL-OP@node>`. PRINCIPAL is the durable control connection identity captured before storage.
+The transaction records the source digest, outcome code, event, verb and original Message-ID under that
+principal and operation. Server-assigned operations occupy their own key namespace. The per-group
+grant check verifies the live binding against the captured identity and adds an authority-head
+dependency at stage.
+
+The APPEND retry candidate reads the authenticated principal's published operation before upload
+allocation. A hit consumes the incoming article into a bounded source hash before using the stored
+Message-ID, event and outcome. A live competing insert can pass that first lookup before publication.
+D5 repeats the lookup after sealing and before the Message-ID decision; C stages the unique supplied
+operation key against active, frozen and private batch overlays, and a losing operation-slot insert
+releases its successor and re-reads. A committed conflict records an outcome in its evidence batch.
+The candidate requires composed certification and the native `--durable-retry` process-death campaign.
+A conflict uses the ordinary APPEND result inside a refused kind 28 frame. Its reason is `conflict`.
+The Message-ID identifies the disputed article. A committed evidence result carries its event, while
+uncertain or refused evidence carries position zero. A lost reply leaves the evidence outcome unknown.
+The outcome row retains the exact group-number octets from the published Xref field: one ASCII
+` GROUP:NUMBER` pair per assigned group in transaction order. A replay after the body has been
+reclaimed can still use the outcome row. The 33-octet receipt identifies the local acceptance in the
+durable origin: version octet 1, then lineage, commit domain, incarnation and committed event as four
+unsigned 64-bit big-endian integers. It references the settled local record and carries no checkpoint
+inclusion proof. Live replies use the event returned by the settled member. Retry replies use the event
+in the authenticated principal's published APPEND outcome. Both encode the immutable local origin
+used by the original commit header. BOOT compares the configured origin with the persisted genesis
+before serving, and recovery rejects a transaction record whose origin differs. This receipt applies
+to the local APPEND outcome table. An imported receipt keeps its own origin and does not supply a local
+APPEND outcome. Conflict results keep both fields empty. Retry expiration remains open.
 An append is POST: D's upload and D5's transaction, the same path, the same refusal words, the same group
 numbers. So an NNTP reader sees the appended article by GROUP and ARTICLE with the exact octets: no second
 write path exists to diverge.
@@ -704,7 +727,8 @@ Outbound feeding and catchup coverage remain the implementation frontier in
    and kind 28 codecs over a fields stripe, B's hasher for the trailer; replies built forward, scratch first,
    sent from the frame's offset): `fn2-ctl`'s :frame opens the frame (kind 1 command, answered in kind 2; kind 4
    dispatched with its code), `fn2-cns-decode-port` decodes codes 1 2 11 14 15 16 18 by the generated K4 codecs
-   and `fn2-cns-post-reply` answers in kind 28 (a refusal or uncertainty carries no result). The clients are
+   and `fn2-cns-post-reply` answers in kind 28. A conflict refusal carries the APPEND evidence result
+   described in §3.3. Other refusals and ordinary uncertain replies have empty result octets. The clients are
    `tests/fnct-client.lisp` (sim-layer-e, m2-cuts) and `tests/surface/fn2_consumer_socket.py`. A read or wait
    page carries its items: `fn2-cns`'s :page walks the principal's addr entries past the cursor one a step
    (`fn2-cns-item-next`: the entry, its article row, the type: `gap` when the row is gone, `withdrawn`, a
@@ -722,13 +746,71 @@ Outbound feeding and catchup coverage remain the implementation frontier in
    successor write transaction (`fn2-cns-successor`, the profile's `fn2-txn-consumer-share`) and a class-0
    workspace, and answers the cursor the published ledger records after B settled it. Interim rulings (deputy, 2026-11-05), each owed its full form:
    the ctl's stripe and hasher row are the format table's top rows, `fc-rows - ctl-rows + S` (equal to B's
-   `fn2-b-ctl-slot` when `:format-slots` is the floor; owed: B's runtime accessor); the fncu cursor's history
-   and incarnation are one 0 octet each until B serves the store's octets (cross-store `scope` unchecked);
+   `fn2-b-ctl-slot` when `:format-slots` is the floor; owed: B's runtime accessor). The FNCT cursor's
+   history and incarnation are the immutable physical IDs that BOOT matches against persisted genesis.
+   It encodes both as minimal big-endian fields and binds the live control connection's durable principal,
+   with zero reserved for an unbound owner. READ, WAIT and ACK check these fields before entering consumer
+   work. The interim zero history and incarnation fail `scope`. The served epoch-1 cursor requires
+   a record in the published cursor ledger. An absent row answers `unknown-consumer`, and an
+   unavailable lookup yields no cursor. If a durably settled mutation cannot be read back, the reply
+   is uncertain. The cursor ledger keys records by durable principal, consumer ID and epoch. Register
+   writes the same durable principal into the name table. APPEND writes that durable principal into
+   the address index, and frontier, selection and wake use the same key. A wait uses the global commit
+   tip only internally to close the race between reading and linking a parked edge. Colliding wait
+   buckets can cause a private rescan, which still walks only the waiting principal's address rows. Current query/view
+   checks, per-item read grants, and v2 cursor issuance remain owed. Other interim rules are
    the served consumer id is the consumer octets read big-endian (at most 7; owed: the (principal, name) row);
    register takes only the empty stream list (the principal's inbox, the one served query; otherwise `query`);
    an append's stream field is empty (the article's Newsgroups names its groups, as POST; otherwise `frame`);
    one frame per receive window (octets past a frame's extent close the connection; owed: a separate tx range
    for pipelining); control commands ride kind 1 with the posture as the kind 2 reply (fn1's native-control kinds).
+
+### Authority at the addressed frontier
+
+FETCH checks consume admission before its cursorless walk and the current read grant on the selected
+address row's stream before article lookup. Every live article eligible for a successful FETCH has
+positive length. `fn2-cns-article-next` requires an exact retained source capture for those articles,
+including raw-source articles that fit a single reply. The `:item` arm sends FETCH through that source
+or returns `unavailable` if the binding is missing. Successful single-reply FETCH is
+`unreachable-in-composition`. The source checks the read grant again before opening the reply prefix.
+Read denials use the same `unavailable` result as a missing occurrence. Single-frame replies still carry
+refusals. A `withdrawn` reply checks the read grant again in the same step as the reply handoff and
+uses `unavailable` if the grant no longer allows reading. A consume admission failure remains
+`access`. A second consume check at reply freeze remains owed.
+
+READ and WAIT pin an authority head for that request and recheck consume authority and the head before
+sealing each page, including empty WAIT replies. They check the recorded address stream's current read
+grant before materializing an item. A hidden row advances only the private scan. An issued cursor
+advances only through visible items, and a full page's MORE bit needs a readable next item. Resuming a
+parked request repeats consume admission and refuses a superseded head. REGISTER records the
+authorized head separately from the query version. READ, WAIT and ACK require the issued view to
+match both the persisted registration and the current head. ACK and REGISTER stage against the
+checked head; an equal ACK rechecks it before replying. Restoring a grant creates a new head and
+does not revive old cursor bytes. Repeat REGISTER returns the existing recorded view. REGISTER and
+REBASE refuse a view that cannot be represented by the current v1 issuer before staging a transaction.
+
+The txn currently emits one address row per event and retains only the first group's stream. Its
+overview rows record each group's article number but cannot enumerate all groups by article. General
+per-item access through any authorized group requires a bounded article-to-stream membership lookup,
+or a retained set published in the transaction that creates the address row.
+
+The active registration is keyed by durable principal and consumer. Its value holds the epoch,
+position, query version and authority revision. POSITION returns that revision even after authority
+changes. REBASE compares the issued cursor's epoch and recorded revision, then atomically publishes
+the next epoch with the current revision. KEEP preserves the durable ACK position, and HISTORY
+starts at zero. The fold checks the old epoch and durable position, so a concurrent ACK and KEEP
+cannot rewind the position. Requests bearing a superseded epoch receive scope refusal. REBASE NOW
+requires an authorized frontier. Serving UNREGISTER will require retaining the last epoch in a
+tombstone so registration after reclamation cannot reuse it.
+
+STATUS, REGISTER from now and ACK's frontier limit must use the highest authorized addressed position under the
+same authority revision as the page walk. The current positioned seek cannot filter memberships. A
+bounded reverse address walk with resumable membership/grant reads is one direct implementation.
+A retained projection keyed by principal, authority revision and position would instead need a
+readiness boundary and an ordered replay rule before exposing a new revision. Neither path can use the
+unfiltered address tip as an answer. A parked WAIT also needs a principal authority dependency so a
+grant update resumes its view check without waiting for a new article. Recheck the revision at reply
+freeze so an in-flight page cannot mix visibility decisions from different revisions.
 
 ## 15. Astra's read (`lanes/e-quests/astra-1.md`): what it changed
 Taken: losses as a product, not a chain (§2.3); grammar bindings name terminal replies (§2.2); fn1's

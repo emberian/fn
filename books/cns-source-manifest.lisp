@@ -1,0 +1,279 @@
+;; Published source-manifest traversal over one retained CNS lease. Location
+;; units are authenticated before either header or entry decoding. The manifest
+;; occupies one unit; referenced data uses the following, disjoint unit.
+(in-package "ACL2")
+(include-book "cns-source-workspace")
+(include-book "cns-source-state")
+(include-book "source-manifest-entry")
+(include-book "block-integrity")
+(include-book "cns-source-retention-rows")
+(fn2-book-layer :d)
+;; One callback performs one phase, never both a manifest-unit check and a
+;; data-unit check. Charge the shared two-pass data verifier plus both expected
+;; digests, or the unit/header/original-identity check, within four units.
+(defconst *fn2-cns-source-unit-work-bytes* (* 4 *fn2-commit-unit-bytes*))
+(assert-event (<= (+ (* 2 *fn2-commit-unit-bytes*) 64) *fn2-cns-source-unit-work-bytes*))
+(assert-event (<= (+ *fn2-commit-unit-bytes* (* 2 *fn2-am-header-max*) 96) *fn2-cns-source-unit-work-bytes*))
+(assert-event (<= (* 2 *fn2-am-entry-max*) *fn2-cns-source-unit-work-bytes*))
+
+(local
+ (defthm fn2-cns-manifest-fields-rows-natural
+  (implies (fn2-fieldsp fn2-fields)
+   (natp (fn2-fields-rows fn2-fields)))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn2-fieldsp fn2-fields-rows)))))
+
+(local
+ (defthm fn2-cns-manifest-header-preserves-rows
+  (equal (fn2-fields-rows
+          (mv-nth 2 (fn2-am-get-header base total slot gen off end kind owner owner-gen
+                                     fn2-fields fn2-pool)))
+         (fn2-fields-rows fn2-fields))
+  :hints (("Goal" :in-theory (e/d (fn2-am-get-header)
+                                  (fn2-fields-rows fn2-fieldsp fn2-fields-wfp
+                                   fn2-fields-value fn2-format-source-manifest-header-decode))))))
+(local
+ (defthm fn2-cns-manifest-decoded-entry-preserves-rows
+  (equal (fn2-fields-rows
+          (mv-nth 7 (fn2-am-get-entry base slot gen off end kind owner owner-gen
+                                    fn2-fields fn2-pool)))
+         (fn2-fields-rows fn2-fields))
+  :hints (("Goal" :in-theory (e/d (fn2-am-get-entry)
+                                  (fn2-fields-rows fn2-fields-value
+                                   fn2-format-source-manifest-entry-decode))))))
+(local
+ (defthm fn2-cns-manifest-entry-preserves-rows
+  (equal (fn2-fields-rows
+          (mv-nth 9 (fn2-source-manifest-entry base prefix slot gen pos total kind owner owner-gen
+                                              fn2-fields fn2-pool)))
+         (fn2-fields-rows fn2-fields))
+  :hints (("Goal" :in-theory (e/d (fn2-source-manifest-entry)
+                                  (fn2-fields-rows fn2-am-get-entry fn2-am-get-header
+                                   fn2-am-entry-at floor fn2-fields-ref-slot fn2-fields-ref-len))))))
+
+(defun fn2-cns-source-manifest-check (s cns cnsgen ctl ctlgen request kind base fn2-cns-sources fn2-fields fn2-b3 fn2-digests fn2-pool)
+ (declare (xargs :stobjs (fn2-cns-sources fn2-fields fn2-b3 fn2-digests fn2-pool)
+  :guard (and (fn2-cns-sources-wfp fn2-cns-sources) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))
+  :guard-hints (("Goal" :in-theory (disable fn2-fields-rows fn2-fieldsp fn2-fields-wfp
+                                           fn2-b-block-read-row fn2-b3-rows)))))
+ (b* (((unless (and (fn2-cns-source-ownerp s cns cnsgen ctl ctlgen request fn2-cns-sources)
+                    (equal (fn2-cns-sources-phase s fn2-cns-sources) *fn2-cns-source-phase-manifest*)
+                    (equal (fn2-cns-sources-manifest-stage s fn2-cns-sources) *fn2-cns-source-manifest-stage-check*)
+                    (equal (fn2-cns-sources-pending s fn2-cns-sources) 0)
+                    (equal (fn2-cns-sources-result-kind s fn2-cns-sources) *fn2-event-read-result*)
+                    (equal (fn2-cns-sources-result-outcome s fn2-cns-sources) *fn2-outcome-done*)
+                    (equal (fn2-cns-sources-result-count s fn2-cns-sources) *fn2-commit-unit-bytes*)))
+       (mv :bounds fn2-cns-sources fn2-fields fn2-b3 fn2-digests))
+      (index (fn2-cns-sources-manifest-index s fn2-cns-sources))
+      (slot (fn2-cns-sources-lslot s fn2-cns-sources))
+      (gen (fn2-cns-sources-lgen s fn2-cns-sources))
+      ((unless (and (< index (fn2-cns-sources-manifest-count s fn2-cns-sources))
+                    (<= (* 32 (+ 1 index)) (fn2-cns-sources-hashes s fn2-cns-sources))))
+       (mv :bounds fn2-cns-sources fn2-fields fn2-b3 fn2-digests))
+      ((mv code fn2-b3 fn2-digests)
+       (fn2-block-read-commitment-children *fn2-commit-unit-bytes* *fn2-commit-unit-bytes*
+        slot gen *fn2-cns-source-manifest-offset* slot gen (* 32 index)
+        kind cns cnsgen fn2-b3 fn2-digests fn2-pool))
+      ((unless (eq code :ok))
+       (let ((fn2-cns-sources (fn2-cns-sources-set-phase s *fn2-cns-source-phase-bad* fn2-cns-sources)))
+        (mv :bad fn2-cns-sources fn2-fields fn2-b3 fn2-digests)))
+      ((mv code fn2-fields fn2-digests)
+       (if (not (equal index 0)) (mv :ok fn2-fields fn2-digests)
+        (b* (((mv code end fn2-fields)
+              (fn2-am-get-header base (fn2-cns-sources-total s fn2-cns-sources) slot gen
+               *fn2-cns-source-manifest-offset* (+ *fn2-cns-source-manifest-offset* *fn2-commit-unit-bytes*)
+               kind cns cnsgen fn2-fields fn2-pool))
+             (ref (+ (nfix base) *fn2-format-source-manifest-header-field-source-identity*))
+             (row (fn2-b-block-read-row (fn2-b3-rows fn2-b3)))
+             (got (fn2-digest-slot row *fn2-b3-result*))
+             (want (fn2-digest-slot row *fn2-fc-hash*))
+             ((unless (and (eq code :ok) (natp end) (< ref (fn2-fields-rows fn2-fields))
+                           (equal (fn2-fields-ref-slot ref fn2-fields) slot)
+                           (equal (fn2-fields-ref-gen ref fn2-fields) gen)
+                           (equal (fn2-fields-ref-len ref fn2-fields) 32)
+                           (fn2-digest-rowp got fn2-digests) (fn2-digest-rowp want fn2-digests)))
+              (mv :bad fn2-fields fn2-digests))
+             ((mv code fn2-digests)
+              (fn2-rec-fetch 0 got slot gen *fn2-cns-source-original-offset* kind cns cnsgen fn2-pool fn2-digests))
+             ((unless (eq code :ok)) (mv :bad fn2-fields fn2-digests))
+             ((mv same fn2-digests)
+              (fn2-block-digest-at got want slot gen (fn2-fields-ref-off ref fn2-fields)
+               kind cns cnsgen fn2-digests fn2-pool)))
+         (mv (if same :ok :bad) fn2-fields fn2-digests))))
+      ((unless (eq code :ok))
+       (let ((fn2-cns-sources (fn2-cns-sources-set-phase s *fn2-cns-source-phase-bad* fn2-cns-sources)))
+        (mv :bad fn2-cns-sources fn2-fields fn2-b3 fn2-digests)))
+      (fn2-cns-sources (fn2-cns-sources-put s (manifest-loaded-index index)
+                       (manifest-stage *fn2-cns-source-manifest-stage-entry*))))
+  (mv :more fn2-cns-sources fn2-fields fn2-b3 fn2-digests)))
+
+;; One actual decoded entry becomes a retained claim target. It cannot expose
+;; data: only the exact-identity retention claim may advance this cursor.
+(defun fn2-cns-source-manifest-entry (s cns cnsgen ctl ctlgen request kind base fn2-cns-sources fn2-fields fn2-pool)
+ (declare (xargs :stobjs (fn2-cns-sources fn2-fields fn2-pool)
+  :guard (and (fn2-cns-sources-wfp fn2-cns-sources) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))))
+ (b* (((unless (and (fn2-cns-source-ownerp s cns cnsgen ctl ctlgen request fn2-cns-sources)
+                    (equal (fn2-cns-sources-phase s fn2-cns-sources) *fn2-cns-source-phase-manifest*)
+                    (equal (fn2-cns-sources-manifest-stage s fn2-cns-sources) *fn2-cns-source-manifest-stage-entry*)
+                    (equal (fn2-cns-sources-pending s fn2-cns-sources) 0)
+                    (equal (fn2-cns-sources-manifest-loaded-index s fn2-cns-sources)
+                           (fn2-cns-sources-manifest-index s fn2-cns-sources))))
+       (mv :bounds fn2-cns-sources fn2-fields))
+      (slot (fn2-cns-sources-lslot s fn2-cns-sources)) (gen (fn2-cns-sources-lgen s fn2-cns-sources))
+      (position (fn2-cns-sources-manifest-position s fn2-cns-sources))
+      (seen (fn2-cns-sources-manifest-seen s fn2-cns-sources))
+      (total (fn2-cns-sources-total s fn2-cns-sources))
+      ((mv code next lo len unit epoch allocation hoff cvoff fn2-fields)
+       (fn2-source-manifest-entry base *fn2-cns-source-manifest-offset* slot gen position total
+        kind cns cnsgen fn2-fields fn2-pool))
+      ((unless (and (eq code :ok) (< seen total) (equal lo seen)
+                    (equal len (min *fn2-commit-unit-bytes* (- total seen)))
+                    (unsigned-byte-p 32 next) (unsigned-byte-p 32 len)
+                    (unsigned-byte-p 60 unit) (unsigned-byte-p 60 epoch) (unsigned-byte-p 60 allocation)
+                    (< position next)
+                    (<= *fn2-cns-source-manifest-offset* hoff)
+                    (<= (+ hoff 32) (+ *fn2-cns-source-manifest-offset* *fn2-commit-unit-bytes*))
+                    (<= *fn2-cns-source-manifest-offset* cvoff)
+                    (<= (+ cvoff 32) (+ *fn2-cns-source-manifest-offset* *fn2-commit-unit-bytes*))
+                    (< (fn2-cns-sources-retain-entry-index s fn2-cns-sources) (fn2-am-blocks total))
+                    (equal (floor position *fn2-commit-unit-bytes*)
+                           (fn2-cns-sources-manifest-index s fn2-cns-sources))))
+       (let ((fn2-cns-sources (fn2-cns-sources-set-phase s *fn2-cns-source-phase-bad* fn2-cns-sources)))
+        (mv :bad fn2-cns-sources fn2-fields)))
+      (fn2-cns-sources (fn2-cns-sources-put s (unit unit) (epoch epoch) (allocation allocation)
+                        (unit-length len) (proof-hash-offset hoff) (proof-cv-offset cvoff)
+                        (manifest-position next) (manifest-stage *fn2-cns-source-manifest-stage-claim*))))
+  (mv :claim fn2-cns-sources fn2-fields)))
+
+;; One exact prepared claim, then one cursor advancement. Coverage derives only
+;; from exhausting the authenticated contiguous entry sequence, not a caller flag.
+(defun fn2-cns-source-manifest-claim-step (s cns cnsgen ctl ctlgen request fn2-cns-sources fn2-checkpoints fn2-extents fn2-alloc-edges fn2-ops)
+ (declare (xargs :stobjs (fn2-cns-sources fn2-checkpoints fn2-extents fn2-alloc-edges fn2-ops)
+  :guard (and (fn2-cns-sources-wfp fn2-cns-sources) (fn2-checkpoints-wfp fn2-checkpoints)
+              (fn2-extents-wfp fn2-extents) (fn2-alloc-edges-wfp fn2-alloc-edges) (fn2-ops-wfp fn2-ops))))
+ (b* (((unless (and (fn2-cns-source-ownerp s cns cnsgen ctl ctlgen request fn2-cns-sources)
+                    (equal (fn2-cns-sources-phase s fn2-cns-sources) *fn2-cns-source-phase-manifest*)
+                    (equal (fn2-cns-sources-manifest-stage s fn2-cns-sources) *fn2-cns-source-manifest-stage-claim*)))
+       (mv :bounds fn2-cns-sources fn2-extents fn2-alloc-edges))
+      (seen (fn2-cns-sources-manifest-seen s fn2-cns-sources))
+      (len (fn2-cns-sources-unit-length s fn2-cns-sources))
+      (total (fn2-cns-sources-total s fn2-cns-sources))
+      (count (+ 1 (fn2-cns-sources-retain-entry-index s fn2-cns-sources)))
+      ((unless (and (posp len) (<= (+ seen len) total) (unsigned-byte-p 32 count)
+                    (<= count (fn2-am-blocks total))))
+       (let ((fn2-cns-sources (fn2-cns-sources-set-phase s *fn2-cns-source-phase-bad* fn2-cns-sources)))
+        (mv :bad fn2-cns-sources fn2-extents fn2-alloc-edges)))
+      ((mv code fn2-extents fn2-alloc-edges)
+       (fn2-cns-source-claim-identity s cns cnsgen ctl ctlgen request
+        (fn2-cns-sources-unit s fn2-cns-sources) (fn2-cns-sources-epoch s fn2-cns-sources)
+        (fn2-cns-sources-allocation s fn2-cns-sources)
+        fn2-cns-sources fn2-checkpoints fn2-extents fn2-alloc-edges fn2-ops))
+      ((unless (eq code :ok))
+       (let ((fn2-cns-sources (fn2-cns-sources-set-phase s *fn2-cns-source-phase-bad* fn2-cns-sources)))
+        (mv :bad fn2-cns-sources fn2-extents fn2-alloc-edges)))
+      (replay (equal (fn2-cns-sources-retention-phase s fn2-cns-sources) 2))
+      (end (+ seen len))
+      (done (and (equal end total) (equal count (fn2-am-blocks total))))
+      (next-index (floor (fn2-cns-sources-manifest-position s fn2-cns-sources) *fn2-commit-unit-bytes*))
+      ((unless (or done (< next-index (fn2-cns-sources-manifest-count s fn2-cns-sources))))
+       (let ((fn2-cns-sources (fn2-cns-sources-set-phase s *fn2-cns-source-phase-bad* fn2-cns-sources)))
+        (mv :bad fn2-cns-sources fn2-extents fn2-alloc-edges)))
+      (fn2-cns-sources
+       (cond (replay
+              (fn2-cns-sources-put s (manifest-seen end) (retain-entry-index count)
+               (unit-copied 0) (unit-hashed 0) (phase *fn2-cns-source-phase-manifest*)
+               (manifest-stage *fn2-cns-source-manifest-stage-data-read*)))
+             (done
+              (fn2-cns-sources-put s (retention-phase 2) (manifest-position 0) (manifest-index 0)
+               (manifest-seen 0) (retain-entry-index 0) (manifest-stage *fn2-cns-source-manifest-stage-read*)))
+             (t
+              (fn2-cns-sources-put s (manifest-seen end) (retain-entry-index count) (manifest-index next-index)
+               (manifest-stage (if (equal next-index (fn2-cns-sources-manifest-loaded-index s fn2-cns-sources))
+                                *fn2-cns-source-manifest-stage-entry* *fn2-cns-source-manifest-stage-read*)))))))
+  (mv (if (and done (not replay)) :covered :more) fn2-cns-sources fn2-extents fn2-alloc-edges)))
+
+;; Data is still in the second window; the checked manifest unit and both
+;; expected digests remain unchanged in the first window during this read.
+(defun fn2-cns-source-manifest-data-check (s cns cnsgen ctl ctlgen request kind fn2-cns-sources fn2-b3 fn2-digests fn2-pool)
+ (declare (xargs :stobjs (fn2-cns-sources fn2-b3 fn2-digests fn2-pool)
+  :guard (and (fn2-cns-sources-wfp fn2-cns-sources) (fn2-pool-wfp fn2-pool))))
+ (b* (((unless (and (fn2-cns-source-ownerp s cns cnsgen ctl ctlgen request fn2-cns-sources)
+                    (equal (fn2-cns-sources-phase s fn2-cns-sources) *fn2-cns-source-phase-manifest*)
+                    (equal (fn2-cns-sources-manifest-stage s fn2-cns-sources) *fn2-cns-source-manifest-stage-data-check*)
+                    (fn2-cns-source-data-position-p s fn2-cns-sources)
+                    (equal (fn2-cns-sources-pending s fn2-cns-sources) 0)
+                    (equal (fn2-cns-sources-result-kind s fn2-cns-sources) *fn2-event-read-result*)
+                    (equal (fn2-cns-sources-result-outcome s fn2-cns-sources) *fn2-outcome-done*)))
+       (mv :bounds fn2-cns-sources fn2-b3 fn2-digests))
+      (slot (fn2-cns-sources-lslot s fn2-cns-sources)) (gen (fn2-cns-sources-lgen s fn2-cns-sources))
+      (len (fn2-cns-sources-unit-length s fn2-cns-sources))
+      (hoff (fn2-cns-sources-proof-hash-offset s fn2-cns-sources))
+      (cvoff (fn2-cns-sources-proof-cv-offset s fn2-cns-sources))
+      (offset (fn2-cns-sources-offset s fn2-cns-sources))
+      ((unless (and (posp len) (<= len *fn2-commit-unit-bytes*)
+                    (equal (fn2-cns-sources-result-count s fn2-cns-sources) len)
+                    (equal (mod offset *fn2-commit-unit-bytes*) 0)
+                    (<= *fn2-cns-source-manifest-offset* hoff)
+                    (<= (+ hoff 32) (+ *fn2-cns-source-manifest-offset* *fn2-commit-unit-bytes*))
+                    (<= *fn2-cns-source-manifest-offset* cvoff)
+                    (<= (+ cvoff 32) (+ *fn2-cns-source-manifest-offset* *fn2-commit-unit-bytes*))))
+       (let ((fn2-cns-sources (fn2-cns-sources-set-phase s *fn2-cns-source-phase-bad* fn2-cns-sources)))
+        (mv :bad fn2-cns-sources fn2-b3 fn2-digests)))
+      ((mv code fn2-b3 fn2-digests)
+       (fn2-block-read-done-from-children len len 1 slot gen *fn2-cns-source-data-offset*
+        slot gen hoff cvoff (floor offset *fn2-commit-unit-bytes*) kind cns cnsgen fn2-b3 fn2-digests fn2-pool))
+      (fn2-cns-sources (if (eq code :ok)
+        (fn2-cns-sources-put s (unit-hashed 0) (unit-copied 0) (phase *fn2-cns-source-phase-raw-hash*))
+        (fn2-cns-sources-set-phase s *fn2-cns-source-phase-bad* fn2-cns-sources))))
+  (mv (if (eq code :ok) :more :bad) fn2-cns-sources fn2-b3 fn2-digests)))
+
+(local
+ (defthm fn2-cns-source-manifest-owner-bound
+  (implies (fn2-cns-source-ownerp s cns cnsgen ctl ctlgen request fn2-cns-sources)
+   (and (natp s) (< s (fn2-cns-sources-rows fn2-cns-sources))))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (enable fn2-cns-source-ownerp)))))
+
+(local (fn2-hash-row-frames fn2-block-read-commitment-children fn2-b3 fn2-digests))
+(local (fn2-b3-word-frame fn2-block-read-done-from-children))
+
+(local
+ (defthm fn2-cns-manifest-entry-hash-offset-natural
+  (natp (mv-nth 7 (fn2-source-manifest-entry base prefix lslot lgen mpos total okind oslot ogen
+                                            fn2-fields fn2-pool)))
+  :rule-classes :type-prescription
+  :hints (("Goal" :use fn2-source-manifest-entry-naturals))))
+(local
+ (defthm fn2-cns-manifest-entry-cv-offset-natural
+  (natp (mv-nth 8 (fn2-source-manifest-entry base prefix lslot lgen mpos total okind oslot ogen
+                                            fn2-fields fn2-pool)))
+  :rule-classes :type-prescription
+  :hints (("Goal" :use fn2-source-manifest-entry-naturals))))
+
+(fn2-cns-source-frames fn2-cns-source-manifest-check
+ (s cns cnsgen ctl ctlgen request kind base fn2-cns-sources fn2-fields fn2-b3 fn2-digests fn2-pool)
+ (fn2-cns-sources fn2-fields fn2-b3 fn2-digests fn2-pool)
+ ((fn2-cns-sources 1) (fn2-fields 2) (fn2-b3 3) (fn2-digests 4))
+ ((fn2-columns-call-guard-hint 'fn2-cns-source-manifest-check
+   '(fn2-cns-source-ownerp fn2-am-get-header fn2-block-read-commitment-children
+     fn2-block-digest-at fn2-rec-fetch fn2-b-block-read-row fn2-digest-rowp)
+   '(fn2-cns-source-manifest-check) world)))
+(fn2-cns-source-frames fn2-cns-source-manifest-entry
+ (s cns cnsgen ctl ctlgen request kind base fn2-cns-sources fn2-fields fn2-pool)
+ (fn2-cns-sources fn2-fields fn2-pool) ((fn2-cns-sources 1) (fn2-fields 2))
+ ((fn2-columns-call-guard-hint 'fn2-cns-source-manifest-entry
+   '(fn2-cns-source-ownerp fn2-source-manifest-entry floor)
+   '(fn2-cns-source-manifest-entry) world)))
+(fn2-cns-source-frames fn2-cns-source-manifest-claim-step
+ (s cns cnsgen ctl ctlgen request fn2-cns-sources fn2-checkpoints fn2-extents fn2-alloc-edges fn2-ops)
+ (fn2-cns-sources fn2-checkpoints fn2-extents fn2-alloc-edges fn2-ops)
+ ((fn2-cns-sources 1) (fn2-extents 2) (fn2-alloc-edges 3))
+ ((fn2-columns-call-guard-hint 'fn2-cns-source-manifest-claim-step
+   '(fn2-cns-source-ownerp fn2-cns-source-claim-identity)
+   '(fn2-cns-source-manifest-claim-step) world)))
+(fn2-cns-source-frames fn2-cns-source-manifest-data-check
+ (s cns cnsgen ctl ctlgen request kind fn2-cns-sources fn2-b3 fn2-digests fn2-pool)
+ (fn2-cns-sources fn2-b3 fn2-digests fn2-pool) ((fn2-cns-sources 1) (fn2-b3 2) (fn2-digests 3))
+ ((fn2-columns-call-guard-hint 'fn2-cns-source-manifest-data-check
+   '(fn2-cns-source-ownerp fn2-cns-source-data-position-p fn2-block-read-done-from-children)
+   '(fn2-cns-source-manifest-data-check) world)))

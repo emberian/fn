@@ -171,6 +171,7 @@ CNS_CODES = {
     "ack": 1,
     "position": 2,
     "append": 11,
+    "rebase": 12,
     "fetch": 13,
     "register": 14,
     "read": 15,
@@ -431,6 +432,9 @@ def build_cns_request(verb: str, **kw) -> bytes:
     if verb == "register":
         start_byte = 0 if kw.get("start") == "now" else 1
         body = bytes([code]) + octets_var(kw["consumer"]) + octets16(b"") + bytes([start_byte])
+    elif verb == "rebase":
+        start_byte = {"keep": 0, "history": 2}[kw["start"]]
+        body = bytes([code]) + octets16(kw["cursor"]) + octets16(b"") + bytes([start_byte])
     elif verb in ("position", "status"):
         body = bytes([code]) + octets_var(kw["consumer"])
     elif verb == "read":
@@ -517,11 +521,12 @@ def decode_cns_reply(verb: str, frame: bytes) -> dict:
     if i != len(p):
         raise WireError("kind 28 payload length mismatch")
     out: dict = {"outcome": cls, "reason": word or "none"}
-    if cls != "accepted":
+    conflict = verb == "append" and cls == "refused" and word == "conflict"
+    if cls != "accepted" and not conflict:
         if q:
             raise WireError(f"non-accepted {cls} reply carries result bytes")
         return out
-    if verb in ("register", "position"):
+    if verb in ("register", "rebase", "position"):
         out.update(cursor=q.hex(), position=cursor_position(q))
     elif verb == "ack":
         if len(q) != 12:
@@ -575,13 +580,24 @@ def decode_cns_reply(verb: str, frame: bytes) -> dict:
             raise WireError("trailing bytes in append result")
         if evidence_raw[0] >= len(EVIDENCE_TYPES):
             raise WireError("invalid append evidence")
+        evidence = EVIDENCE_TYPES[evidence_raw[0]]
+        position = int.from_bytes(pos_raw, "big")
+        if conflict and (not mid_raw or evidence == "none" or numbers or receipt
+                         or (evidence == "committed") != (position != 0)):
+            raise WireError("inconsistent conflict evidence result")
+        if cls == "accepted":
+            if evidence != "committed" or not mid_raw or not numbers or not position:
+                raise WireError("incomplete committed APPEND result")
+            # v1 local receipt: version, origin lineage/domain/incarnation, then event.
+            if len(receipt) != 33 or receipt[0] != 1 or receipt[-8:] != pos_raw:
+                raise WireError("APPEND receipt does not identify the reported event")
         out.update(
             message_id=mid_raw.decode("latin-1"),
             domain=int.from_bytes(dom_raw, "big"),
-            position=int.from_bytes(pos_raw, "big"),
+            position=position,
             numbers=numbers.hex(),
             receipt=receipt.hex(),
-            evidence=EVIDENCE_TYPES[evidence_raw[0]],
+            evidence=evidence,
         )
     else:
         raise WireError(f"unknown consumer reply verb {verb}")
@@ -643,7 +659,7 @@ class ControlSession:
             self.sock.settimeout(float(kw.get("seconds", 30)) + 30.0)
         frame = build_cns_request(verb, **kw)
         return self._exchange(frame, verb, decode_cns_reply,
-                              mutating=verb in ("register", "ack", "append"))
+                              mutating=verb in ("register", "rebase", "ack", "append"))
 
     def bind_as(self, principal: str | None) -> dict | None:
         if not principal:
@@ -958,6 +974,8 @@ def cmd_init(args: argparse.Namespace, root: Path) -> int:
         FN2_OWNER_UID=env.get("FN2_OWNER_UID", str(os.getuid())),
     )
     apply_origin_options(args, env)
+    if getattr(args, "article_max", None) is not None:
+        env["FN2_ARTICLE_MAX"] = args.article_max
     if args.storage_fault_model is not None:
         env["FN2_STORAGE_FAULT_MODEL"] = args.storage_fault_model
     if groups:
@@ -1012,6 +1030,8 @@ def cmd_serve(args: argparse.Namespace, root: Path) -> int:
         FN2_OWNER_UID=env.get("FN2_OWNER_UID", str(os.getuid())),
     )
     apply_origin_options(args, env)
+    if getattr(args, "article_max", None) is not None:
+        env["FN2_ARTICLE_MAX"] = args.article_max
     if args.storage_fault_model is not None:
         env["FN2_STORAGE_FAULT_MODEL"] = args.storage_fault_model
     if args.host:
@@ -1150,6 +1170,22 @@ def cmd_stream_register(args: argparse.Namespace) -> int:
     if res["outcome"] == "accepted" and args.cursor_file:
         save_cursor_file(args.cursor_file, res)
     return emit(res, args.json)
+
+
+def cmd_stream_rebase(args: argparse.Namespace) -> int:
+    sock_path = require_control_sock(args)
+    consumer = encode_consumer_id(args.consumer)
+    with ControlSession(sock_path) as sess:
+        bound = sess.bind_as(args.as_principal)
+        if bound and bound["outcome"] != "accepted":
+            return emit(bound, args.json)
+        cursor, error = load_cursor_bytes(sess, args.cursor, args.cursor_file, consumer)
+        if error is not None:
+            return emit(error, args.json)
+        result = sess.cns("rebase", cursor=cursor, start=args.start)
+    if result["outcome"] == "accepted" and args.cursor_file:
+        save_cursor_file(args.cursor_file, result)
+    return emit(result, args.json)
 
 
 def cmd_stream_append(args: argparse.Namespace) -> int:
@@ -1542,6 +1578,8 @@ def build_parser() -> argparse.ArgumentParser:
                          help="recovery contract: broad (default) or crash-only")
 
     for origin_parser in (p_init, p_serve):
+        origin_parser.add_argument("--article-max", metavar="OCTETS",
+                                   help="article byte limit admitted by the node profile (default: 32768)")
         origin_parser.add_argument("--origin-lineage", metavar="ID",
                                    help="assigned lineage name (required here or FN2_ORIGIN_LINEAGE)")
         origin_parser.add_argument("--origin-domain", metavar="ID",
@@ -1584,6 +1622,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_sreg.add_argument("--start", choices=("history", "now"), default="history")
     p_sreg.add_argument("--cursor-file", type=Path, help="save issued cursor hex to file")
     _add_control_args(p_sreg)
+
+    p_sreb = stream_sub.add_parser("rebase", help="adopt current authority in a new durable epoch")
+    p_sreb.add_argument("--consumer", default="1", help="consumer id when querying committed position")
+    p_sreb.add_argument("--start", choices=("keep", "history"), default="keep")
+    p_sreb.add_argument("--cursor", help="issued fncu cursor hex")
+    p_sreb.add_argument("--cursor-file", type=Path, help="read and update the issued cursor in this file")
+    _add_control_args(p_sreb)
 
     p_sapp = stream_sub.add_parser("append", help="append an article over the local FNCT carrier")
     p_sapp.add_argument("--group", help="target newsgroup(s) for Newsgroups header")
@@ -1680,6 +1725,7 @@ def main(argv: list[str] | None = None, root: Path | None = None) -> int:
         if args.command == "stream":
             dispatch = {
                 "register": cmd_stream_register,
+                "rebase": cmd_stream_rebase,
                 "append": cmd_stream_append,
                 "fetch": cmd_stream_fetch,
                 "read": cmd_stream_read,

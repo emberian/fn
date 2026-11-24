@@ -19,12 +19,13 @@
 ; (tests/model/nntp_model.py, _article_block); the identity, group and
 ; clock checks after it are the transaction's.
 (in-package "ACL2")
+(include-book "upload-window-geometry")
 (include-book "grammar")
 (fn2-book-layer :d)
 
 ; The header limits (specs/article-parser.md's defaults; the store profile's
 ; fields 13-15 in fn1, profile keys here once D7's configuration lands).
-(defconst *fn2-upload-header-octets* 16384)
+
 (defconst *fn2-upload-header-lines* 256)
 (defconst *fn2-upload-header-fields* 64)
 ; RFC 5322 section 2.1.1: a physical line is at most 998 octets before CRLF.
@@ -252,7 +253,7 @@
 ; ------------------------------------------------------------------------
 ; Message-ID syntax as the stored-article check reads it (H's model,
 ; stored_msgid): "<" dot-atom "@" (dot-atom / "[" dtext* "]") ">", at most
-; 250 octets; atext is RFC 5322's.
+; *fn2-format-message-id-max* octets; atext is RFC 5322's.
 (defun fn2-upload-atextp (b)
   (declare (xargs :guard (natp b)))
   (or (and (<= 65 b) (<= b 90)) (and (<= 97 b) (<= b 122)) (and (<= 48 b) (<= b 57))
@@ -277,7 +278,7 @@
            (fn2-upload-dtext (- left 1) (+ 1 i) slot gen okind oslot ogen fn2-pool)))))
 (defun fn2-upload-msgid-p (s l slot gen okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp s) (natp l))))
-  (b* (((unless (and (<= 5 l) (<= l 250))) nil)
+  (b* (((unless (and (<= 5 l) (<= l *fn2-format-message-id-max*))) nil)
        ((mv ok1 lt) (fn2-gram-read slot gen s okind oslot ogen fn2-pool))
        ((mv ok2 gt) (fn2-gram-read slot gen (+ s l -1) okind oslot ogen fn2-pool))
        ((unless (and ok1 ok2 (= lt 60) (= gt 62))) nil)
@@ -326,12 +327,159 @@
             (t (fn2-upload-path-loop (- left 1) (+ 1 i) :text slot gen okind oslot ogen fn2-pool))))))
 ; Whether [s, s+l) contains "POSTED", case-insensitively (H's model:
 ; b"POSTED" in path.upper()).
+; The only proper prefix that is also a suffix after a mismatch is "P":
+; there is no other P inside POSTED.  Each step makes exactly one pool read.
+(defun fn2-upload-posted-next (prefix byte)
+  (declare (xargs :guard (and (natp prefix) (natp byte))))
+  (let ((b (fn2-gram-upcase byte)))
+    (cond ((= b 80) 1)
+          ((and (= prefix 1) (= b 79)) 2)
+          ((and (= prefix 2) (= b 83)) 3)
+          ((and (= prefix 3) (= b 84)) 4)
+          ((and (= prefix 4) (= b 69)) 5)
+          ((and (= prefix 5) (= b 68)) 6)
+          (t 0))))
+(defun fn2-upload-posted-run (left i prefix slot gen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :measure (nfix left)
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp left) (natp i) (natp prefix))))
+  (if (zp left) nil
+    (mv-let (ok byte) (fn2-gram-read slot gen i okind oslot ogen fn2-pool)
+      (let ((next (if ok (fn2-upload-posted-next prefix byte) 0)))
+        (or (= next 6)
+            (fn2-upload-posted-run (- left 1) (+ 1 i) next slot gen okind oslot ogen fn2-pool))))))
 (defun fn2-upload-posted (left i slot gen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool
+                  :guard (and (fn2-pool-wfp fn2-pool) (natp left) (natp i))))
+  (and (<= 6 (nfix left))
+       (fn2-upload-posted-run left i 0 slot gen okind oslot ogen fn2-pool)))
+; Proof-only statement of the original per-start matcher.  This is never
+; called by the served verdict; its recurrence fixes the old exact behavior,
+; including a failed read at one start and a later readable match.
+(defun fn2-upload-posted-naive-spec (left i slot gen okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool :measure (nfix left)
                   :guard (and (fn2-pool-wfp fn2-pool) (natp left) (natp i))))
   (cond ((< (nfix left) 6) nil)
         ((fn2-gram-match i 6 "POSTED" slot gen okind oslot ogen fn2-pool) t)
-        (t (fn2-upload-posted (- (nfix left) 1) (+ 1 (nfix i)) slot gen okind oslot ogen fn2-pool))))
+        (t (fn2-upload-posted-naive-spec (- (nfix left) 1) (+ 1 (nfix i))
+                                         slot gen okind oslot ogen fn2-pool))))
+; Proof-only completion of a prefix already consumed by the automaton.
+; A failed read ends this candidate; the independent naive search still
+; considers every later start. No statement assumes all reads succeed.
+(local
+ (defun fn2-upload-posted-completion (left i prefix slot gen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :verify-guards nil
+                  :measure (nfix (- 6 (nfix prefix)))))
+  (if (>= (nfix prefix) 6) t
+   (and (not (zp left))
+    (mv-let (ok byte) (fn2-gram-read slot gen (nfix i) okind oslot ogen fn2-pool)
+     (and ok
+          (equal (fn2-gram-upcase byte) (nth (nfix prefix) '(80 79 83 84 69 68)))
+          (fn2-upload-posted-completion (- (nfix left) 1) (+ 1 (nfix i))
+                                       (+ 1 (nfix prefix))
+                                       slot gen okind oslot ogen fn2-pool)))))))
+(local
+ (defthm fn2-upload-posted-completion-zero
+  (implies (and (natp left) (natp i))
+   (equal (fn2-upload-posted-completion left i 0 slot gen okind oslot ogen fn2-pool)
+          (and (<= 6 left)
+               (fn2-gram-match i 6 "POSTED" slot gen okind oslot ogen fn2-pool))))
+  :hints (("Goal"
+                  :expand ((:free (left i) (fn2-upload-posted-completion left i 0 slot gen okind oslot ogen fn2-pool))
+                           (:free (left i) (fn2-upload-posted-completion left i 1 slot gen okind oslot ogen fn2-pool))
+                           (:free (left i) (fn2-upload-posted-completion left i 2 slot gen okind oslot ogen fn2-pool))
+                           (:free (left i) (fn2-upload-posted-completion left i 3 slot gen okind oslot ogen fn2-pool))
+                           (:free (left i) (fn2-upload-posted-completion left i 4 slot gen okind oslot ogen fn2-pool))
+                           (:free (left i) (fn2-upload-posted-completion left i 5 slot gen okind oslot ogen fn2-pool))
+                           (:free (i) (fn2-gram-match-loop 0 i "POSTED" slot gen okind oslot ogen fn2-pool))
+                           (:free (i) (fn2-gram-match-loop 1 i "POSTED" slot gen okind oslot ogen fn2-pool))
+                           (:free (i) (fn2-gram-match-loop 2 i "POSTED" slot gen okind oslot ogen fn2-pool))
+                           (:free (i) (fn2-gram-match-loop 3 i "POSTED" slot gen okind oslot ogen fn2-pool))
+                           (:free (i) (fn2-gram-match-loop 4 i "POSTED" slot gen okind oslot ogen fn2-pool))
+                           (:free (i) (fn2-gram-match-loop 5 i "POSTED" slot gen okind oslot ogen fn2-pool)))
+                  :in-theory (enable fn2-upload-posted-completion
+                                     fn2-gram-match fn2-gram-match-loop)))))
+(local
+ (defthm fn2-upload-posted-completion-implies-naive
+  (implies (and (natp left) (natp i)
+                (fn2-upload-posted-completion left i 0 slot gen okind oslot ogen fn2-pool))
+           (fn2-upload-posted-naive-spec left i slot gen okind oslot ogen fn2-pool))
+  :hints (("Goal" :in-theory (enable fn2-upload-posted-naive-spec)))))
+(local
+ (defthm fn2-upload-posted-naive-short
+  (implies (< (nfix left) 6)
+           (not (fn2-upload-posted-naive-spec left i slot gen okind oslot ogen fn2-pool)))
+  :hints (("Goal" :in-theory (enable fn2-upload-posted-naive-spec)))))
+(local
+ (defthm fn2-upload-posted-naive-step-completion
+  (implies (and (natp left) (natp i) (not (zp left)))
+   (equal (fn2-upload-posted-naive-spec left i slot gen okind oslot ogen fn2-pool)
+          (or (fn2-upload-posted-completion left i 0 slot gen okind oslot ogen fn2-pool)
+              (fn2-upload-posted-naive-spec (- left 1) (+ i 1) slot gen okind oslot ogen fn2-pool))))
+  :rule-classes nil
+  :hints (("Goal" :expand ((fn2-upload-posted-naive-spec left i slot gen okind oslot ogen fn2-pool))
+                  :in-theory (disable fn2-upload-posted-completion fn2-gram-match)))) )
+(local
+ (defthm fn2-upload-posted-prefix-step
+  (implies (and (natp left) (natp i) (natp prefix) (< prefix 6) (not (zp left)))
+   (equal
+    (or (fn2-upload-posted-completion left i prefix slot gen okind oslot ogen fn2-pool)
+        (fn2-upload-posted-naive-spec left i slot gen okind oslot ogen fn2-pool))
+    (mv-let (ok byte) (fn2-gram-read slot gen i okind oslot ogen fn2-pool)
+     (let ((next (if ok (fn2-upload-posted-next prefix byte) 0)))
+      (or (= next 6)
+          (fn2-upload-posted-completion (- left 1) (+ i 1) next
+                                       slot gen okind oslot ogen fn2-pool)
+          (fn2-upload-posted-naive-spec (- left 1) (+ i 1)
+                                       slot gen okind oslot ogen fn2-pool))))))
+  :rule-classes nil
+  :hints (("Goal" :cases ((equal prefix 0) (equal prefix 1) (equal prefix 2)
+                          (equal prefix 3) (equal prefix 4) (equal prefix 5))
+                  :use fn2-upload-posted-naive-step-completion
+                  :expand ((:free (left i) (fn2-upload-posted-completion left i 6 slot gen okind oslot ogen fn2-pool))
+                           (fn2-upload-posted-completion left i 0 slot gen okind oslot ogen fn2-pool)
+                           (fn2-upload-posted-completion left i 1 slot gen okind oslot ogen fn2-pool)
+                           (fn2-upload-posted-completion left i 2 slot gen okind oslot ogen fn2-pool)
+                           (fn2-upload-posted-completion left i 3 slot gen okind oslot ogen fn2-pool)
+                           (fn2-upload-posted-completion left i 4 slot gen okind oslot ogen fn2-pool)
+                           (fn2-upload-posted-completion left i 5 slot gen okind oslot ogen fn2-pool))
+                  :in-theory (e/d (fn2-upload-posted-next)
+                                  (fn2-upload-posted-completion fn2-upload-posted-completion-zero
+                                   fn2-upload-posted-naive-spec fn2-gram-match fn2-gram-read))))))
+(local
+ (defthm fn2-upload-posted-next-natp
+  (natp (fn2-upload-posted-next prefix byte))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn2-upload-posted-next)))))
+(local
+ (defthm fn2-upload-posted-next-bound
+  (<= (fn2-upload-posted-next prefix byte) 6)
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (enable fn2-upload-posted-next)))))
+(local
+ (defthm fn2-upload-posted-prefix-invariant
+  (implies (and (natp left) (natp i) (natp prefix) (< prefix 6))
+   (equal (fn2-upload-posted-run left i prefix slot gen okind oslot ogen fn2-pool)
+          (or (fn2-upload-posted-completion left i prefix slot gen okind oslot ogen fn2-pool)
+              (fn2-upload-posted-naive-spec left i slot gen okind oslot ogen fn2-pool))))
+  :hints (("Goal" :induct (fn2-upload-posted-run left i prefix slot gen okind oslot ogen fn2-pool)
+                  :in-theory (e/d (fn2-upload-posted-run)
+                                  (fn2-upload-posted-completion fn2-upload-posted-naive-spec
+                                   fn2-upload-posted-next fn2-gram-match fn2-gram-read
+                                   fn2-upload-posted-completion-zero)))
+          ("Subgoal *1/3" :use fn2-upload-posted-prefix-step)
+          ("Subgoal *1/2" :use fn2-upload-posted-prefix-step)
+          ("Subgoal *1/1" :in-theory (enable fn2-upload-posted-completion
+                                            fn2-upload-posted-naive-spec)))))
+(defthm fn2-upload-posted-refines-naive-spec
+  (implies (and (fn2-pool-wfp fn2-pool) (natp left) (natp i))
+           (equal (fn2-upload-posted left i slot gen okind oslot ogen fn2-pool)
+                  (fn2-upload-posted-naive-spec left i slot gen okind oslot ogen fn2-pool)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn2-upload-posted-prefix-invariant (prefix 0)))
+                  :in-theory (e/d (fn2-upload-posted)
+                                  (fn2-upload-posted-run fn2-upload-posted-naive-spec
+                                   fn2-upload-posted-completion)))))
+(in-theory (disable fn2-upload-posted-naive-spec fn2-upload-posted-run fn2-upload-posted-next))
 (defun fn2-upload-path-ok (s l slot gen okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp s) (natp l))))
   (and (fn2-upload-path-loop l s :start slot gen okind oslot ogen fn2-pool)
@@ -402,6 +550,7 @@
 (assert-event
  (fn2-assert-compliant-p
   '(fn2-upload-octets fn2-upload-name fn2-upload-field-code fn2-upload-line fn2-upload-scan
-    fn2-upload-dot-atom fn2-upload-dtext fn2-upload-msgid-p fn2-upload-trim fn2-upload-path-ok
+    fn2-upload-dot-atom fn2-upload-dtext fn2-upload-msgid-p fn2-upload-trim
+    fn2-upload-posted-next fn2-upload-posted-run fn2-upload-posted fn2-upload-path-ok
     fn2-upload-verdict)
   (w state)))

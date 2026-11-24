@@ -1420,6 +1420,9 @@
                 :rule-classes (:rewrite ,@(fn2-arms-ok-rule-classes call outs k (+ k (len outs)) hyps))
                 :hints (("Goal" :in-theory (e/d (,name ,(fn2-columns-sym ok "-OF-TUPLE"))
                                                 (,ok ,(fn2-columns-sym ok "-OPEN") (:executable-counterpart tau-system)
+                                                 ;; The recognizer still reasons about natural indices
+                                                 ;; without splitting every path on NATP's definition.
+                                                 (:definition natp)
                                                  ,@(if ubp-open nil '(unsigned-byte-p)) min nfix nth ,@(fn2-arms-shape-fns ins) ,@readers
                                                  ,@(remove-duplicates-eq callees)))
                          :do-not '(generalize fertilize eliminate-destructors))))))))
@@ -2358,11 +2361,20 @@
     (remove-eq name
       (fn2-arms-resource-stobj-callees
         (all-fnnames (getpropc name 'unnormalized-body nil world)) world))))
+(defun fn2-arms-quantity-projection-rules (hyps projections)
+  (declare (xargs :verify-guards nil))
+  (if (atom projections) nil
+    (let ((q (car projections)))
+      (append (fn2-run-quantity-rewrites hyps
+                `((acl2-numberp ,q) (integerp ,q) (<= 0 ,q)))
+              `((:linear :corollary (implies (and ,@hyps) (<= 0 ,q))))
+              (fn2-arms-quantity-projection-rules hyps (cdr projections))))))
 (defun fn2-arms-child-quantities-event-with-residual (name work-limit residual world)
   (declare (xargs :verify-guards nil))
   (let* ((ins (car (fn2-arms-sig name world)))
          (formals (getpropc name 'formals nil world))
          (call (cons name formals))
+         (opaque (cdr (assoc-eq name (table-alist 'fn2-arms-quantity-opaque world))))
          (hyps (append (fn2-arms-child-shape-hyps ins)
                        (list (getpropc name 'guard t world))))
          (terms (fn2-run-quantity-terms call residual work-limit
@@ -2372,12 +2384,17 @@
                 (and (fn2-run-quantitiesp (car ,call) (mv-nth 1 ,call)
                                      (mv-nth 2 ,call) ,residual ,work-limit)
                      ,(nth 5 terms)))
-       :rule-classes ,(fn2-run-quantity-rules hyps terms)
+       ; Enclosing arms consume natural projections in addition guards and
+       ; bounds. Direct rules let ACL2 establish the callee's hypotheses
+       ; through the setters that led to the call.
+       :rule-classes ,(append (fn2-run-quantity-rules hyps terms)
+                              (fn2-arms-quantity-projection-rules
+                                hyps (strip-cadrs (take 3 terms))))
        :hints (("Goal" :in-theory (e/d (,name fn2-run-quantitiesp)
                        (nfix nth ,@(fn2-arms-shape-fns ins)
                         ,@(fn2-arms-rows-fns ins)
                         ,@(fn2-arms-quantity-readers ins world)
-                        ,@(fn2-arms-resource-callees name world))))))))
+                        ,@(fn2-arms-resource-callees name world) ,@opaque)))))))
 ; Public arms account against the caller budget. Internal chain suffixes
 ; account against their static descriptor bound; the outer admission relates
 ; that bound to the budget before any effects run.
@@ -2548,8 +2565,11 @@
   (declare (xargs :verify-guards nil))
   (case mode
     (:core (fn2-arms-fn-events name kind observe acc code contract world))
-    (:children (fn2-arms-child-fn-events name kind observe acc code world))
+    ((:children :child-plan) (fn2-arms-child-fn-events name kind observe acc code world))
     (otherwise (fn2-arms-wrapper-events name kind observe contract world))))
+(defun fn2-arms-event-group (mode name events)
+  (declare (xargs :verify-guards nil))
+  (if (eq mode :child-plan) (list (cons name events)) events))
 ; Sub-arms callee first (fn2-arms-sub-order): each sees the ones it may :goto.
 ; A sub-arm with a problem is recorded :failed (its callers then say so instead
 ; of reporting it missing) and the walk goes on, so every problem is reported.
@@ -2568,13 +2588,15 @@
                            (append subs (list (cons name (fn2-decl-set :failed t (fn2-decl-set :src (list steps refusal subs) acc)))))
                            events (append errs (list (msg "sub-arm ~x0: ~@1" name err))) mode world)
           (fn2-arms-subs kind (cdr entries) (append subs (list (cons name (fn2-decl-set :src (list steps refusal subs) acc))))
-            (append events
-                    (and (not (eq mode :wrappers)) (fn2-arm-get :aux acc))
-                    (case mode
-                      (:core (fn2-arms-fn-events (fn2-arms-fn-name kind "-SUB-" name) kind nil acc code
-                                                 (fn2-arms-contract kind nil nil nil acc world) world))
-                      (:children (fn2-arms-child-fn-events (fn2-arms-fn-name kind "-SUB-" name) kind nil acc code world))
-                      (otherwise nil)))
+            (let ((fn (fn2-arms-fn-name kind "-SUB-" name)))
+              (append events
+                (fn2-arms-event-group mode fn
+                  (append (and (not (eq mode :wrappers)) (fn2-arm-get :aux acc))
+                          (case mode
+                            (:core (fn2-arms-fn-events fn kind nil acc code
+                                                       (fn2-arms-contract kind nil nil nil acc world) world))
+                            ((:children :child-plan) (fn2-arms-child-fn-events fn kind nil acc code world))
+                            (otherwise nil))))))
             errs mode world)))))))
 ; The sub-arms a step tree names in (:goto NAME ...).
 (defun fn2-arms-goto-targets (x fuel)
@@ -2648,8 +2670,10 @@
                    (contract (fn2-arms-contract kind tag observe from acc world)))
               (fn2-arms-arms kind (cdr entries) observe subs
                              (append entries-out (list (list* tag name contract)))
-                             (append events (and (not (eq mode :wrappers)) (fn2-arm-get :aux acc))
-                                     (fn2-arms-mode-events mode name kind observe acc code contract world))
+                             (append events
+                               (fn2-arms-event-group mode name
+                                 (append (and (not (eq mode :wrappers)) (fn2-arm-get :aux acc))
+                                         (fn2-arms-mode-events mode name kind observe acc code contract world))))
                              errs mode world genesis))))))))
 ; Reachability (D F12): the phases no arm or handler's :next names, other
 ; than the entry phases (the first, :free, the admission's and the take's,
@@ -2698,7 +2722,7 @@
                                      nil subs nil nil errs mode world t)
                     (mv errs nil nil)))
                 (if errs (mv (fn2-arm-problems (msg "~x0 " kind) errs) nil)
-              (mv nil `(progn ,@(and (not (eq mode :children))
+              (mv nil `(progn ,@(and (not (member-eq mode '(:children :child-plan)))
                                      (let ((unreached (fn2-arms-unreached kind (append conts gen) obs world)))
                                        `((table fn2-machine-arm-contracts ',kind
                                                 '(:continuations ,conts :observes ,obs :genesis-arm ,gen
@@ -2706,6 +2730,44 @@
                                          ,@(and unreached
                                                 `((value-triple (cw "~x0: no arm reaches the phases ~x1.~%" ',kind ',unreached)))))))
                               ,@sub-events ,@run-events ,@obs-events ,@gen-events)))))))))))
+(defun fn2-arms-flatten-groups (groups)
+  (declare (xargs :verify-guards nil))
+  (if (atom groups) nil
+    (append (cdar groups) (fn2-arms-flatten-groups (cdr groups)))))
+(defun fn2-arms-child-plan-event (kind world)
+  (declare (xargs :verify-guards nil))
+  (mv-let (err grouped) (fn2-arms-events kind :child-plan world)
+    (mv-let (ordinary-err ordinary) (fn2-arms-events kind :children world)
+      (cond ((assoc-eq kind (table-alist 'fn2-arms-child-plans world))
+             (mv (msg "Child plan already exists for ~x0." kind) nil))
+            (err (mv err nil))
+            (ordinary-err (mv ordinary-err nil))
+            ((or (atom (cdr grouped))
+                 (not (no-duplicatesp-eq (strip-cars (cdr grouped))))
+                 (not (equal (fn2-arms-flatten-groups (cdr grouped)) (cdr ordinary))))
+             (mv (msg "Child plan differs from the ordinary event stream for ~x0." kind) nil))
+            (t (mv nil `(table fn2-arms-child-plans ',kind ',(cdr grouped))))))))
+(defun fn2-arms-child-shard-events (kind from through world)
+  (declare (xargs :verify-guards nil))
+  (let* ((plan (cdr (assoc-eq kind (table-alist 'fn2-arms-child-plans world))))
+         (progress (cdr (assoc-eq kind (table-alist 'fn2-arms-child-progress world))))
+         (labels (strip-cars plan))
+         (start (if (eq from :start) 0
+                  (+ 1 (nfix (position-eq from labels)))))
+         (end (if (eq through :end) (len labels)
+                (+ 1 (nfix (position-eq through labels))))))
+    (if (and plan (eq from (or progress :start)) (< start end)
+             (or (eq from :start) (member-eq from labels))
+             (or (eq through :end) (member-eq through labels)))
+        (mv nil `(progn
+                   ,@(fn2-arms-flatten-groups (take (- end start) (nthcdr start plan)))
+                   (table fn2-arms-child-progress ',kind ',through)))
+      (mv (msg "Child shard for ~x0 cannot advance from ~x1 through ~x2 (last boundary ~x3)."
+               kind from through progress) nil))))
+(defmacro fn2-arms-child-shard (kind from through)
+  `(make-event
+    (mv-let (err events) (fn2-arms-child-shard-events ',kind ',from ',through (w state))
+      (if err (er soft 'fn2-arms-child-shard "~@0" err) (value events)))))
 ; ----------------------------------------------------------------------
 ; P2 / Fable A1: a defcost with :child auto-emits its :core stobj-let face
 ; (and fn2-core-preserves when it returns a stobj).
@@ -2789,7 +2851,7 @@
                (value `(table fn2-machine-arm-bodies ',',kind
                               '(:arms ,',arms :subarms ,',subarms :observe-arms ,',observes :genesis ,',genesis
                                 :book ,(fn2-decl-current-book)))))))
-     ,@(and (eq mode :children)
+     ,@(and (member-eq mode '(:children :child-plan))
             `((make-event
                (mv-let (err events) (fn2-arms-link-events ',kind (fn2-arms-links ',kind (w state)) (w state))
                  (if err (er soft 'defmachine-arms "~@0" err) (value (cons 'progn events)))))))
@@ -2797,9 +2859,13 @@
             `((make-event
                (mv-let (err events) (fn2-arms-link-core-events ',kind (fn2-arms-links ',kind (w state)) (w state))
                  (if err (er soft 'defmachine-arms "~@0" err) (value (cons 'progn events)))))))
-     ,@(and (not (member-eq mode '(:children :declare)))
+     ,@(and (not (member-eq mode '(:children :child-plan :declare)))
             `((defcost-faces ,kind)))
-     ,@(and (not (eq mode :declare))
+     ,@(and (eq mode :child-plan)
+            `((make-event
+               (mv-let (err event) (fn2-arms-child-plan-event ',kind (w state))
+                 (if err (er soft 'defmachine-arms "~@0" err) (value event))))))
+     ,@(and (not (member-eq mode '(:child-plan :declare)))
             `((make-event
                (mv-let (err form) (fn2-arms-events ',kind ',mode (w state))
                  (if err (er soft 'defmachine-arms "~@0" err) (value form))))))))
@@ -2844,8 +2910,9 @@
          (copies (fn2-arm-get :copy spec))
          (phase (fn2-arms-phase-constant kind (fn2-arm-get :phase spec)))
          (tuple (cons kind *fn2-arms-registry-children*))
+         (inputs (fn2-machine-range-inputs specs))
          (name (fn2-arms-child-name (fn2-columns-sym (if adm 'fn2-machine-admit- 'fn2-machine-take-) (symbol-name kind))))
-         (formals (append (if adm '(index nonce) '(waiter)) copies '(ordinal kind) tuple))
+         (formals (append (if adm '(index nonce) '(waiter)) copies '(ordinal kind) tuple inputs))
          (rowkind (fn2-arm-get :rows tk))
          (reason (and tk (fn2-columns-pre "*" (fn2-columns-sym 'fn2-wait- (concatenate 'string (symbol-name rowkind) "*")))))
          (park `(fn2-machines-park-taken waiter ordinal ,reason fn2-machines fn2-control))
@@ -2854,6 +2921,7 @@
                 ,@(fn2-machine-range-puts specs 0)
                 ,@(fn2-machine-copy-puts copies)
                 ,@(fn2-machine-zero-puts (fn2-arm-get :clear spec))
+                ,@(fn2-arm-get :set spec)
                 (wait-reason *fn2-wait-none*)))
          (install
           `(mv-let (fn2-machines fn2-control)
@@ -2887,10 +2955,13 @@
                  (declare (ignorable gen))
                  ,(fn2-arms-registry-reserves specs 0 install fail)))))))
     (if (not spec) (er hard 'defmachine-registry "~x0 is neither admitted nor taken." kind)
+      (if (fn2-machine-range-provider-problem specs world)
+          (er hard 'defmachine-registry "~@0" (fn2-machine-range-provider-problem specs world))
       `((defun ,name ,formals
-          (declare (xargs :stobjs ,tuple
+          (declare (xargs :stobjs ,(append tuple inputs)
                           :guard (and (,(fn2-arms-sym kind "-WFP") ,kind) (fn2-machines-wfp fn2-machines)
                                       (fn2-pool-wfp fn2-pool) (fn2-control-wfp fn2-control)
+                                      ,@(fn2-arms-child-shape-hyps inputs)
                                       ,@(and adm '((unsigned-byte-p 32 index) (unsigned-byte-p 32 nonce)))
                                       ,@(fn2-machine-copy-guards copies kind world))
                           :guard-hints (("Goal" :in-theory (disable (:executable-counterpart tau-system)
@@ -2905,10 +2976,10 @@
         (in-theory (disable ,name))
         ;; the directory it threads keeps every id's kind, slot and rows
         (fn2-machines-keeps-directory ,name ,formals ,(if adm 2 4) nil ,(fn2-machines-keeps-directory-hints name world))
-        ,@(fn2-arms-ok-shape-events name (cons name formals) (if adm 1 3) tuple tuple
+        ,@(fn2-arms-ok-shape-events name (cons name formals) (if adm 1 3) tuple (append tuple inputs)
             (append (list 'fn2-machines-slot 'fn2-machines-kind (fn2-arms-sym kind "-ROWS"))
                     (fn2-arms-column-readers kind (fn2-machine-property kind :table world))
                     (fn2-arms-column-readers 'fn2-machines *fn2-machine-directory-fields*))
-            *fn2-arms-registry-callees* t world)))))
+            *fn2-arms-registry-callees* t world))))))
 (defmacro defmachine-registry (kind)
   `(make-event (value (cons 'progn (fn2-arms-registry-events ',kind (w state))))))
