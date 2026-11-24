@@ -95,15 +95,14 @@
  (declare (xargs :verify-guards nil))
  (if (or (zp n) (atom rows)) idx (fn2-run-restart-distance-induct (1- n) (cdr rows) (1+ idx)))))
 
-(local
- (defthm fn2-run-lower-bound-reached-by-row
+(defthm fn2-run-lower-bound-reached-by-row
  (implies (and (natp idx) (natp n)
                (or (<= (len rows) n) (not (eq (fn2-run-key-order-spec key (nth n rows) query) :lt))))
           (<= (cadr (fn2-run-lower-bound-spec key rows query idx)) (+ idx n)))
  :rule-classes nil
  :hints (("Goal" :induct (fn2-run-restart-distance-induct n rows idx)
           :expand ((fn2-run-lower-bound-spec key rows query idx) (nth n rows) (len rows))
-          :in-theory (disable fn2-run-key-order-spec)))))
+          :in-theory (disable fn2-run-key-order-spec))))
 
 (defthm fn2-run-overview-seek-restart-interval
  (let* ((base (+ rb *fn2-run-reader-entry*)) (end (fn2-run-directory rb f)) (query (fn2-overview-range-key-at qbase f))
