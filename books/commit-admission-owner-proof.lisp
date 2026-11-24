@@ -3,6 +3,7 @@
 ; index distinguish its write even when a batch reuses an old row.
 (in-package "ACL2")
 (include-book "commit-admission-member-proof")
+(include-book "commit-settled-reservation-proof")
 (fn2-book-layer :b)
 
 (defun fn2-ctp-recorded-member-owners-p (rows admissions)
@@ -72,7 +73,7 @@
  :hints (("Goal" :induct (fn2-ctp-member-fields-range start count fn2-commit-member)
           :in-theory (disable assoc-equal fn2-ctp-member-fields fn2-commit-member-rows))))
 
-(defthm fn2-ctp-fresh-member-install-is-total
+(defthm fn2-ctp-reserved-fresh-member-replaces-one-row
  (b* ((oslot (+ 3 i)) (admission (list i :ok batch event t records))
       ((mv code settled &) (fn2-cs-reserve 9 oslot 5 fn2-commit-settled))
       (after (fn2-commit-member-put r (kind *fn2-commit-member-kind-txn*)
@@ -87,18 +88,25 @@
                 (unsigned-byte-p 32 oslot) (natp r) (< r *fn2-commit-member-count*)
                 (< r (fn2-commit-member-rows fn2-commit-member)))
            (and (eq code :ok)
-                (fn2-ctp-totalp code slot gen len oslot
-                                (cons before-rows before-rest) (cons after-rows after-rest))
+                (let ((row (list *fn2-commit-member-kind-txn* slot gen len 9 oslot 5 event settled)))
+                 (and (not (equal row (nth r before-rows)))
+                      (equal after-rows (update-nth r row before-rows))))
                 (fn2-ctp-recorded-member-owners-p after-rows
                                                   (append admissions (list admission))))))
  :rule-classes nil
- :hints (("Goal" :use ((:instance fn2-ctp-reserved-member-admission-observation
-                                  (oslot (+ 3 i)))
+ :hints (("Goal" :use ((:instance fn2-cs-room-implies-reservation
+                                  (okind 9) (oslot (+ 3 i)) (ogen 5))
+                       (:instance fn2-ctp-member-at-range-index
+                                  (start 0) (count *fn2-commit-member-count*))
+                       (:instance fn2-ctp-member-range-of-install
+                                  (start 0) (count *fn2-commit-member-count*) (okind 9) (ogen 5)
+                                  (oslot (+ 3 i))
+                                  (settled (mv-nth 1 (fn2-cs-reserve 9 (+ 3 i) 5 fn2-commit-settled))))
                        (:instance fn2-ctp-fresh-index-differs-from-member
                                   (settled (mv-nth 1 (fn2-cs-reserve 9 (+ 3 i) 5 fn2-commit-settled)))))
           :in-theory (disable fn2-cs-reserve fn2-cs-free-count fn2-commit-settled-rows
-                              fn2-ctp-totalp fn2-ctp-member-fields fn2-ctp-member-fields-range
-                              fn2-commit-member-rows assoc-equal fn2-ctp-recorded-member-owners-p))))
+                              fn2-ctp-member-fields fn2-ctp-member-fields-range
+                              fn2-ctp-member-range-of-install fn2-commit-member-rows assoc-equal fn2-ctp-recorded-member-owners-p))))
 
 ; A keyed start can reuse a row formerly occupied by a transaction.
 (defthm fn2-ctp-member-fields-of-keyed-write
@@ -110,8 +118,8 @@
                   (if (equal i r)
                       (list *fn2-commit-member-kind-keyed-mutation* 0 0 0 okind oslot ogen event settled)
                     (fn2-ctp-member-fields i fn2-commit-member)))))
- :hints (("Goal" :in-theory (e/d (fn2-ctp-member-fields-from-snapshot)
-                                 (fn2-ctp-member-fields fn2-commit-member-rows
+ :hints (("Goal" :in-theory (e/d (fn2-ctp-member-fields)
+                                 (fn2-commit-member-rows
                                   fn2-commit-member-row-snapshot)))))
 
 (defthm fn2-ctp-keyed-write-preserves-recorded-owners
@@ -133,7 +141,14 @@
   (equal (car (fn2-ctp-member-fields i fn2-commit-member))
          (and (< (nfix i) (fn2-commit-member-rows fn2-commit-member))
               (fn2-commit-member-kind i fn2-commit-member)))
-  :hints (("Goal" :in-theory '(fn2-ctp-member-fields car-cons (:e car))))))
+  :hints (("Goal" :in-theory (e/d (fn2-ctp-member-fields fn2-commit-member-row-snapshot)
+                                    (fn2-commit-member-rows fn2-commit-member-kind
+                                     fn2-commit-member-slot fn2-commit-member-gen
+                                     fn2-commit-member-len fn2-commit-member-okind
+                                     fn2-commit-member-oslot fn2-commit-member-ogen
+                                     fn2-commit-member-event fn2-commit-member-settled
+                                     fn2-commit-member-entries fn2-commit-member-entry-bytes
+                                     fn2-commit-member-schema))))))
 
 (local
  (defthm fn2-ctp-member-kind-after-init
