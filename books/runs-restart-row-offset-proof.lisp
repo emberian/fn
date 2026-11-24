@@ -80,3 +80,20 @@
                          (fn2-run-row-offset (* j *fn2-run-restart-interval*) layout rows off)))))
   :hints (("Goal" :use ((:instance fn2-run-specified-restart-row-offset (i 0)))
            :in-theory (disable fn2-run-restart-offsets-spec fn2-run-row-offset))))
+
+(local
+ (defthm fn2-run-restart-intervals-cover-remaining-rows
+   (implies (natp i)
+            (<= (len rows)
+                (+ (fn2-run-distance-to-restart i)
+                   (* *fn2-run-restart-interval* (len (fn2-run-restart-offsets-spec layout rows i off))))))
+   :rule-classes nil
+   :hints (("Goal" :induct (fn2-run-restart-offsets-spec layout rows i off)
+            :do-not '(preprocess)
+            :expand ((:free (k) (fn2-run-restart-offsets-spec layout rows k off)) (len rows))
+            :in-theory (disable fn2-run-distance-to-restart (:definition fn2-run-restart-offsets-spec) fn2-layout-octets mod)))))
+
+(defthmd fn2-run-page-restarts-cover-rows
+  (<= (len rows) (* *fn2-run-restart-interval* (len (fn2-run-restart-offsets-spec layout rows 0 off))))
+  :hints (("Goal" :use ((:instance fn2-run-restart-intervals-cover-remaining-rows (i 0)))
+           :in-theory (disable fn2-run-restart-offsets-spec))))
