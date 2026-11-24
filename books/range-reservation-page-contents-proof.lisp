@@ -32,8 +32,7 @@
      (implies (and (posp free) (fn2-range-pool-available-p free p) (fn2-pool-mrefp owner os og)
                    (natp slot) (< slot (- 327 free))) ,@body)))
 
-(local
- (defthm fn2-range-new-reservation-keeps-earlier-reads
+(defthm fn2-range-new-reservation-keeps-earlier-reads
    (fn2-range-earlier-page-bindings
     (and (equal (fn2-pool-base slot after) (fn2-pool-base slot p))
          (equal (fn2-pool-read slot gen off pk ps pg after) (fn2-pool-read slot gen off pk ps pg p))
@@ -44,7 +43,7 @@
             :in-theory (e/d (fn2-range-pool-available-p)
                       (fn2-range-free-suffix-p fn2-pool-reserve fn2-pool-base fn2-pool-read fn2-layout-range-code
                        fn2-pool-mrefp fn2-pool-rows fn2-pool-nclasses fn2-pool-capacity-bytes fn2-pool-credit-configured
-                       fn2-pool-class-countsi fn2-pool-class-headsi))))))
+                       fn2-pool-class-countsi fn2-pool-class-headsi)))))
 
 (defthmd fn2-range-reserve-keeps-earlier-page-bytes
   (fn2-range-earlier-page-bindings
