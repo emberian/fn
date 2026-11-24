@@ -292,6 +292,8 @@
   :doc "Wake the upload this transaction held, if it still names it, so it drains.")
 (defcost fn2-txn-groups-limit
   :doc "Profile-configured cross-post group limit (:max-groups-per-article, D27).")
+(defcost fn2-txn-upload-location-hashes-bytes
+  :doc "Byte length of the sealed upload's location hashes.")
 
 (defmachine-arms fn2-txn :declare
  :subarms
@@ -542,7 +544,7 @@
                                                           h (:read upload request-principal) row-lines
                                                           le lep lal
                                                           (:read upload lslot) (:read upload lgen) *fn2-upload-page-stored-source*
-                                                          *fn2-upload-page-location-hashes* (* 32 (:read upload location-hashed))
+                                                          *fn2-upload-page-location-hashes* (fn2-txn-upload-location-hashes-bytes row-upload row-upload-gen)
                                                           (:read upload op)
                                                           :owner upload))
                        (:if (eq pcode :ok)
@@ -612,8 +614,8 @@
                               (:charge :bytes *fn2-txn-ready-bytes* :steps *fn2-work-transition* :runnable t))
                              ((:set (word *fn2-upload-word-duplicate*))
                               (:next :refused)
-                              (:charge :bytes *fn2-txn-ready-bytes* :steps *fn2-work-transition* :runnable t)))))
-                 ((:capacity) (:goto ready-capacity))))))))))
+                              (:charge :bytes *fn2-txn-ready-bytes* :steps *fn2-work-transition* :runnable t))))))
+                 ((:capacity) (:goto ready-capacity)))))))))
   (:batched :on-refusal ((:stop :machine-phase))
    (:do (tcode tbatch tevent tout)
         (fn2-commit-take :owner upload)
@@ -649,8 +651,8 @@
                                 (:next :refused) (:charge :steps *fn2-work-transition* :runnable t))
                                ((:set (word *fn2-upload-word-not-stored*))
                                 (:next :refused) (:charge :steps *fn2-work-transition* :runnable t))))
-                         (t (:stop :machine-phase)))))
-                 ((:stop :machine-phase))))))
+                         (t (:stop :machine-phase))))
+                 ((:stop :machine-phase)))))))
   (:accepted (:goto reply))
   (:refused (:goto reply))
   ;; A recoverable record may exist. Notify once and retain the claim,
@@ -705,6 +707,16 @@
   (<= (fn2-txn-groups-limit fn2-core) *fn2-txn-groups-max*)
   :rule-classes :linear)
 (in-theory (disable fn2-txn-groups-limit))
+(defun fn2-txn-upload-location-hashes-bytes (u ug fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (if (and (eq (fn2-upload-snapshot-read-code u fn2-core) :ok)
+           (equal (fn2-machine-generation u fn2-core) ug))
+      (* 32 (fn2-upload-row-location-hashed u fn2-core))
+    0))
+(defthm fn2-txn-upload-location-hashes-bytes-natp
+  (natp (fn2-txn-upload-location-hashes-bytes u ug fn2-core))
+  :rule-classes (:rewrite :type-prescription))
+(in-theory (disable fn2-txn-upload-location-hashes-bytes))
 (defthm fn2-txn-hash-type
   (unsigned-byte-p 32 (mv-nth 1 (fn2-txn-hash n slot gen off okind oslot ogen fn2-core)))
   :hints (("Goal" :in-theory (e/d (fn2-txn-hash) (unsigned-byte-p)))))
