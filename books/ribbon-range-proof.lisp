@@ -16,6 +16,7 @@
 (include-book "runs-builder-directory-contents-proof")
 (include-book "runs-builder-headed-page-proof")
 (include-book "runs-builder-full-page-proof")
+(include-book "runs-builder-promoted-row-proof")
 (include-book "runs-build-sealed-page-proof")
 (include-book "runs-build-root-proof")
 
