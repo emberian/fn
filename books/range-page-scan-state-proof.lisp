@@ -11,8 +11,7 @@
         (fn2-run-overview-page-rowsp level (cdr rows) base slot gen
           (fn2-run-overview-next-offset level (car rows) off) end pk ps pg f pool))))
 
-(local
- (defthm fn2-run-page-rows-use-field-count
+(defthm fn2-run-page-rows-use-field-count
  (implies (equal (fn2-fields-rows f2) (fn2-fields-rows f))
           (equal (fn2-run-overview-page-rowsp level rows base slot gen off end pk ps pg f2 pool)
                  (fn2-run-overview-page-rowsp level rows base slot gen off end pk ps pg f pool)))
@@ -20,7 +19,7 @@
  :hints (("Goal" :induct (fn2-run-overview-page-rowsp level rows base slot gen off end pk ps pg f pool)
           :in-theory (e/d (fn2-run-overview-row-atp)
             (fn2-run-overview-next-offset fn2-run-values-layoutp unsigned-byte-p fn2-layout-octets
-             fn2-run-read-bytes fn2-poolp fn2-pool-wfp fn2-pool-base fn2-layout-range-code fn2-fields-rows))))))
+             fn2-run-read-bytes fn2-poolp fn2-pool-wfp fn2-pool-base fn2-layout-range-code fn2-fields-rows)))))
 
 (defmacro fn2-run-page-entry-count (rb f)
  `(fn2-run-header-value ,rb (+ *fn2-run-c-header-fields* *fn2-run-page-header-field-entries*) ,f))
