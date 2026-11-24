@@ -7,6 +7,7 @@
 (include-book "range-overlay-head-proof")
 (include-book "range-seek-step-proof")
 (include-book "range-stored-leaf-row-proof")
+(include-book "range-page-resume-proof")
 (include-book "range-installed-cursor-proof")
 (include-book "runs-overview-builder-cursor-proof")
 (include-book "runs-build-close-proof")
