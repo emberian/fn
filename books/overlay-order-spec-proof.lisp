@@ -233,11 +233,10 @@
   :hints (("Goal" :in-theory (disable fn2-run-key-order-spec-flips fn2-ov-sort-insert-spec))))
 
 ; Sortedness, given distinct keys.
-(local
- (defthm fn2-ov-key-absent-after-insert
-   (implies (and (fn2-ov-key-absent-spec key x s) (not (eq (fn2-run-key-order-spec key x e) :eq)))
-            (fn2-ov-key-absent-spec key x (fn2-ov-sort-insert-spec key e s)))
-   :hints (("Goal" :induct (fn2-ov-sort-insert-spec key e s) :in-theory (disable fn2-run-key-order-spec-flips)))))
+(defthm fn2-ov-key-absent-after-insert
+  (implies (and (fn2-ov-key-absent-spec key x s) (not (eq (fn2-run-key-order-spec key x e) :eq)))
+           (fn2-ov-key-absent-spec key x (fn2-ov-sort-insert-spec key e s)))
+  :hints (("Goal" :induct (fn2-ov-sort-insert-spec key e s) :in-theory (disable fn2-run-key-order-spec-flips))))
 
 (local
  (defthm fn2-ov-key-absent-of-sort
