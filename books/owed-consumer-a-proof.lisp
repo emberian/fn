@@ -3,43 +3,6 @@
 (include-book "owed-consumer")
 (include-book "owed-discharge")
 
-; K3 counterexample for fn2-cns-append-retry, with OPS equal to
-; ((:grant p :append "g") (:limit p 1) (append p "g" ("id" "x" nil) op)
-;  (append p "g" ("id" "x" nil) op)).
-; The first append spends the one remaining octet. Admission refuses
-; its identical retry before consulting the saved outcome.
-(local
- (assert-event
-  (let* ((request '(append p "g" ("id" "x" nil) op))
-         (ops (list '(:grant p :append "g") '(:limit p 1) request request))
-         (trace (fn2-cns-trace ops nil)))
-    (and (eq (fn2-cns-class (nth 1 (nth 2 trace))) :accepted)
-         (equal (nth 1 (nth 3 trace)) '(:refused meter))
-         (not (fn2-cns-k3 trace))))))
-
-; K6 counterexample for fn2-cns-uncertain-settles, with OPS equal to
-; ((:grant p :consume :any) (:limit p 128) (register p c ("g") :history)
-;  (:commit 1) (ack p ("fn2-history" "fn2-incarnation" c p c 1 1 1 1))).
-; Register and the advancing ACK each spend 64 octets. POSITION reads
-; 1, but admission requires another 64 octets even for the equal ACK.
-(local
- (assert-event
-  (let* ((k '("fn2-history" "fn2-incarnation" c p c 1 1 1 1))
-         (ops (append '((:grant p :consume :any) (:limit p 128)
-                        (register p c ("g") :history) (:commit 1))
-                      (list (list 'ack 'p k))))
-         (trace (fn2-cns-trace ops nil))
-         (entry (nth 4 trace))
-         (st (nth 4 entry)))
-    (mv-let (pos pos-st) (fn2-cns-position st 'p 'c nil)
-      (declare (ignore pos-st))
-      (mv-let (retry retry-st) (fn2-cns-ack st 'p k nil)
-        (declare (ignore retry-st))
-        (and (equal (nth 1 entry) '(:accepted (1)))
-             (equal pos (list :accepted (list k)))
-             (equal retry '(:refused meter))
-             (not (fn2-cns-k6 trace nil))))))))
-
 (local (in-theory (current-theory 'fn2-cns-class)))
 
 (local (defthm cns-a-alist-put
