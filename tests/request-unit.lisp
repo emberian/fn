@@ -4,7 +4,7 @@
 ;; 4/n-b). Machine ids stand for parked rows (the FIFO links are the
 ;; directory's; the kind of the row is immaterial to the ledger).
 (in-package "ACL2")
-(include-book "../books/owed-accounts")
+(include-book "../books/owed-accounts-proof")
 (include-book "std/util/bstar" :dir :system)
 
 ;; Three principals and request capacity 8: slot 1 holds a request reserve
