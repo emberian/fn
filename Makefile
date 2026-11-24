@@ -182,6 +182,7 @@ ACL2_BOOKS = \
   books/commit-durable-all \
   books/commit-durable-children \
   books/commit-format \
+  books/commit-member-install-proof \
   books/commit-members \
   books/commit-proof \
   books/commit-proof-theory \
