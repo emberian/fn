@@ -1,5 +1,5 @@
 (in-package "ACL2")
-(include-book "ribbon")
+(include-book "ribbon-digest-check-proof")
 
 (local
  (defthm fn2-ribbon-common-prefix-injective
