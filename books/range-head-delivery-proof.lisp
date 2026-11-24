@@ -114,7 +114,10 @@
          (result (fn2-range-deliver g r sources f pool)))
     (implies (fn2-overview-delivery-fitp g r sources f)
              (and (equal (car result) (if entryp :entry :end))
-                  (implies entryp (equal (fn2-ranges-out g (mv-nth 1 result)) eb)))))
+                  (implies entryp
+                    (and (equal (fn2-ranges-out g (mv-nth 1 result)) eb)
+                         (equal (mv-nth 3 result)
+                                (mv-nth 1 (fn2-range-successor 3 eb (fn2-ranges-qbase g r) f))))))))
   :hints (("Goal" :do-not '(preprocess)
            :cases ((fn2-overview-winner g r sources f))
            :use ((:instance fn2-overview-winner-fits (n (fn2-ranges-scount g r)) (base (fn2-ranges-sbase g r))))
