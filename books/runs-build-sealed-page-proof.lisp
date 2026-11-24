@@ -39,6 +39,29 @@
    :hints (("Goal" :in-theory (e/d (fn2-run-builds-wbase fn2-run-builds-set-pages update-fn2-run-builds-pages$ai)
                                     (nth update-nth unsigned-byte-p))))))
 
+(defthmd fn2-run-adapter-seal-state
+  (let* ((w (+ l (fn2-run-builds-wbase 0 builds)))
+         (seal (fn2-run-build-page-seal l builds writers f pool fc ctx b3 ds))
+         (finished (equal (car seal) :ok)) (count (1+ (fn2-run-builds-pages 0 builds)))
+         (page (list l (fn2-run-writers-unit w writers) (fn2-run-writers-counter w writers)
+                       (fn2-run-writers-slot w writers) (fn2-run-writers-gen w writers)))
+         (step (fn2-run-run-onestep layout entries src sg off unit pages builds curs paths cache
+                                    writers restarts f pool fc ctx b3 ds)))
+    (implies (and (fn2-run-build-sealing-at-p l builds writers restarts f fc ctx)
+                  (member-eq (car seal) '(:more :ok)))
+             (equal step (list nil :more entries off unit (if finished (cons page pages) pages)
+                     (if (and finished (unsigned-byte-p 60 count)) (fn2-run-builds-set-pages 0 count builds) builds)
+                     curs paths cache (mv-nth 1 seal) restarts (mv-nth 4 seal) pool (mv-nth 2 seal)
+                     ctx (mv-nth 3 seal) (mv-nth 6 seal)))))
+  :hints (("Goal" :do-not '(preprocess) :cases ((equal (car (fn2-run-build-page-seal l builds writers f pool fc ctx b3 ds)) :ok))
+           :use (fn2-run-build-seals-selected-page
+                 (:instance fn2-run-seal-keeps-writer-address (w (+ l (fn2-run-builds-wbase 0 builds)))
+                            (row (fn2-run-builds-crow 0 builds)) (hrow (+ l (fn2-run-builds-hbase 0 builds))) (budget 4096)))
+           :in-theory (union-theories (theory 'minimal-theory)
+                    '(fn2-run-run-onestep fn2-run-build-page-count-keeps-writer-base
+                      commutativity-of-+ mv-nth car-cons cdr-cons eq eql member-equal
+                      (:e equal) (:e zp) (:e consp) (:e binary-+) (:e mv-nth) (:e member-equal))))))
+
 (defthmd fn2-run-adapter-seal-records-page
   (let* ((w (+ l (fn2-run-builds-wbase 0 builds))) (seal (fn2-run-build-page-seal l builds writers f pool fc ctx b3 ds))
          (page (list l (fn2-run-writers-unit w writers) (fn2-run-writers-counter w writers)
@@ -51,11 +74,6 @@
                   (equal (mv-nth 2 step) entries) (equal (mv-nth 3 step) off) (equal (mv-nth 4 step) unit)
                   (equal (mv-nth 5 step) (if (equal (car seal) :ok) (cons page pages) pages))
                   (equal (mv-nth 13 step) pool))))
-  :hints (("Goal" :do-not '(preprocess) :cases ((equal (car (fn2-run-build-page-seal l builds writers f pool fc ctx b3 ds)) :ok))
-           :use (fn2-run-build-seals-selected-page
-                 (:instance fn2-run-seal-keeps-writer-address (w (+ l (fn2-run-builds-wbase 0 builds)))
-                            (row (fn2-run-builds-crow 0 builds)) (hrow (+ l (fn2-run-builds-hbase 0 builds))) (budget 4096)))
+  :hints (("Goal" :use fn2-run-adapter-seal-state
            :in-theory (union-theories (theory 'minimal-theory)
-                    '(fn2-run-run-onestep fn2-run-build-page-count-keeps-writer-base
-                      commutativity-of-+ mv-nth car-cons cdr-cons eq eql member-equal
-                      (:e equal) (:e zp) (:e consp) (:e binary-+) (:e mv-nth) (:e member-equal))))))
+                       '(mv-nth car-cons cdr-cons (:e zp) (:e equal) (:e binary-+) (:e mv-nth))))))
