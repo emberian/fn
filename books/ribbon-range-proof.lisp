@@ -8,7 +8,7 @@
 (include-book "range-page-lower-bound-proof")
 (include-book "runs-built-cache-proof")
 (include-book "runs-overview-builder-cursor-proof")
-(include-book "runs-restart-directory-proof")
+(include-book "runs-restart-lookup-proof")
 
 ; FN2-RIBBON-NO-FALSE-NEGATIVE is not discharged here and has no known
 ; counterexample. Evaluated, it holds for one empty key; 256 distinct keys
