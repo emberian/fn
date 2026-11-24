@@ -9,6 +9,8 @@
 (include-book "range-installed-cursor-proof")
 (include-book "runs-overview-builder-cursor-proof")
 (include-book "runs-build-close-proof")
+(include-book "runs-build-sealed-page-proof")
+(include-book "runs-build-root-proof")
 
 ; FN2-RIBBON-NO-FALSE-NEGATIVE is not discharged here and has no known
 ; counterexample. Evaluated, it holds for one empty key; 256 distinct keys
