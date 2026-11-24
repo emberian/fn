@@ -45,7 +45,8 @@
 ; chose, its reservation is acquired, it left the FIFO (P's head is its
 ; successor) and its wait is cleared.
 (defthm-owed fn2-account-grant-exact (fn2-core)
-  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (fn2-account-grant-ready fn2-core))
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+                (fn2-account-core-invariantp fn2-core) (fn2-account-grant-ready fn2-core))
            (let* ((p (fn2-account-core-grant-next fn2-core))
                   (head (mv-nth 1 (fn2-account-core-ends p fn2-core)))
                   (next (fn2-machine-ready-next head fn2-core))
@@ -67,7 +68,7 @@
 ; P. With A's weighted starvation bound (the grant service is visited within
 ; L calendar entries) a fitting head waits at most rows * L entries.
 (defthm-owed fn2-account-request-bounded-wait (p h fn2-core)
-  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core))
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (fn2-account-core-invariantp fn2-core))
            (mv-nth 0 (fn2-account-granted-within (fn2-account-core-rows fn2-core) p h fn2-core)))
   :schema :invariant :from (:operation-set fn2-account-requests)
   :teeth (fn2-account-test-bounded-wait fn2-account-test-bounded-wait-negative)
@@ -76,7 +77,8 @@
 ; Settled once: a granted request is not granted again before it parks
 ; again (its wait is cleared and it left the FIFO).
 (defthm-owed fn2-account-request-once (fn2-core)
-  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core) (fn2-account-grant-ready fn2-core))
+  (implies (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+                (fn2-account-core-invariantp fn2-core) (fn2-account-grant-ready fn2-core))
            (let* ((id (mv-nth 0 (fn2-account-grant-take fn2-core)))
                   (c2 (mv-nth 1 (fn2-account-grant-take fn2-core))))
              (or (not (equal (fn2-core-stop-reason c2) *fn2-stop-reason-none*))
