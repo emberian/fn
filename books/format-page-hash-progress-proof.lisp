@@ -35,11 +35,20 @@
     (if (< pos pad) limit
       (fn2-fc-zero-prefix (+ (nfix (fn2-pool-slot-base 0 pool)) pos) limit pool))))
 
+(local
+ (defthm fn2-page-span-within-end
+   (implies (and (natp fuel) (natp pos) (<= pos 65536))
+            (and (<= (fn2-fc-span-size fuel pos pad 65536 used) 4096)
+                 (<= (fn2-fc-span-size fuel pos pad 65536 used) (- 65536 pos))))
+   :rule-classes (:rewrite :linear)
+   :hints (("Goal" :in-theory (e/d (fn2-fc-span-size min fn2-fc-aligned-count-bounds)
+                                   (fn2-fc-aligned-count))))))
+
 (defthmd fn2-page-hash-count-bounded
   (let ((pos (fn2-fc-pos 0 fc)) (n (fn2-page-hash-count fuel fc b3 pool)))
-    (implies (and (natp fuel) (natp pos) (<= pos 65536) (natp (fn2-fc-pad 0 fc)))
+    (implies (and (natp fuel) (natp pos) (<= pos 65536))
              (and (natp n) (<= n 4096) (<= (+ pos n) 65536))))
-  :hints (("Goal" :in-theory (e/d (fn2-page-hash-count fn2-fc-span-size-bounds fn2-fc-zero-prefix-bound
+  :hints (("Goal" :in-theory (e/d (fn2-page-hash-count fn2-page-span-within-end fn2-fc-zero-prefix-bound
                                     fn2-fc-span-size-natural fn2-fc-zero-prefix-natural)
                                    (fn2-fc-span-size fn2-fc-zero-prefix fn2-fc-pos fn2-fc-pad)))))
 
@@ -66,7 +75,7 @@
 (defthm fn2-page-span-advances-hash
   (let* ((step (fn2-page-hash-span-call)) (pos (fn2-fc-pos 0 fc)) (k (mv-nth 1 step)))
     (implies (and (fn2-hash-page-windowp pool) (natp pos) (<= pos 65536)
-                  (natp fuel) (natp (fn2-fc-pad 0 fc))
+                  (natp fuel)
                   (fn-b3-octet-listp xs) (equal (len xs) (- 65536 pos))
                   (fn2-b3-covers xs pos pool) (fc-g xs ans ds b3))
              (and (natp k) (<= k (len xs))
