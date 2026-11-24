@@ -3,6 +3,7 @@
 (include-book "owed-accounts")
 (include-book "account-once-proof")
 (include-book "account-exact-proof")
+(include-book "account-wait-proof")
 (include-book "owed-discharge")
 
 (defthm fn2-account-grant-exact-proved
@@ -19,3 +20,11 @@
   :hints (("Goal" :use (fn2-account-no-consecutive-grants fn2-account-grant-take-live)
            :in-theory '(fn2-account-request-once$owed))))
 (fn2-owed-discharge fn2-account-request-once fn2-account-request-once-proved)
+
+(defthm fn2-account-request-bounded-wait-proved
+  (fn2-account-request-bounded-wait$owed p h fn2-core)
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn2-account-invariant-records-stop (c fn2-core))
+                        (:instance fn2-account-wait-within-principal-count (c fn2-core)))
+           :in-theory '(fn2-account-request-bounded-wait$owed))))
+(fn2-owed-discharge fn2-account-request-bounded-wait fn2-account-request-bounded-wait-proved)
