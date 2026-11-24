@@ -142,6 +142,60 @@
 (assert-event (fn2-account-test-once))
 (assert-event (fn2-account-test-once-negative))
 
+; A stopped core retains its first reason and the queued request. Simulate
+; the structurally valid inconsistent stop separately from a real kind stop.
+(defun fn2-rqu-stopped (missing-reason fn2-core)
+  (declare (xargs :stobjs fn2-core :verify-guards nil))
+  (b* ((fn2-core (fn2-init-executor *fn2-rqu-profile* :null nil fn2-core))
+       ((mv parked fn2-core) (fn2-account-request-park-on 2 6 fn2-core))
+       (ready (fn2-account-grant-ready fn2-core))
+       (fn2-core
+        (if missing-reason
+            (stobj-let ((fn2-control (fn2-core-control fn2-core))) (fn2-control)
+              (update-fn2-control-stop 1 fn2-control) fn2-core)
+          (fn2-core-kind-stop 0 1 fn2-core)))
+       (structural (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)))
+       (invariant (fn2-account-core-invariantp fn2-core))
+       (stopped-ready (fn2-account-grant-ready fn2-core))
+       ((mv id fn2-core) (fn2-account-grant-take fn2-core))
+       ((mv granted fn2-core)
+        (fn2-account-granted-within (fn2-account-core-rows fn2-core) 2 6 fn2-core)))
+    (mv (and (equal granted (not missing-reason)) (eq parked :ok) ready structural (equal invariant (not missing-reason)) (not stopped-ready)
+             (equal id *fn2-none*) (fn2-core-stopped-p fn2-core)
+             (equal (fn2-core-stop-reason fn2-core)
+                    (if missing-reason *fn2-stop-reason-none* *fn2-stop-reason-kind*))
+             (equal (fn2-account-core-hold 2 (fn2-rqu-d) fn2-core) 0)
+             (fn2-account-core-headed-fits 2 6 fn2-core))
+        fn2-core)))
+
+(defun fn2-rqu-stopped-result (missing-reason)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-core
+    (mv-let (ok fn2-core) (fn2-rqu-stopped missing-reason fn2-core) ok)))
+
+(assert-event (and (fn2-rqu-stopped-result nil) (fn2-rqu-stopped-result t)))
+
+; A self-link in an otherwise fitting one-row FIFO is a pending refusal.
+(defun fn2-rqu-self-link ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-core
+    (mv-let (ok fn2-core)
+      (b* ((fn2-core (fn2-init-executor *fn2-rqu-profile* :null nil fn2-core))
+           ((mv parked fn2-core) (fn2-account-request-park-on 2 6 fn2-core))
+           (before (fn2-account-core-invariantp fn2-core))
+           (fn2-core (fn2-machine-write-ready-next 6 6 fn2-core))
+           (corrupt (and (fn2-corep fn2-core) (fn2-core-wfp fn2-core)
+                         (not (fn2-account-core-invariantp fn2-core))
+                         (fn2-account-grant-pending fn2-core)
+                         (not (fn2-account-grant-ready fn2-core))))
+           ((mv id fn2-core) (fn2-account-grant-take fn2-core)))
+        (mv (and (eq parked :ok) before corrupt (equal id *fn2-none*)
+                 (equal (fn2-core-stop-reason fn2-core) *fn2-stop-reason-machine-write*)
+                 (equal (fn2-account-core-hold 2 (fn2-rqu-d) fn2-core) 0))
+            fn2-core))
+      ok)))
+(assert-event (fn2-rqu-self-link))
+
 ;; Refused by name: a principal with request limit 0 (slot 3 does not
 ;; exist; the system row's limit is its capacity), so a free slot's 0 limit
 ;; is shown on a profile whose slot 1 has no request limit.
