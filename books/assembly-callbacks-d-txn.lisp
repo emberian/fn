@@ -5,6 +5,7 @@
 ; connection and the owner's principal through its operations.
 (in-package "ACL2")
 (include-book "assembly-callbacks-e-cns")
+(include-book "assembly-callbacks-d-upload")
 (include-book "txn")
 (include-book "authority")
 (local (defun fn2-dt-core-child-type-terms (children)
@@ -247,10 +248,174 @@
          ((atom x) x)
          (t (cons (fn2-dt-subst-sym new old (car x))
                   (fn2-dt-subst-sym new old (cdr x)))))))
+(local
+ (defun fn2-dt-patch-op-events (x)
+   (declare (xargs :mode :program))
+   (cond ((atom x) x)
+         ((and (eq (car x) 'defun) (eq (cadr x) 'fn2-txn-post-article-result))
+          `(encapsulate ()
+             (local (in-theory (e/d (fn2-claim-rowp)
+                                    (nth nfix min posp
+                                     fn2-cns-snapshot-read-code fn2-upload-snapshot-read-code
+                                     fn2-machine-phase-read-code fn2-machine-generation-read-code
+                                     (:definition unsigned-byte-p) (:definition integer-range-p)))))
+             (defun ,(cadr x) ,(caddr x)
+               (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                               :guard-hints (("Goal" :do-not '(preprocess)))))
+               ,@(nthcdr 4 x))))
+         ((and (eq (car x) 'fn2-core-preserves) (consp (cdr x)) (eq (cadr x) 'fn2-txn-post-article-result))
+          `(encapsulate ()
+             (local (in-theory (e/d (fn2-claim-rowp)
+                                    (nth nfix min posp
+                                     fn2-cns-snapshot-read-code fn2-upload-snapshot-read-code
+                                     fn2-machine-phase-read-code fn2-machine-generation-read-code
+                                     (:definition unsigned-byte-p) (:definition integer-range-p)))))
+             (fn2-core-preserves ,(cadr x) ,(caddr x)
+               :position 1 :rows nil :hints (("Goal" :do-not '(preprocess))))))
+         ((and (eq (car x) 'defun) (eq (cadr x) 'fn2-txn-retry-append))
+          `(encapsulate ()
+             (local (in-theory (disable nth nfix min posp
+                                        fn2-cns-snapshot-read-code fn2-upload-snapshot-read-code
+                                        fn2-machine-phase-read-code fn2-machine-generation-read-code
+                                        (:definition unsigned-byte-p) (:definition integer-range-p))))
+             (defun ,(cadr x) ,(caddr x)
+               (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                               :guard-hints (("Goal" :do-not '(preprocess)))))
+               ,@(nthcdr 4 x))))
+         ((and (eq (car x) 'fn2-core-preserves) (consp (cdr x)) (eq (cadr x) 'fn2-txn-retry-append))
+          `(encapsulate ()
+             (local (in-theory (disable nth nfix min posp
+                                        fn2-cns-snapshot-read-code fn2-upload-snapshot-read-code
+                                        fn2-machine-phase-read-code fn2-machine-generation-read-code
+                                        (:definition unsigned-byte-p) (:definition integer-range-p))))
+             (fn2-core-preserves ,(cadr x) ,(caddr x)
+               :position 1 :rows nil :hints (("Goal" :do-not '(preprocess) :in-theory (disable fn2-cns-read-append-outcome))))))
+         (t (cons (fn2-dt-patch-op-events (car x))
+                  (fn2-dt-patch-op-events (cdr x)))))))
+(local
+ (defthm fn2-dt-cns-snapshot-ok-implies-idp
+   (implies (equal (fn2-cns-snapshot-read-code cns fn2-core) :ok)
+            (and (fn2-machine-idp cns fn2-core)
+                 (equal (fn2-machine-kind cns fn2-core) *fn2-cns-kind*)
+                 (equal (fn2-machine-phase-read-code cns fn2-core) :ok)
+                 (equal (fn2-machine-generation-read-code cns fn2-core) :ok)
+                 (< (fn2-machine-slot cns fn2-core) (fn2-cns-rows (fn2-cns-table fn2-core)))
+                 (natp cns) (integerp cns) (<= 0 cns)
+                 (< cns (fn2-machines-rows (fn2-core-machines fn2-core)))))
+   :rule-classes (:rewrite :forward-chaining)
+   :hints (("Goal" :in-theory (enable fn2-cns-snapshot-read-code fn2-machine-idp
+                                      fn2-machine-phase-read-code fn2-machine-generation-read-code)))))
+(local
+ (defthm fn2-dt-upload-snapshot-ok-implies-idp
+   (implies (equal (fn2-upload-snapshot-read-code u fn2-core) :ok)
+            (and (fn2-machine-idp u fn2-core)
+                 (equal (fn2-machine-kind u fn2-core) *fn2-upload-kind*)
+                 (equal (fn2-machine-phase-read-code u fn2-core) :ok)
+                 (equal (fn2-machine-generation-read-code u fn2-core) :ok)
+                 (< (fn2-machine-slot u fn2-core) (fn2-upload-rows (fn2-upload-table fn2-core)))
+                 (natp u) (integerp u) (<= 0 u)
+                 (< u (fn2-machines-rows (fn2-core-machines fn2-core)))))
+   :rule-classes (:rewrite :forward-chaining)
+   :hints (("Goal" :in-theory (enable fn2-upload-snapshot-read-code fn2-machine-idp
+                                      fn2-machine-phase-read-code fn2-machine-generation-read-code)))))
+(local
+ (encapsulate ()
+   (local
+    (defthm fn2-dt-read-steps-tables
+      (and (equal (fn2-core-machines (mv-nth 1 (fn2-read-key x region j val c))) (fn2-core-machines c))
+           (equal (fn2-cns-table (mv-nth 1 (fn2-read-key x region j val c))) (fn2-cns-table c))
+           (equal (fn2-core-machines (mv-nth 1 (fn2-read-lookup x sid budget c))) (fn2-core-machines c))
+           (equal (fn2-cns-table (mv-nth 1 (fn2-read-lookup x sid budget c))) (fn2-cns-table c))
+           (equal (fn2-core-machines (mv-nth 3 (fn2-read-octets x f from n dslot dgen doff dk ds dg c))) (fn2-core-machines c))
+           (equal (fn2-cns-table (mv-nth 3 (fn2-read-octets x f from n dslot dgen doff dk ds dg c))) (fn2-cns-table c))
+           (equal (fn2-core-machines (mv-nth 1 (fn2-read-release x c))) (fn2-core-machines c))
+           (equal (fn2-cns-table (mv-nth 1 (fn2-read-release x c))) (fn2-cns-table c)))
+      :hints (("Goal" :do-not '(preprocess)
+                      :in-theory (union-theories
+                                   '(fn2-read-key fn2-read-lookup fn2-read-octets fn2-read-release
+                                     fn2-core-machines fn2-cns-table
+                                     update-fn2-core-reads update-fn2-core-fields
+                                     update-fn2-core-seeks update-fn2-core-ranges
+                                     update-fn2-core-range-sources update-fn2-core-succ-txns
+                                     update-fn2-core-run-cursors update-fn2-core-run-paths
+                                     update-fn2-core-pool nth-update-nth mv-nth car-cons cdr-cons
+                                     (:type-prescription fn2-read-key-children)
+                                     (:type-prescription fn2-read-lookup-children)
+                                     (:type-prescription fn2-read-octets-children)
+                                     (:type-prescription fn2-read-release-children))
+                                   (union-theories
+                                    (set-difference-theories (executable-counterpart-theory :here)
+                                                             '((:executable-counterpart bubble-down)))
+                                    (theory 'minimal-theory)))))))
+   (local
+    (defthm fn2-dt-mv-nth-if
+      (equal (mv-nth n (if a b c))
+             (if a (mv-nth n b) (mv-nth n c)))))
+   (local
+    (defthm fn2-dt-tables-if
+      (and (equal (fn2-core-machines (if a b c))
+                  (if a (fn2-core-machines b) (fn2-core-machines c)))
+           (equal (fn2-cns-table (if a b c))
+                  (if a (fn2-cns-table b) (fn2-cns-table c))))))
+   (local
+    (defthm fn2-dt-outcome-substeps-tables
+      (and (equal (fn2-core-machines (mv-nth 1 (fn2-outcome-lookup-step x principal op budget c))) (fn2-core-machines c))
+           (equal (fn2-cns-table (mv-nth 1 (fn2-outcome-lookup-step x principal op budget c))) (fn2-cns-table c))
+           (equal (fn2-core-machines (mv-nth 1 (fn2-cns-release-append-outcome cns gen request principal op c))) (fn2-core-machines c))
+           (equal (fn2-cns-table (mv-nth 1 (fn2-cns-release-append-outcome cns gen request principal op c))) (fn2-cns-table c))
+           (equal (fn2-core-machines (mv-nth 5 (fn2-cns-take-append-outcome x cns gen ws wg ns ng c))) (fn2-core-machines c))
+           (equal (fn2-cns-table (mv-nth 5 (fn2-cns-take-append-outcome x cns gen ws wg ns ng c))) (fn2-cns-table c)))
+      :hints (("Goal" :do-not '(preprocess)
+                      :in-theory (union-theories
+                                   '(fn2-outcome-lookup-step fn2-cns-release-append-outcome fn2-cns-take-append-outcome
+                                     fn2-dt-read-steps-tables fn2-dt-mv-nth-if fn2-dt-tables-if
+                                     mv-nth car-cons cdr-cons posp member-equal
+                                     (:type-prescription fn2-outcome-read-mode)
+                                     (:type-prescription fn2-read-key)
+                                     (:type-prescription fn2-read-lookup)
+                                     (:type-prescription fn2-read-release)
+                                     (:type-prescription fn2-read-value)
+                                     (:type-prescription fn2-read-octets))
+                                   (union-theories
+                                    (set-difference-theories (executable-counterpart-theory :here)
+                                                             '((:executable-counterpart bubble-down)))
+                                    (theory 'minimal-theory)))))))
+   (defthm fn2-dt-read-append-outcome-tables
+     (let ((c1 (mv-nth 5 (fn2-cns-read-append-outcome cns gen request principal op budget fn2-core))))
+       (and (equal (fn2-core-machines c1) (fn2-core-machines fn2-core))
+            (equal (fn2-cns-table c1) (fn2-cns-table fn2-core))))
+     :hints (("Goal" :do-not '(preprocess)
+                     :in-theory (union-theories
+                                  '(fn2-cns-read-append-outcome fn2-dt-outcome-substeps-tables
+                                    fn2-dt-mv-nth-if fn2-dt-tables-if
+                                    mv-nth car-cons cdr-cons
+                                    (:type-prescription fn2-cns-principal)
+                                    (:type-prescription fn2-cns-release-append-outcome)
+                                    (:type-prescription fn2-outcome-lookup-step)
+                                    (:type-prescription fn2-cns-take-append-outcome))
+                                  (union-theories
+                                   (set-difference-theories (executable-counterpart-theory :here)
+                                                            '((:executable-counterpart bubble-down)))
+                                   (theory 'minimal-theory))))))))
+(local
+ (defthm fn2-dt-read-append-outcome-cns-ok
+   (let ((c1 (mv-nth 5 (fn2-cns-read-append-outcome cns gen request principal op budget fn2-core))))
+     (and (equal (fn2-machine-idp id c1) (fn2-machine-idp id fn2-core))
+          (implies (equal (fn2-cns-snapshot-read-code id fn2-core) :ok)
+                   (equal (fn2-cns-snapshot-read-code id c1) :ok))))
+   :hints (("Goal" :do-not '(preprocess)
+                   :in-theory (union-theories
+                                '(fn2-dt-read-append-outcome-tables
+                                  fn2-cns-snapshot-read-code fn2-machine-phase-read-code
+                                  fn2-machine-idp fn2-machine-kind fn2-machine-kind-read-code
+                                  fn2-machine-slot fn2-machine-slot-read-code natp)
+                                (union-theories
+                                 (executable-counterpart-theory :here)
+                                 (theory 'minimal-theory)))))))
 (make-event
  (mv-let (erp exp) (macroexpand1-cmp '(fn2-txn-op-events) 'assembly-callbacks-d-txn (w state) (default-state-vars nil))
    (if erp (er soft 'assembly-callbacks-d-txn "Expand failed: ~@0" erp)
-     (value (fn2-dt-subst-sym 'rfill 'fill exp)))))
+     (value (fn2-dt-patch-op-events (fn2-dt-subst-sym 'rfill 'fill exp))))))
 (fn2-authority-allows-events)
 (assert-event (equal *fn2-auth-depend-slot* *fn2-txn-slot-depend*))
 (make-event
