@@ -177,6 +177,9 @@ ACL2_BOOKS = \
   books/compress-transport-ops \
   books/compress \
   books/commit \
+  books/commit-admission-member-proof \
+  books/commit-admission-observation \
+  books/commit-admission-owner-proof \
   books/commit-alloc \
   books/commit-arms \
   books/commit-durable-all \
