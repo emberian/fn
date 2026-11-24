@@ -54,6 +54,12 @@
    :hints (("Goal" :in-theory (enable fn2-ctl-snapshot-read-code fn2-machine-idp
                                       fn2-machine-phase-read-code fn2-machine-generation-read-code)))))
 (make-event
+ (value
+  `(progn
+     ,(fn2-issue-core-effect-event 'fn2-block-read '(pu epoch alloc off len lslot lgen okind oslot ogen principal fn2-core))
+     ,(fn2-issue-core-issued-event 'fn2-block-read '(pu epoch alloc off len lslot lgen okind oslot ogen principal fn2-core))
+     (local (in-theory (disable fn2-block-read))))))
+(make-event
  (value `(local (in-theory (disable nth fn2-reads-rows fn2-fields-rows fn2-fc-rows
                                     fn2-digests-rows fn2-b3-rows fn2-pool-fill fn2-pool-base fn2-pool-data-length
                                     fn2-cns-sources-rows fn2-ctl-rows fn2-cns-rows fn2-succ-slots-rows
