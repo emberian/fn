@@ -45,4 +45,3 @@
    :hints (("Goal" :use ((:instance fn2-ov-list-prefix-order (key *fn2-overview-range-key*)))
             :expand ((fn2-run-entries-layoutp *fn2-overview-entry* tail) (len tail) (true-listp tail))
             :in-theory (e/d (fn2-ov-list-shift-prefix) (fn2-run-values-layoutp fn2-run-sorted-spec fn2-ov-list-prefix-order)))))
-
