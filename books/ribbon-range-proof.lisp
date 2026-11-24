@@ -4,6 +4,7 @@
 (include-book "ribbon-mutation-discharge-proof")
 (include-book "range-resume-order-proof")
 (include-book "range-head-delivery-proof")
+(include-book "range-overlay-head-proof")
 (include-book "range-seek-step-proof")
 (include-book "range-stored-leaf-row-proof")
 (include-book "range-installed-cursor-proof")
