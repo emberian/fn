@@ -52,8 +52,7 @@
            ("Subgoal *1/1" :use
             ((:instance fn2-run-parse-line-proper (rest bytes) (pos 0) (v 0) (hi 0) (size 0)
                         (ref 0) (phase 0) (next 0)))))))
-(local
- (defthm fn2-run-overview-admitted-row
+(defthm fn2-run-overview-admitted-row
    (implies (fn2-run-values-layoutp *fn2-overview-entry* values)
             (and (equal (len values) 5) (true-listp values) (true-listp (nth 4 values))))
    :rule-classes nil
@@ -62,7 +61,7 @@
                          (:instance fn2-run-decoded-line-proper (i 4) (layout *fn2-overview-entry*)
                                    (bytes (fn2-layout-octets *fn2-overview-entry* values))))
             :in-theory (e/d (fn2-run-values-layoutp) (fn2-layout-parse fn2-layout-octets
-                    fn-b3-octet-listp fn2-run-decoded-row-shape))))))
+                    fn-b3-octet-listp fn2-run-decoded-row-shape)))))
 
 (local
  (defthm fn2-run-overview-load-view
