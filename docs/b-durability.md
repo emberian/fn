@@ -1746,11 +1746,13 @@ before the pools are released. The statements take `plant` nil; the teeth plant 
 
 Two mode-0 replays with `plant` nil refute the first two transaction statements
 as written. Both set `fn2-ctp-initialized` and pass the admission-total check.
+ACL2 proved the negation of each ground obligation in the hbox proof session.
+The two proof inputs are in [commit-replay-counterexamples.lsp](../tests/commit-replay-counterexamples.lsp).
 
 | Commands | Observation |
 | --- | --- |
 | `((:admit 0) (:bypass-notify 0))` with workspace 0 containing `(fn2-ctu-acceptance 0)` | Member 0 settles as accepted in batch 1. The outbox counted no writes and the visibility rows published no batch. |
-| `(:start 0 1 1 0)` followed by 600 `(:auto 26)` commands | The keyed batch produces three writes and a sealed records image. The workspace admissions list is empty, so the image fails `fn2-ctp-images-okp`. |
+| `(:start 0 1 1 0)` followed by 65 `(:auto 26)` commands | The replay captures a sealed records image. The workspace admissions list is empty, so the image fails `fn2-ctp-images-okp`. |
 
 `fn2-ctp-replay` discards the legality flag returned by
 `fn2-commit-proof-step` for a bypass. It also captures images from keyed starts,
@@ -1825,3 +1827,19 @@ on top of the stepper, and owed-export includes the unit. The concrete sweep (sc
 and 14, 10,000 cases each) is a nightly row on dregg-forge: `SECS=7200 sh
 tools/forge-driver.sh sim-layer-b`. It is not a per-commit gate; the tiny exhaustive sweep
 (`FN2_B_PROFILE=tiny`) is.
+
+**Uncertainty through replay (2026-11-24).** Each legal command preserves the
+readability of the monitored rows, ownership of active descriptors, and the
+phase of a row already marked uncertain. Induction over the command list and
+the two keyed starts gives `fn2-commit-epoch-preserves-uncertainty` for the
+actual `fn2-commit-proof-run`. In the hbox proof session, `fn2-owed-discharge`
+accepted it for `fn2-commit-uncertain-persists`. Both timeout witnesses, the
+dispatch-removal witness, and the rearm witness returned true.
+
+The [proof integration patch](design/commit-replay-uncertainty.patch) contains
+eight proof books, their Makefile entries, the owed-report include, and the
+simulator proof-hint changes. In a fresh hbox session the eight sets of events
+passed with book-local scope in 0.34–4.32 s each. The record build still fails at
+`fn2-sim-transfer-return-tag` in `sim/sim.lisp` (73.345 s on hbox). The
+proof session used the same simulator function bodies with revised proof hints
+and type rules. The registration still lacks a record-toolchain certificate.

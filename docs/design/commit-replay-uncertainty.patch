@@ -1,0 +1,1632 @@
+--- a/sim/sim.lisp
++++ b/sim/sim.lisp
+@@ -450,2 +450,3 @@
+        (natp (fn2-sim-return-code-keyword->code (mv-nth 0 ,call)))
++       :rule-classes (:rewrite :type-prescription)
+        :hints (("Goal" :in-theory
+@@ -513,3 +514,3 @@
+              :in-theory (e/d (fn2-sim-transfer)
+-                              (fn2-sim-return-code-keyword->code
++                              (mv-nth natp fn2-sim-return-code-keyword->code
+                                fn2-pool-read fn2-pool-adapter-write
+@@ -548,3 +549,3 @@
+              (e/d (fn2-sim-physical-act unsigned-byte-p)
+-                  (fn2-sim-transfer fn2-sim-return-code-keyword->code
++                  (mv-nth natp fn2-sim-transfer fn2-sim-return-code-keyword->code
+                    fn2-network-accept fn2-storage-fence-complete-from
+@@ -569,4 +570,4 @@
+   :hints (("Goal" :in-theory
+-           (e/d (fn2-sim-physical)
+-                (fn2-sim-physical-act fn2-sim-amount
++           (e/d (fn2-sim-physical fn2-sim-ready)
++                (mv-nth natp unsigned-byte-p fn2-sim-land fn2-sim-physical-landed-p fn2-sim-physical-act fn2-sim-amount
+                  fn2-sim-return-code-keyword->code)))))
+--- /dev/null
++++ b/books/commit-uncertainty-visit-proof.lisp
+@@ -0,0 +1,309 @@
++; Keyed starts and generated machine visits preserve an uncertain commit row.
++(in-package "ACL2")
++(include-book "commit-proof")
++(fn2-book-layer :b)
++
++(defund fn2-commit-has-uncertain-row (fn2-core)
++ (declare (xargs :stobjs fn2-core :verify-guards nil))
++ (let ((a (fn2-machine-kind-base *fn2-commit-kind* fn2-core)))
++  (or (equal (fn2-machine-phase a fn2-core) *fn2-commit-state-uncertain*)
++      (equal (fn2-machine-phase (+ 1 a) fn2-core) *fn2-commit-state-uncertain*))))
++
++(defthm fn2-commit-uncertain-row-precludes-opening
++ (implies (fn2-commit-has-uncertain-row fn2-core)
++          (not (equal (mv-nth 0 (fn2-commit-pick fn2-core)) :open)))
++ :hints (("Goal" :in-theory
++          (union-theories '(fn2-commit-has-uncertain-row fn2-commit-pick
++              mv-nth car-cons cdr-cons (:e zp) (:e equal)) (theory 'minimal-theory)))))
++
++(defthm fn2-commit-uncertain-row-preserves-keyed-admission-core
++ (implies (fn2-commit-has-uncertain-row fn2-core)
++          (equal (mv-nth 4 (fn2-commit-admit-keyed members mode okind oslot ogen fn2-core))
++                 fn2-core))
++ :hints (("Goal" :use fn2-commit-uncertain-row-precludes-opening
++          :in-theory (union-theories '(fn2-commit-admit-keyed mv-nth car-cons cdr-cons
++                       (:e zp) (:e binary-+) (:e equal) (:t fn2-commit-pick))
++                                     (theory 'minimal-theory)))))
++
++(defthm fn2-commit-start-command-preserves-uncertain-core
++ (implies (fn2-commit-has-uncertain-row fn2-core)
++          (equal (mv-nth 3 (fn2-b-start id members first-key mode partner fn2-core))
++                 fn2-core))
++ :hints (("Goal" :use ((:instance fn2-commit-uncertain-row-preserves-keyed-admission-core
++                       (okind 0) (oslot 0) (ogen 0)))
++          :in-theory (union-theories '(fn2-b-start fn2-ctf-mv-nth-cons fn2-ctf-mv-nth-of-if
++                       car-cons cdr-cons (:e zp) (:e binary-+) (:e equal)
++                       (:t fn2-commit-admit-keyed) (:t fn2-commit-pick))
++                      (theory 'minimal-theory)))))
++
++(defthm fn2-uncertain-commit-snapshot
++ (implies (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-uncertain*)
++          (equal (fn2-commit-snapshot-read-code id fn2-core) :ok))
++ :hints (("Goal" :in-theory '(fn2-commit-row-phase))))
++
++(defthm fn2-uncertain-arm-possible-phase
++ (implies (and (equal (fn2-commit-snapshot-read-code id fn2-core) :ok)
++               (equal (fn2-machine-phase id fn2-core) *fn2-commit-state-uncertain*)
++               (member-equal (fn2-machine-phase id fn2-core) fn2-arm-pset)
++               (subsetp-equal (list *fn2-commit-state-uncertain*) fn2-arm-pset))
++          (member-equal (fn2-machine-phase id (mv-nth 4 (fn2-commit-run-uncertain id budget fn2-core)))
++                        fn2-arm-pset))
++ :rule-classes nil
++ :hints (("Goal" :do-not-induct t
++          :in-theory (union-theories '(fn2-commit-run-uncertain
++                     fn2-arm-member-of-subsetp-free
++                     fn2-commit-arm-row-phase
++                     fn2-core-stop-arm-phase
++                     fn2-commit~fn2-commit-sub-drain-arm-phase
++                     fn2-commit-sub-drain
++                     fn2-commit-write+cb-stage-arm-phase
++                     fn2-commit~fn2-commit-release-pool-arm-phase
++                     fn2-commit-write+phase+stopped+cb-stage-arm-phase
++                     fn2-commit-write+stopped-arm-phase
++                     fn2-commit~fn2-commit-settle-member-arm-phase
++                     fn2-commit-write+cb-cursor-arm-phase
++                     fn2-commit-write+phase+stopped+cb-cursor+cb-failed+cb-reason-arm-phase
++                     fn2-core-stop-arm-phase) (theory 'fn2-arm-frame-base)))))
++
++(defthm fn2-uncertain-dispatch-possible-phase
++ (implies (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-uncertain*)
++          (member-equal (fn2-machine-phase id (mv-nth 4 (fn2-commit-run id budget fn2-core)))
++                        (list *fn2-commit-state-uncertain*)))
++ :rule-classes nil
++ :hints (("Goal" :use ((:instance fn2-uncertain-arm-possible-phase
++                         (fn2-arm-pset (list *fn2-commit-state-uncertain*)))
++                       (:instance fn2-uncertain-commit-snapshot))
++          :in-theory (union-theories '(fn2-commit-run fn2-machine-contract-check
++                            fn2-arm-member-of-subsetp-free fn2-commit-arm-row-phase
++                            fn2-core-stop-arm-phase fn2-commit-idp)
++                         (theory 'fn2-arm-frame-base))
++          :do-not-induct t)))
++
++(defthm fn2-commit-dispatch-preserves-uncertain
++ (implies (equal (fn2-commit-row-phase id fn2-core) *fn2-commit-state-uncertain*)
++          (equal (fn2-machine-phase id (mv-nth 4 (fn2-commit-run id budget fn2-core)))
++                 *fn2-commit-state-uncertain*))
++ :hints (("Goal" :use fn2-uncertain-dispatch-possible-phase
++                  :in-theory '(member-equal car-cons cdr-cons (:e member-equal) (:e equal)))))
++
++(make-event
++ (value (cons 'progn (fn2-arm-frame-fns-forms
++       (fn2-arm-frame-todo '(fn2-machine-contract-check fn2-machine-refuse-phase fn2-machine-idle) 'fn2-commit (w state) nil 64)
++       'fn2-commit))))
++
++(make-event
++ (let* ((world (w state))
++        (runes (fn2-arm-frame-lemmas (fn2-arm-frame-body-callees 'fn2-commit-run world)
++               '("-ARM-ROW-FRAME") 'fn2-commit world))
++        (columns (loop$ for i from 0 to 32 collect i))
++        (children (remove-equal 9 (loop$ for i from 0 to 73 collect i))))
++  (value
++   `(defthm fn2-commit-dispatch-only-writes-visited-commit-row
++    (fn2-arm-row-frame 9 (fn2-machine-slot id fn2-core) ',columns ',children fn2-core
++                       (mv-nth 4 (fn2-commit-run id budget fn2-core)))
++    :rule-classes nil
++    :hints (("Goal" :in-theory
++             (union-theories '(fn2-commit-run fn2-arm-row-frame-refl (:e subsetp-equal) (:e member-equal)
++                              (:e natp) ,@runes) (theory 'fn2-arm-frame-base))
++             :do-not-induct t
++             :cases ,(loop$ for i from 0 to 12 collect `(equal (fn2-commit-row-phase id fn2-core) ,i))))))))
++
++(make-event
++ (value (cons 'progn (fn2-ctf-dir-forms
++     (fn2-ctf-postorder-new '(fn2-commit-run) (w state))
++     'fn2-commit))))
++
++(defthm fn2-commit-readable-after-visit-frame
++ (implies (and (fn2-arm-row-frame 9 row cs ch a b)
++               (not (member-equal 9 ch)) (not (member-equal *fn2-commit-rows* cs))
++               (fn2-ctf-dir b a))
++          (equal (fn2-commit-idp id b) (fn2-commit-idp id a)))
++ :rule-classes nil
++ :hints (("Goal" :in-theory (e/d (fn2-commit-idp fn2-commit-snapshot-read-code
++                      fn2-machine-phase-read-code fn2-commit-table fn2-commit-rows)
++                     (fn2-machine-idp fn2-machine-slot fn2-machine-kind nth update-nth fn2-ctf-dir fn2-arm-row-frame))
++          :use ((:instance fn2-ctf-dir-readers)
++                (:instance fn2-arm-row-frame-cols (table 9) (columns cs) (children ch))
++                (:instance fn2-arm-cols-nth (k 0) (j *fn2-commit-rows*) (columns cs) (a (nth 9 a)) (b (nth 9 b)))))))
++
++(defthm fn2-commit-other-phase-after-visit-frame
++ (implies (and (fn2-arm-row-frame 9 row cs ch a b)
++               (not (member-equal 9 ch)) (not (member-equal *fn2-commit-rows* cs))
++               (fn2-ctf-dir b a) (fn2-commit-idp id a)
++               (not (equal (nfix (fn2-machine-slot id a)) (nfix row))))
++          (equal (fn2-machine-phase id b) (fn2-machine-phase id a)))
++ :rule-classes nil
++ :hints (("Goal" :in-theory (e/d (fn2-machine-phase fn2-commit-idp fn2-commit-snapshot-read-code
++                      fn2-commit-phase fn2-commit-phase$ai fn2-commit-table fn2-view-at fn2-view-row-protected)
++                     (fn2-machine-idp fn2-machine-slot fn2-machine-kind nth update-nth
++                      fn2-ctf-dir fn2-arm-row-frame))
++          :use ((:instance fn2-ctf-dir-readers)
++                (:instance fn2-commit-readable-after-visit-frame)
++                (:instance fn2-row-frame-to-reader (table 9) (columns cs) (children ch)
++                      (path (list 9 0 (fn2-machine-slot id a))))))))
++
++(defthm fn2-uncertain-phase-of-readable-row
++ (implies (fn2-commit-idp id fn2-core)
++          (equal (fn2-commit-row-phase id fn2-core) (fn2-machine-phase id fn2-core)))
++ :rule-classes nil
++ :hints (("Goal" :in-theory (e/d (fn2-commit-idp fn2-commit-snapshot-read-code
++                             fn2-machine-phase-read-code fn2-commit-row-phase fn2-machine-phase)
++                            (fn2-machine-idp fn2-machine-kind fn2-machine-slot)))))
++
++(make-event
++ (let* ((b '(mv-nth 4 (fn2-commit-run id budget fn2-core)))
++        (columns (loop$ for i from 0 to 32 collect i))
++        (children (remove-equal 9 (loop$ for i from 0 to 73 collect i))))
++  (value
++   `(defthm fn2-commit-visit-preserves-readable-rows
++    (equal (fn2-commit-idp i ,b) (fn2-commit-idp i fn2-core))
++    :hints (("Goal" :in-theory '(fn2-ctf-dir-refl (:e member-equal))
++             :use ((:instance fn2-commit-dispatch-only-writes-visited-commit-row)
++                   (:instance fn2-commit-run-ctf-dir (fn2-ctf-c0 fn2-core))
++                   (:instance fn2-commit-readable-after-visit-frame
++                         (id i) (row (fn2-machine-slot id fn2-core))
++                         (cs ',columns) (ch ',children) (a fn2-core) (b ,b)))))))))
++
++(make-event
++ (let* ((b '(mv-nth 4 (fn2-commit-run id budget fn2-core)))
++        (columns (loop$ for i from 0 to 32 collect i))
++        (children (remove-equal 9 (loop$ for i from 0 to 73 collect i))))
++  (value
++   `(defthm fn2-commit-visit-preserves-other-phase
++    (implies (and (fn2-commit-idp i fn2-core)
++                  (not (equal (nfix (fn2-machine-slot i fn2-core)) (nfix (fn2-machine-slot id fn2-core)))))
++             (equal (fn2-machine-phase i ,b) (fn2-machine-phase i fn2-core)))
++    :hints (("Goal" :in-theory '(fn2-ctf-dir-refl (:e member-equal))
++             :use ((:instance fn2-commit-dispatch-only-writes-visited-commit-row)
++                   (:instance fn2-commit-run-ctf-dir (fn2-ctf-c0 fn2-core))
++                   (:instance fn2-commit-other-phase-after-visit-frame
++                         (id i) (row (fn2-machine-slot id fn2-core))
++                         (cs ',columns) (ch ',children) (a fn2-core) (b ,b)))))))))
++
++(defthm fn2-commit-visit-preserves-same-uncertain-phase
++ (implies (and (fn2-commit-idp id fn2-core)
++               (equal (fn2-machine-phase id fn2-core) *fn2-commit-state-uncertain*))
++          (equal (fn2-machine-phase id (mv-nth 4 (fn2-commit-run id budget fn2-core))) *fn2-commit-state-uncertain*))
++ :hints (("Goal" :in-theory nil
++          :use (fn2-uncertain-phase-of-readable-row fn2-commit-dispatch-preserves-uncertain))))
++
++(defthm fn2-commit-visit-keeps-directory-slot
++ (equal (fn2-machine-slot i (mv-nth 4 (fn2-commit-run id budget fn2-core)))
++        (fn2-machine-slot i fn2-core))
++ :hints (("Goal" :in-theory '(fn2-ctf-dir-refl)
++          :use ((:instance fn2-commit-run-ctf-dir (fn2-ctf-c0 fn2-core))
++                (:instance fn2-ctf-dir-readers (id i) (a fn2-core)
++                    (b (mv-nth 4 (fn2-commit-run id budget fn2-core))))))))
++
++(defthm fn2-commit-readable-slot-shares-phase
++ (implies (and (fn2-commit-idp i fn2-core) (fn2-commit-idp id fn2-core)
++               (equal (nfix (fn2-machine-slot i fn2-core)) (nfix (fn2-machine-slot id fn2-core))))
++          (equal (fn2-machine-phase i fn2-core) (fn2-machine-phase id fn2-core)))
++ :rule-classes nil
++ :hints (("Goal" :in-theory (e/d (fn2-commit-idp fn2-commit-snapshot-read-code fn2-machine-phase-read-code
++                                  fn2-machine-phase) (fn2-machine-kind fn2-machine-slot)))))
++
++(defthm fn2-commit-visit-keeps-any-uncertain-row
++ (implies (and (fn2-commit-idp i fn2-core) (fn2-commit-idp id fn2-core)
++               (equal (fn2-machine-phase i fn2-core) *fn2-commit-state-uncertain*))
++          (equal (fn2-machine-phase i (mv-nth 4 (fn2-commit-run id budget fn2-core)))
++                 *fn2-commit-state-uncertain*))
++ :hints (("Goal" :cases ((equal (nfix (fn2-machine-slot i fn2-core)) (nfix (fn2-machine-slot id fn2-core))))
++          :in-theory '(fn2-commit-visit-keeps-directory-slot fn2-commit-visit-preserves-readable-rows)
++          :use (fn2-commit-visit-preserves-same-uncertain-phase fn2-commit-visit-preserves-other-phase
++                fn2-commit-readable-slot-shares-phase
++                (:instance fn2-commit-readable-slot-shares-phase
++                      (fn2-core (mv-nth 4 (fn2-commit-run id budget fn2-core))))))))
++
++(defun fn2-commit-readable-ids-p (ids fn2-core)
++ (declare (xargs :stobjs fn2-core :verify-guards nil))
++ (if (atom ids) t
++  (and (fn2-commit-idp (car ids) fn2-core)
++       (fn2-commit-readable-ids-p (cdr ids) fn2-core))))
++
++(defthm fn2-commit-run-keeps-readable-ids
++ (equal (fn2-commit-readable-ids-p ids (mv-nth 4 (fn2-commit-run id budget fn2-core)))
++        (fn2-commit-readable-ids-p ids fn2-core))
++ :hints (("Goal" :induct (fn2-commit-readable-ids-p ids fn2-core)
++          :in-theory '(fn2-commit-readable-ids-p fn2-commit-visit-preserves-readable-rows))))
++
++(defthm fn2-commit-run-preserves-uncertain-visibility
++ (implies (and (fn2-commit-readable-ids-p ids fn2-core) (fn2-commit-idp id fn2-core))
++          (fn2-commit-proof-preservedp (fn2-b-visibility ids fn2-core)
++                        (fn2-b-visibility ids (mv-nth 4 (fn2-commit-run id budget fn2-core)))))
++ :hints (("Goal" :induct (fn2-b-visibility ids fn2-core)
++          :in-theory (union-theories '(fn2-b-visibility fn2-commit-proof-preservedp
++                         fn2-b-visible-phase fn2-commit-readable-ids-p (:e nth) nth car-cons cdr-cons
++                         (:e zp) (:e binary-+) (:e car) (:e cdr)
++                         fn2-commit-visit-keeps-any-uncertain-row)
++                        (theory 'minimal-theory)))))
++
++(defthm fn2-env-on-write-result-arm-phase
++  (implies (and (member-equal (fn2-machine-phase id m) fn2-arm-pset)
++                (member-equal *fn2-commit-state-uncertain* fn2-arm-pset))
++           (member-equal (fn2-machine-phase id (mv-nth 1 (fn2-commit-on-write-result id event outcome reason count aux0 aux1 m)))
++                         fn2-arm-pset))
++  :rule-classes nil
++  :hints (("Goal" :do-not-induct t
++           :in-theory (union-theories
++                       '(fn2-commit-on-write-result
++                         fn2-core-stop-arm-phase
++                         fn2-commit~fn2-commit-drop-io-arm-phase
++                         fn2-commit-write+phase+cb-cursor+cb-done+cb-bytes+cb-failed+outcome+cb-reason+cb-fence-live-arm-phase
++                         fn2-commit-write+cb-done+cb-bytes+cb-fence-live+cb-fence-ok-arm-phase
++                         (:e natp) (:e <))
++                       (theory 'fn2-arm-frame-base)))))
++
++(defthm fn2-env-on-write-result-phase-any
++  (member-equal (fn2-machine-phase id (mv-nth 1 (fn2-commit-on-write-result id event outcome reason count aux0 aux1 m)))
++                (list (fn2-machine-phase id m) *fn2-commit-state-uncertain*))
++  :rule-classes nil
++  :hints (("Goal" :in-theory '(member-equal car-cons cdr-cons (:e equal))
++           :use ((:instance fn2-env-on-write-result-arm-phase
++                            (fn2-arm-pset (list (fn2-machine-phase id m) *fn2-commit-state-uncertain*)))))))
++
++(defthm fn2-env-on-fence-result-arm-phase
++  (implies (and (member-equal (fn2-machine-phase id m) fn2-arm-pset)
++                (member-equal *fn2-commit-state-uncertain* fn2-arm-pset))
++           (member-equal (fn2-machine-phase id (mv-nth 1 (fn2-commit-on-fence-result id event outcome reason count aux0 aux1 m)))
++                         fn2-arm-pset))
++  :rule-classes nil
++  :hints (("Goal" :do-not-induct t
++           :in-theory (union-theories
++                       '(fn2-commit-on-fence-result
++                         fn2-core-stop-arm-phase
++                         fn2-commit~fn2-commit-drop-io-arm-phase
++                         fn2-commit-write+phase+cb-cursor+cb-done+cb-bytes+cb-failed+outcome+cb-reason+cb-fence-live-arm-phase
++                         fn2-commit-write+cb-done+cb-bytes+cb-fence-live+cb-fence-ok-arm-phase
++                         (:e natp) (:e <))
++                       (theory 'fn2-arm-frame-base)))))
++
++(defthm fn2-env-on-fence-result-phase-any
++  (member-equal (fn2-machine-phase id (mv-nth 1 (fn2-commit-on-fence-result id event outcome reason count aux0 aux1 m)))
++                (list (fn2-machine-phase id m) *fn2-commit-state-uncertain*))
++  :rule-classes nil
++  :hints (("Goal" :in-theory '(member-equal car-cons cdr-cons (:e equal))
++           :use ((:instance fn2-env-on-fence-result-arm-phase
++                            (fn2-arm-pset (list (fn2-machine-phase id m) *fn2-commit-state-uncertain*)))))))
++
++(defthm fn2-env-observe-fn2-commit-arm-phase
++  (implies (and (member-equal (fn2-machine-phase id m) fn2-arm-pset)
++                (member-equal *fn2-commit-state-uncertain* fn2-arm-pset))
++           (member-equal (fn2-machine-phase id (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m)))
++                         fn2-arm-pset))
++  :rule-classes nil
++  :hints (("Goal" :do-not-induct t
++           :in-theory (union-theories
++                       '(fn2-machine-observe-fn2-commit fn2-machine-observe-contract-check fn2-machine-refuse-observation
++                         fn2-core-stop-arm-phase)
++                       (theory 'fn2-arm-frame-base))
++           :use ((:instance fn2-env-on-write-result-arm-phase)
++                 (:instance fn2-env-on-fence-result-arm-phase)))))
++
++(defthm fn2-env-observe-fn2-commit-phase-any
++  (member-equal (fn2-machine-phase id (mv-nth 1 (fn2-machine-observe-fn2-commit id event outcome reason count aux0 aux1 m)))
++                (list (fn2-machine-phase id m) *fn2-commit-state-uncertain*))
++  :rule-classes nil
++  :hints (("Goal" :in-theory '(member-equal car-cons cdr-cons (:e equal))
++           :use ((:instance fn2-env-observe-fn2-commit-arm-phase
++                            (fn2-arm-pset (list (fn2-machine-phase id m) *fn2-commit-state-uncertain*)))))))
+--- /dev/null
++++ b/books/commit-uncertainty-completion-proof.lisp
+@@ -0,0 +1,12 @@
++; Generate row frames for the three completion paths that may touch a machine.
++(in-package "ACL2")
++(include-book "commit-uncertainty-visit-proof")
++(fn2-book-layer :b)
++
++(make-event
++ (value (cons 'progn
++              (fn2-arm-frame-fns-forms
++               (fn2-arm-frame-todo '(fn2-machine-observe-terminal fn2-machine-refuse-observation
++                                     fn2-machine-observe-contract-check)
++                                   'fn2-commit (w state) nil 64)
++               'fn2-commit))))
+--- /dev/null
++++ b/books/commit-uncertainty-route-proof.lisp
+@@ -0,0 +1,223 @@
++; Completion routing preserves the observable phase of every uncertain row.
++(in-package "ACL2")
++(include-book "commit-uncertainty-completion-proof")
++(fn2-book-layer :b)
++
++(make-event
++ (let* ((world (w state))
++        (callees (fn2-arm-frame-body-callees 'fn2-harvest-one world))
++        (todo (fn2-dc-todo callees 'fn2-commit world nil 64)))
++   (value (cons 'progn (fn2-dc-forms todo 'fn2-commit)))))
++
++(make-event
++ (let* ((world (w state))
++        (fn 'fn2-harvest-one)
++        (generated (fn2-dc-form fn 'fn2-commit world)))
++   (if (not (eq (car generated) 'progn))
++       (value generated)
++     (mv-let (children rules missing)
++       (fn2-dc-callees (fn2-arm-frame-body-callees fn world)
++                       'fn2-commit world nil nil)
++       (declare (ignore children missing))
++       (let* ((theorem (cadr generated))
++              (hints `(("Goal" :do-not-induct t
++                        :in-theory
++                        (union-theories
++                         '(,fn fn2-ctf-mv-nth-of-if fn2-ctf-mv-nth-cons
++                           (:t fn2-core-harvest-hooks) (:t fn2-harvest-next)
++                           ,@rules)
++                         (set-difference-theories (theory 'fn2-arm-frame-base)
++                                                  '(mv-nth))))))
++              (proof (list 'defthm (cadr theorem) (caddr theorem) :hints hints)))
++         (value (list* 'progn proof (cddr generated))))))))
++
++(make-event
++ (value (cons 'progn
++              (fn2-dc-forms
++               (fn2-dc-todo '(fn2-harvest-one fn2-exec-record fn2-exec-wake
++                              fn2-machine-refuse-observation)
++                            'fn2-commit (w state) nil 64)
++               'fn2-commit))))
++
++(make-event
++ (value (cons 'progn (fn2-ctf-dir-forms
++       (fn2-ctf-postorder-new '(fn2-machine-observe-route-fn2-commit fn2-harvest-one fn2-exec-record fn2-exec-wake) (w state))
++       'fn2-commit))))
++
++(make-event
++ (let* ((world (w state))
++        (fn 'fn2-machine-observe-fn2-commit)
++        (runes (fn2-arm-frame-lemmas (fn2-arm-frame-body-callees fn world) '("-ARM-ROW-FRAME") 'fn2-commit world))
++        (cols (loop$ for i from 0 to 32 collect i))
++        (kids (remove-equal 9 (loop$ for i from 0 to 73 collect i))))
++  (value `(defthm fn2-commit-handler-changes-only-owner-row
++           (fn2-arm-row-frame 9 (fn2-machine-slot id fn2-core) ',cols ',kids fn2-core
++                (mv-nth 1 (,fn ,@(formals fn world))))
++           :rule-classes nil
++           :hints (("Goal" :in-theory (union-theories '(,fn fn2-arm-row-frame-refl (:e subsetp-equal)
++                                      (:e member-equal) (:e natp) ,@runes) (theory 'fn2-arm-frame-base))
++                           :do-not-induct t))))))
++
++(defthm fn2-commit-row-frame-keeps-uncertainty
++ (implies (and (fn2-commit-idp i a) (fn2-commit-idp id a)
++               (equal (fn2-machine-phase i a) *fn2-commit-state-uncertain*)
++               (implies (equal (fn2-machine-phase id a) *fn2-commit-state-uncertain*)
++                        (equal (fn2-machine-phase id b) *fn2-commit-state-uncertain*))
++               (fn2-arm-row-frame 9 (fn2-machine-slot id a) cs ch a b)
++               (not (member-equal 9 ch)) (not (member-equal *fn2-commit-rows* cs))
++               (fn2-ctf-dir b a))
++          (equal (fn2-machine-phase i b) *fn2-commit-state-uncertain*))
++ :rule-classes nil
++ :hints (("Goal" :cases ((equal (nfix (fn2-machine-slot i a)) (nfix (fn2-machine-slot id a))))
++          :in-theory '(fn2-ctf-dir-refl)
++          :use ((:instance fn2-commit-other-phase-after-visit-frame (id i) (row (fn2-machine-slot id a)))
++                (:instance fn2-commit-readable-after-visit-frame (id i) (row (fn2-machine-slot id a)))
++                (:instance fn2-commit-readable-after-visit-frame (row (fn2-machine-slot id a)))
++                (:instance fn2-ctf-dir-readers)
++                (:instance fn2-ctf-dir-readers (id i))
++                (:instance fn2-commit-readable-slot-shares-phase (fn2-core a))
++                (:instance fn2-commit-readable-slot-shares-phase (fn2-core b))))))
++
++(make-event
++ (let* ((fn 'fn2-machine-observe-fn2-commit) (world (w state))
++        (out `(mv-nth 1 (,fn ,@(formals fn world))))
++        (cols (loop$ for i from 0 to 32 collect i))
++        (kids (remove-equal 9 (loop$ for i from 0 to 73 collect i))))
++  (value `(defthm fn2-commit-observe-keeps-all-uncertain-rows
++           (implies (and (fn2-commit-idp i fn2-core) (fn2-commit-idp id fn2-core)
++                         (equal (fn2-machine-phase i fn2-core) *fn2-commit-state-uncertain*))
++                    (equal (fn2-machine-phase i ,out) *fn2-commit-state-uncertain*))
++           :hints (("Goal" :in-theory '(fn2-ctf-dir-refl (:e member-equal) member-equal car-cons cdr-cons (:e equal))
++                    :use ((:instance fn2-commit-row-frame-keeps-uncertainty (a fn2-core) (b ,out) (cs ',cols) (ch ',kids))
++                          (:instance fn2-env-observe-fn2-commit-phase-any (m fn2-core))
++                          (:instance fn2-commit-handler-changes-only-owner-row)
++                          (:instance fn2-machine-observe-fn2-commit-ctf-dir (fn2-ctf-c0 fn2-core)))))))))
++
++(defthm fn2-commit-phase-readers-of-unchanged-columns
++ (implies (and (fn2-ctf-dir b a)
++               (equal (nth *fn2-commit-rows* (fn2-commit-table b)) (nth *fn2-commit-rows* (fn2-commit-table a)))
++               (equal (nth 0 (fn2-commit-table b)) (nth 0 (fn2-commit-table a))))
++          (and (equal (fn2-commit-idp id b) (fn2-commit-idp id a))
++               (implies (fn2-commit-idp id a) (equal (fn2-machine-phase id b) (fn2-machine-phase id a)))))
++ :rule-classes nil
++ :hints (("Goal" :use ((:instance fn2-ctf-dir-readers))
++          :in-theory (e/d (fn2-commit-idp fn2-commit-snapshot-read-code fn2-machine-phase-read-code
++                           fn2-machine-phase fn2-commit-rows fn2-commit-phase fn2-commit-phase$ai)
++                          (fn2-ctf-dir fn2-machine-idp fn2-machine-slot fn2-machine-kind
++                           fn2-commit-table nth)))))
++
++(defmacro fn2-commit-readers-after-child-effect (fn)
++ `(make-event
++   (let* ((world (w state)) (f ',fn) (frame (fn2-dc-entry f 'fn2-commit world))
++          (out (fn2-arm-frame-out-term f (cons f (formals f world)) world))
++          (k (fn2-arm-frame-child-index 'fn2-commit-table world))
++          (table-name (fn2-columns-sym f "-KEEPS-MONITORED-COMMIT-TABLE"))
++          (dir-name (fn2-columns-sym f "-CTF-DIR")))
++    (value
++     `(progn
++       (defthm ,table-name
++        (equal (fn2-commit-table ,out) (fn2-commit-table fn2-core))
++        :hints (("Goal" :in-theory (union-theories '(fn2-commit-table) (theory 'fn2-arm-frame-base))
++                 :use ((:instance ,(cdr frame) (fn2-arm-free ',(car frame)) (fn2-arm-c0 fn2-core))
++                       (:instance fn2-arm-kids-refl (i 0) (free ',(car frame)) (a fn2-core))
++                       (:instance fn2-arm-kids-nth (i 0) (k ,k) (free ',(car frame)) (a fn2-core) (b ,out))))))
++       (defthm ,(fn2-columns-sym f "-KEEPS-MONITORED-COMMIT-READERS")
++        (and (equal (fn2-commit-idp i ,out) (fn2-commit-idp i fn2-core))
++             (implies (fn2-commit-idp i fn2-core)
++                      (equal (fn2-machine-phase i ,out) (fn2-machine-phase i fn2-core))))
++        :hints (("Goal" :in-theory '(fn2-ctf-dir-refl ,table-name)
++                 :use ((:instance ,dir-name (fn2-ctf-c0 fn2-core))
++                       (:instance fn2-commit-phase-readers-of-unchanged-columns
++                          (id i) (a fn2-core) (b ,out)))))))))))
++
++(fn2-commit-readers-after-child-effect fn2-harvest-one)
++
++(fn2-commit-readers-after-child-effect fn2-exec-record)
++
++(fn2-commit-readers-after-child-effect fn2-exec-wake)
++
++(fn2-commit-readers-after-child-effect fn2-machine-refuse-observation)
++
++(make-event
++ (let* ((f 'fn2-machine-observe-terminal) (world (w state))
++        (e (fn2-arm-frame-known f 'fn2-commit world))
++        (rune (fn2-arm-frame-lemma f e "-ARM-ROW-FRAME" 'fn2-commit world))
++        (out (cons f (formals f world))) (tk (cadr e)) (ch (caddr e)) (cols (cadddr e)))
++  (value
++   `(defthm fn2-commit-terminal-keeps-monitored-phase-columns
++     (and (equal (nth 0 (fn2-commit-table ,out)) (nth 0 (fn2-commit-table fn2-core)))
++          (equal (nth *fn2-commit-rows* (fn2-commit-table ,out)) (nth *fn2-commit-rows* (fn2-commit-table fn2-core))))
++     :hints (("Goal" :in-theory (union-theories '(fn2-commit-table fn2-ctf-dir-refl) (theory 'fn2-arm-frame-base))
++              :use ((:instance ,rune (fn2-arm-tb ,tk) (fn2-arm-row (fn2-machine-slot id fn2-core))
++                       (fn2-arm-cs ',cols) (fn2-arm-ch ',ch) (fn2-arm-c0 fn2-core))
++                    (:instance fn2-arm-row-frame-refl (table ,tk) (row (fn2-machine-slot id fn2-core)) (columns ',cols) (children ',ch) (a fn2-core))
++                    (:instance fn2-arm-row-frame-cols (table ,tk) (row (fn2-machine-slot id fn2-core))
++                      (columns ',cols) (children ',ch) (a fn2-core) (b ,out))
++                    (:instance fn2-arm-cols-nth (row (fn2-machine-slot id fn2-core)) (k 0) (j 0) (columns ',cols) (a (nth ,tk fn2-core)) (b (nth ,tk ,out)))
++                    (:instance fn2-arm-cols-nth (row (fn2-machine-slot id fn2-core)) (k 0) (j *fn2-commit-rows*) (columns ',cols) (a (nth ,tk fn2-core)) (b (nth ,tk ,out))))))))))
++
++(defthm fn2-commit-terminal-keeps-monitored-readers
++ (let ((out (fn2-machine-observe-terminal id fn2-core)))
++  (and (equal (fn2-commit-idp i out) (fn2-commit-idp i fn2-core))
++       (implies (fn2-commit-idp i fn2-core) (equal (fn2-machine-phase i out) (fn2-machine-phase i fn2-core)))))
++ :hints (("Goal" :in-theory '(fn2-ctf-dir-refl fn2-commit-terminal-keeps-monitored-phase-columns)
++          :use ((:instance fn2-machine-observe-terminal-ctf-dir (fn2-ctf-c0 fn2-core))
++                (:instance fn2-commit-phase-readers-of-unchanged-columns
++                  (id i) (a fn2-core) (b (fn2-machine-observe-terminal id fn2-core)))))))
++
++(make-event
++ (let* ((fn 'fn2-machine-observe-fn2-commit) (world (w state))
++        (out `(mv-nth 1 (,fn ,@(formals fn world))))
++        (cols (loop$ for i from 0 to 32 collect i))
++        (kids (remove-equal 9 (loop$ for i from 0 to 73 collect i))))
++  (value `(defthm fn2-commit-observe-keeps-rows-readable
++           (equal (fn2-commit-idp i ,out) (fn2-commit-idp i fn2-core))
++           :hints (("Goal" :in-theory '(fn2-ctf-dir-refl (:e member-equal) member-equal car-cons cdr-cons (:e equal))
++                    :use ((:instance fn2-commit-readable-after-visit-frame
++                               (a fn2-core) (b ,out) (id i) (row (fn2-machine-slot id fn2-core)) (cs ',cols) (ch ',kids))
++                          (:instance fn2-commit-handler-changes-only-owner-row)
++                          (:instance fn2-machine-observe-fn2-commit-ctf-dir (fn2-ctf-c0 fn2-core)))))))))
++
++(defthm fn2-commit-snapshot-readable-for-route
++ (equal (equal (fn2-commit-snapshot-read-code id fn2-core) :ok) (fn2-commit-idp id fn2-core))
++ :hints (("Goal" :in-theory '(fn2-commit-idp))))
++
++(defthm fn2-commit-route-keeps-uncertain-rows
++ (let ((b (mv-nth 1 (fn2-machine-observe-route-fn2-commit id gen event outcome reason count aux0 aux1 fn2-core))))
++  (and (equal (fn2-commit-idp i b) (fn2-commit-idp i fn2-core))
++       (implies (and (fn2-commit-idp i fn2-core)
++                     (equal (fn2-machine-phase i fn2-core) *fn2-commit-state-uncertain*))
++                (equal (fn2-machine-phase i b) *fn2-commit-state-uncertain*))))
++ :hints (("Goal" :in-theory (union-theories
++             '(fn2-machine-observe-route-fn2-commit fn2-commit-snapshot-readable-for-route
++               fn2-machine-refuse-observation-keeps-monitored-commit-readers
++               fn2-commit-terminal-keeps-monitored-readers fn2-commit-observe-keeps-rows-readable
++               fn2-commit-observe-keeps-all-uncertain-rows)
++             (union-theories '(fn2-ctf-mv-nth-of-if fn2-ctf-mv-nth-cons car-cons cdr-cons (:e equal)) (theory 'minimal-theory))))))
++
++(defthm fn2-commit-routed-observation-keeps-uncertain-rows
++ (let ((b (mv-nth 1 (fn2-machine-observe *fn2-commit-kind* id gen event outcome reason count aux0 aux1 fn2-core))))
++  (and (equal (fn2-commit-idp i b) (fn2-commit-idp i fn2-core))
++       (implies (and (fn2-commit-idp i fn2-core)
++                     (equal (fn2-machine-phase i fn2-core) *fn2-commit-state-uncertain*))
++                (equal (fn2-machine-phase i b) *fn2-commit-state-uncertain*))))
++ :hints (("Goal" :in-theory (union-theories
++             '(fn2-machine-observe fn2-commit-route-keeps-uncertain-rows
++               fn2-machine-refuse-observation-keeps-monitored-commit-readers)
++             (union-theories '(fn2-ctf-mv-nth-of-if fn2-ctf-mv-nth-cons car-cons cdr-cons (:e equal)) (theory 'minimal-theory))))))
++
++(defthm fn2-commit-harvest-keeps-uncertain-rows
++ (implies (implies (mv-nth 0 (fn2-harvest-one fn2-core))
++                   (equal (mv-nth 1 (fn2-core-next-owner fn2-core)) *fn2-commit-kind*))
++  (let ((b (mv-nth 5 (fn2-exec-harvest fn2-core))))
++   (and (equal (fn2-commit-idp i b) (fn2-commit-idp i fn2-core))
++        (implies (and (fn2-commit-idp i fn2-core)
++                      (equal (fn2-machine-phase i fn2-core) *fn2-commit-state-uncertain*))
++                 (equal (fn2-machine-phase i b) *fn2-commit-state-uncertain*)))))
++ :rule-classes nil
++ :hints (("Goal" :in-theory (union-theories
++             '(fn2-exec-harvest fn2-commit-routed-observation-keeps-uncertain-rows
++               fn2-harvest-one-keeps-monitored-commit-readers fn2-exec-wake-keeps-monitored-commit-readers
++               fn2-exec-record-keeps-monitored-commit-readers fn2-ctf-mv-nth-of-if fn2-ctf-mv-nth-cons
++               car-cons cdr-cons (:e equal))
++             (theory 'minimal-theory)))))
+--- /dev/null
++++ b/books/commit-uncertainty-harvest-proof.lisp
+@@ -0,0 +1,175 @@
++; A live descriptor belongs to the commit machine throughout a harvest.
++(in-package "ACL2")
++(include-book "commit-uncertainty-route-proof")
++(include-book "commit-issue-owner-proof")
++(fn2-book-layer :b)
++
++(defmacro fn2-commit-core-issue-owner (name)
++ (let* ((args (if (eq name 'fn2-issue-write) '(offset slot gen off len fua) nil))
++        (children (fn2-columns-sym name "-CHILDREN"))
++        (preserves (fn2-columns-sym children "-KEEPS-ACTIVE-OWNERS")))
++  `(defthm ,(fn2-columns-sym name "-KEEPS-ACTIVE-OWNERS")
++    (implies (fn2-op-active-owners-p okind (fn2-core-ops fn2-core))
++             (fn2-op-active-owners-p okind (fn2-core-ops
++              (mv-nth 3 (,name ,@args okind oslot ogen principal fn2-core)))))
++    :hints (("Goal" :in-theory (union-theories
++                 '(,name ,preserves fn2-core-ops fn2-core-pool fn2-core-control
++                   update-fn2-core-ops update-fn2-core-pool update-fn2-core-control
++                   nth-update-nth (:e nfix) (:e equal))
++                 (theory 'fn2-arm-frame-base)))))))
++
++(fn2-commit-core-issue-owner fn2-issue-write)
++
++(fn2-commit-core-issue-owner fn2-issue-fence)
++
++(defthm fn2-env-harvest-next-head
++  ; the harvested slot, generation and cell are the posted head's
++  (let ((hn (fn2-harvest-next fn2-ops)) (pk (fn2-ops-peek-posted fn2-ops)))
++    (and (equal (mv-nth 0 hn) (mv-nth 0 pk))
++         (implies (eq (mv-nth 0 pk) t)
++                  (and (equal (mv-nth 1 hn) (mv-nth 1 pk)) (equal (mv-nth 3 hn) (mv-nth 2 pk))
++                       (equal (mv-nth 2 hn) (fn2-ops-gen (mv-nth 1 pk) fn2-ops))))))
++  :rule-classes nil
++  :hints (("Goal" :in-theory (e/d (fn2-harvest-next) (fn2-ops-peek-posted fn2-op-harvest-phase fn2-ops-latch-peer)))))
++
++(defthm fn2-env-harvest-one-delivered-owner
++  (implies (mv-nth 0 (fn2-harvest-one c))
++           (eq (mv-nth 0 (fn2-core-next-owner c)) t))
++  :rule-classes nil
++  :hints (("Goal" :do-not-induct t :do-not '(generalize fertilize eliminate-destructors)
++           :in-theory (union-theories '(fn2-harvest-one fn2-core-next-owner fn2-ops-next-owner fn2-core-ops
++                                        mv-nth car-cons cdr-cons (:e equal) (:e eq) (:e zp) (:e mv-nth))
++                                      (theory 'minimal-theory))
++           :use ((:instance fn2-env-harvest-next-head (fn2-ops (nth 1 c)))))))
++
++(defthm fn2-commit-active-owners-imply-harvest-commit
++ (implies (and (fn2-op-active-owners-p *fn2-commit-kind* (fn2-core-ops fn2-core))
++               (mv-nth 0 (fn2-harvest-one fn2-core)))
++          (equal (mv-nth 1 (fn2-core-next-owner fn2-core)) *fn2-commit-kind*))
++ :rule-classes nil
++ :hints (("Goal" :in-theory (union-theories '(fn2-core-next-owner fn2-ctf-mv-nth-cons
++               car-cons cdr-cons (:e equal) (:e zp) (:e binary-+) (:e unary--)) (theory 'minimal-theory))
++          :use ((:instance fn2-env-harvest-one-delivered-owner (c fn2-core))
++                (:instance fn2-ops-next-owner-from-active-owners
++                    (kind *fn2-commit-kind*) (ops (fn2-core-ops fn2-core)))))))
++
++(defthm fn2-commit-harvest-preserves-monitored-uncertainty
++ (implies (fn2-op-active-owners-p *fn2-commit-kind* (fn2-core-ops fn2-core))
++  (let ((b (mv-nth 5 (fn2-exec-harvest fn2-core))))
++   (and (equal (fn2-commit-idp i b) (fn2-commit-idp i fn2-core))
++        (implies (and (fn2-commit-idp i fn2-core)
++                      (equal (fn2-machine-phase i fn2-core) *fn2-commit-state-uncertain*))
++                 (equal (fn2-machine-phase i b) *fn2-commit-state-uncertain*)))))
++ :hints (("Goal" :in-theory nil
++          :use (fn2-commit-harvest-keeps-uncertain-rows fn2-commit-active-owners-imply-harvest-commit))))
++
++(defun fn2-commit-owner-callees (fns world seen fuel)
++ (declare (xargs :verify-guards nil :measure (make-ord 1 (+ 1 (nfix fuel)) (acl2-count fns))))
++ (if (or (atom fns) (zp fuel)) seen
++  (let* ((f (car fns)) (d (fn2-dc-entry f 'fn2-commit world))
++         (calls (fn2-arm-frame-body-callees f world))
++         (leaf (or (and d (not (member-equal 1 (car d))))
++                  (member-eq f '(fn2-issue-write fn2-issue-fence))
++                  (getpropc (fn2-columns-sym f "-OPS-CHILD-FRAME") 'theorem nil world))))
++    (if (assoc-eq f seen) (fn2-commit-owner-callees (cdr fns) world seen fuel)
++     (fn2-commit-owner-callees (cdr fns) world
++       (append (if leaf seen (fn2-commit-owner-callees calls world seen (- fuel 1)))
++         (list (list f (if leaf :frame :open) (car d) (and (not leaf) calls)))) fuel)))))
++
++(defun fn2-commit-run-owner-rules (fns world)
++ (declare (xargs :verify-guards nil))
++ (if (atom fns) nil
++  (let* ((f (car fns)) (same (fn2-columns-sym f "-OPS-CHILD-FRAME"))
++         (owner (fn2-columns-sym f "-KEEPS-ACTIVE-OWNERS")))
++   (append (cond ((getpropc same 'theorem nil world) (list same))
++                 ((getpropc owner 'theorem nil world) (list owner))
++                 (t nil))
++           (fn2-commit-run-owner-rules (cdr fns) world)))))
++
++(defun fn2-commit-run-owner-event (f world)
++ (declare (xargs :verify-guards nil))
++ (let* ((frame (fn2-dc-entry f 'fn2-commit world))
++        (ks (car frame)) (out (fn2-arm-frame-out-term f (cons f (formals f world)) world))
++        (o (fn2-columns-sym f "-KEEPS-ACTIVE-OWNERS"))
++        (same (fn2-columns-sym f "-OPS-CHILD-FRAME"))
++        (calls (fn2-arm-frame-body-callees f world)))
++   (cond ((or (getpropc o 'theorem nil world) (getpropc same 'theorem nil world))
++          '(value-triple :known))
++         ((and frame (not (member-equal 1 ks)))
++          `(defthm ,same
++             (equal (fn2-core-ops ,out) (fn2-core-ops fn2-core))
++             :hints (("Goal" :do-not-induct t
++                :in-theory (union-theories '(fn2-core-ops) (theory 'fn2-arm-frame-base))
++                :use ((:instance ,(cdr frame) (fn2-arm-free ',ks) (fn2-arm-c0 fn2-core))
++                      (:instance fn2-arm-kids-refl (i 0) (free ',ks) (a fn2-core))
++                      (:instance fn2-arm-kids-nth (i 0) (k 1) (free ',ks) (a fn2-core) (b ,out)))))))
++         (t `(defthm ,o
++             (implies (fn2-op-active-owners-p *fn2-commit-kind* (fn2-core-ops fn2-core))
++                      (fn2-op-active-owners-p *fn2-commit-kind* (fn2-core-ops ,out)))
++             :hints (("Goal" :do-not-induct t
++                      :in-theory (union-theories '(,f ,@(fn2-commit-run-owner-rules calls world))
++                                    (theory 'fn2-arm-frame-base)))))))))
++
++(defun fn2-commit-run-owner-events (rows)
++ (declare (xargs :verify-guards nil))
++ (if (atom rows) nil
++   (cons `(make-event (value (fn2-commit-run-owner-event ',(caar rows) (w state))))
++         (fn2-commit-run-owner-events (cdr rows)))))
++
++(make-event (value (cons 'progn (fn2-commit-run-owner-events
++       (fn2-commit-owner-callees '(fn2-commit-run) (w state) nil 32)))))
++
++(make-event (value (cons 'progn (fn2-dc-forms (fn2-dc-todo
++     '(fn2-b-start fn2-exec-mailbox fn2-machine-observe-route-fn2-commit
++       fn2-exec-record fn2-exec-wake fn2-core-harvest-hooks) 'fn2-commit (w state) nil 64) 'fn2-commit))))
++
++(make-event (value (cons 'progn (fn2-machine-ops-frame-events
++     '(fn2-b-start fn2-exec-mailbox fn2-machine-observe-route-fn2-commit
++       fn2-exec-record fn2-exec-wake fn2-core-harvest-hooks fn2-machine-refuse-observation) 'fn2-commit))))
++
++(defthm fn2-commit-routed-observation-keeps-operations
++ (let ((b (mv-nth 1 (fn2-machine-observe *fn2-commit-kind* id gen event outcome reason count aux0 aux1 fn2-core))))
++  (equal (fn2-core-ops b) (fn2-core-ops fn2-core)))
++ :hints (("Goal" :in-theory (union-theories '(fn2-machine-observe
++                fn2-machine-observe-route-fn2-commit-ops-child-frame
++                fn2-machine-refuse-observation-ops-child-frame)
++                (theory 'fn2-arm-frame-base)))))
++
++(defthm fn2-commit-owner-observes-updated-ops
++ (equal (fn2-core-ops (update-fn2-core-ops ops c)) ops)
++ :hints (("Goal" :in-theory '(fn2-core-ops update-fn2-core-ops nth-update-nth (:e equal) (:e nfix)))))
++
++(defthm fn2-commit-owner-observes-pool-only-update
++ (equal (fn2-core-ops (update-fn2-core-pool pool c)) (fn2-core-ops c))
++ :hints (("Goal" :in-theory '(fn2-core-ops update-fn2-core-pool nth-update-nth (:e equal) (:e nfix)))))
++
++(defthm fn2-harvest-one-keeps-active-owner-at
++ (implies (fn2-op-owner-active-p i owner (fn2-core-ops c))
++          (fn2-op-owner-active-p i owner (fn2-core-ops (mv-nth 10 (fn2-harvest-one c)))))
++ :hints (("Goal" :do-not-induct t
++   :in-theory (union-theories
++       '(fn2-harvest-one fn2-commit-owner-observes-updated-ops fn2-commit-owner-observes-pool-only-update
++         fn2-core-stop-ops-child-frame fn2-core-harvest-hooks-ops-child-frame
++         fn2-op-finish-keeps-active-owner-at fn2-op-harvest-keeps-active-owner
++         (:t fn2-harvest-next) (:t fn2-op-finish) (:t fn2-core-harvest-hooks)
++         fn2-ctf-mv-nth-of-if fn2-ctf-mv-nth-cons)
++       (theory 'fn2-arm-frame-base)))))
++
++(defthm fn2-harvest-one-keeps-active-owners
++ (implies (fn2-op-active-owners-p owner (fn2-core-ops c))
++          (fn2-op-active-owners-p owner (fn2-core-ops (mv-nth 10 (fn2-harvest-one c)))))
++ :hints (("Goal" :expand ((fn2-op-active-owners-p owner (fn2-core-ops (mv-nth 10 (fn2-harvest-one c)))))
++          :use ((:instance fn2-op-active-owners-p-necc
++                 (slot (fn2-op-active-owners-p-witness owner (fn2-core-ops (mv-nth 10 (fn2-harvest-one c)))))
++                 (kind owner) (ops (fn2-core-ops c))))
++          :in-theory '(fn2-harvest-one-keeps-active-owner-at))))
++
++(defthm fn2-exec-harvest-keeps-active-owners
++ (implies (fn2-op-active-owners-p *fn2-commit-kind* (fn2-core-ops fn2-core))
++          (fn2-op-active-owners-p *fn2-commit-kind*
++              (fn2-core-ops (mv-nth 5 (fn2-exec-harvest fn2-core)))))
++ :hints (("Goal" :use (fn2-commit-active-owners-imply-harvest-commit)
++          :in-theory (union-theories '(fn2-exec-harvest fn2-commit-routed-observation-keeps-operations
++                fn2-exec-record-ops-child-frame fn2-exec-wake-ops-child-frame fn2-harvest-one-keeps-active-owners
++                fn2-ctf-mv-nth-of-if fn2-ctf-mv-nth-cons (:e equal))
++                (theory 'minimal-theory)))))
+--- /dev/null
++++ b/books/commit-uncertainty-adapter-proof.lisp
+@@ -0,0 +1,333 @@
++; The simulated adapter and mailbox preserve both phase and descriptor ownership.
++(in-package "ACL2")
++(include-book "commit-uncertainty-harvest-proof")
++(fn2-book-layer :b)
++
++(local (defthm fn2-op-owner-mv-choice
++  (equal (mv-nth n (if c x y)) (if c (mv-nth n x) (mv-nth n y)))))
++
++(local (defthm fn2-op-owner-mv-cons
++  (equal (mv-nth n (cons x y)) (if (zp n) x (mv-nth (- n 1) y)))))
++
++(local (defun fn2-op-owner-setter-facts (fields)
++  (declare (xargs :verify-guards nil))
++  (if (atom fields) nil
++    (let ((setter (fn2-columns-col-name 'fn2-ops (fn2-columns-pre "SET-" (car fields)))))
++      (list* (fn2-columns-sym setter "-NTH") (fn2-columns-sym setter "-ROWS")
++             (fn2-op-owner-setter-facts (cdr fields)))))))
++
++(local (defmacro fn2-op-row-owner-theory (&rest terms)
++ `(union-theories
++     (quote ,terms)
++     (union-theories
++        '(fn2-op-owner-active-p fn2-ops-rows fn2-ops-phase fn2-ops-phase$ai
++          fn2-ops-owner-kind fn2-ops-owner-kind$ai nth-update-nth (:e equal) member-equal (:e <) (:e binary-+) (:e unary--)
++          car-cons cdr-cons (:e member-equal) (:e nfix) nfix natp (:e zp))
++        (fn2-op-owner-setter-facts (strip-cars
++            (fn2-decl-get :columns (fn2-decl-row '(:columns fn2-ops) world))))))))
++
++(defthm fn2-sim-project-mv-cons
++ (equal (mv-nth n (cons a b)) (if (zp n) a (mv-nth (1- n) b)))
++ :hints (("Goal" :in-theory (enable mv-nth))))
++
++(defthm fn2-sim-project-mv-if
++ (equal (mv-nth n (if c a b)) (if c (mv-nth n a) (mv-nth n b))))
++
++(defthm fn2-sim-post-clock-keeps-other-core-children
++ (implies (not (equal (nfix k) *fn2-core-ops*))
++          (equal (nth k (fn2-sim-post-clock mono real fn2-core)) (nth k fn2-core)))
++ :hints (("Goal" :do-not-induct t
++          :in-theory (union-theories '(fn2-sim-post-clock update-fn2-core-ops update-fn2-core-pool nth-update-nth car-cons cdr-cons fn2-sim-project-mv-cons fn2-sim-project-mv-if
++                        (:e zp) (:e nfix) (:e binary-+) (:e binary-*) (:e unary--) (:e <) (:e car) (:e cdr) (:e equal))
++                       (theory 'minimal-theory)))))
++
++(defthm fn2-sim-take-one-keeps-other-core-children
++ (implies (not (equal (nfix k) *fn2-core-ops*))
++          (equal (nth k (mv-nth 1 (fn2-sim-take-one fn2-core fn2-sim fn2-own))) (nth k fn2-core)))
++ :hints (("Goal" :do-not-induct t
++          :in-theory (union-theories '(fn2-sim-take-one update-fn2-core-ops update-fn2-core-pool nth-update-nth car-cons cdr-cons fn2-sim-project-mv-cons fn2-sim-project-mv-if
++                        (:e zp) (:e nfix) (:e binary-+) (:e binary-*) (:e unary--) (:e <) (:e car) (:e cdr) (:e equal))
++                       (theory 'minimal-theory)))))
++
++(defthm fn2-sim-take-prefix-keeps-other-core-children
++ (implies (not (equal (nfix k) *fn2-core-ops*))
++          (equal (nth k (mv-nth 1 (fn2-sim-take-prefix left taken fn2-core fn2-sim fn2-own))) (nth k fn2-core)))
++ :hints (("Goal" :induct (fn2-sim-take-prefix left taken fn2-core fn2-sim fn2-own)
++          :in-theory (union-theories '(fn2-sim-take-prefix update-fn2-core-ops update-fn2-core-pool nth-update-nth car-cons cdr-cons fn2-sim-project-mv-cons fn2-sim-project-mv-if fn2-sim-take-one-keeps-other-core-children (:t fn2-sim-take-one)
++                        (:e zp) (:e nfix) (:e binary-+) (:e binary-*) (:e unary--) (:e <) (:e car) (:e cdr) (:e equal))
++                       (theory 'minimal-theory)))))
++
++(defthm fn2-sim-physical-act-keeps-other-core-children
++ (implies (not (equal (nfix k) *fn2-core-pool*))
++          (equal (nth k (mv-nth 3 (fn2-sim-physical-act kind cap nonce rslot rgen off len n okind oslot ogen slot gen offset stamp fua fault word lying fn2-core fn2-sim-network fn2-sim-storage fn2-own))) (nth k fn2-core)))
++ :hints (("Goal" :do-not-induct t
++          :in-theory (union-theories '(fn2-sim-physical-act update-fn2-core-ops update-fn2-core-pool nth-update-nth car-cons cdr-cons fn2-sim-project-mv-cons fn2-sim-project-mv-if
++                        (:e zp) (:e nfix) (:e binary-+) (:e binary-*) (:e unary--) (:e <) (:e car) (:e cdr) (:e equal))
++                       (theory 'minimal-theory)))))
++
++(defthm fn2-sim-physical-keeps-other-core-children
++ (implies (not (equal (nfix k) *fn2-core-pool*))
++          (equal (nth k (mv-nth 3 (fn2-sim-physical slot fault word fn2-core fn2-sim fn2-own))) (nth k fn2-core)))
++ :hints (("Goal" :do-not-induct t
++          :in-theory (union-theories '(fn2-sim-physical update-fn2-core-ops update-fn2-core-pool nth-update-nth car-cons cdr-cons fn2-sim-project-mv-cons fn2-sim-project-mv-if fn2-sim-physical-act-keeps-other-core-children (:t fn2-sim-physical-act)
++                        (:e zp) (:e nfix) (:e binary-+) (:e binary-*) (:e unary--) (:e <) (:e car) (:e cdr) (:e equal))
++                       (theory 'minimal-theory)))))
++
++(defthm fn2-sim-native-stage-keeps-other-core-children
++ (implies (not (equal (nfix k) *fn2-core-pool*))
++          (equal (nth k (mv-nth 2 (fn2-sim-native-stage slot fault word fn2-core fn2-sim fn2-own))) (nth k fn2-core)))
++ :hints (("Goal" :do-not-induct t
++          :in-theory (union-theories '(fn2-sim-native-stage update-fn2-core-ops update-fn2-core-pool nth-update-nth car-cons cdr-cons fn2-sim-project-mv-cons fn2-sim-project-mv-if fn2-sim-physical-keeps-other-core-children (:t fn2-sim-physical)
++                        (:e zp) (:e nfix) (:e binary-+) (:e binary-*) (:e unary--) (:e <) (:e car) (:e cdr) (:e equal))
++                       (theory 'minimal-theory)))))
++
++(defthm fn2-sim-post-keeps-other-core-children
++ (implies (not (equal (nfix k) *fn2-core-ops*))
++          (equal (nth k (mv-nth 1 (fn2-sim-post cell slot gen evkind outcome reason count aux0 aux1 fault expected-stray fn2-core fn2-sim fn2-own))) (nth k fn2-core)))
++ :hints (("Goal" :do-not-induct t
++          :in-theory (union-theories '(fn2-sim-post update-fn2-core-ops update-fn2-core-pool nth-update-nth car-cons cdr-cons fn2-sim-project-mv-cons fn2-sim-project-mv-if
++                        (:e zp) (:e nfix) (:e binary-+) (:e binary-*) (:e unary--) (:e <) (:e car) (:e cdr) (:e equal))
++                       (theory 'minimal-theory)))))
++
++(defthm fn2-sim-inject-keeps-other-core-children
++ (implies (not (equal (nfix k) *fn2-core-ops*))
++          (equal (nth k (mv-nth 1 (fn2-sim-inject slot fault fn2-core fn2-sim fn2-own))) (nth k fn2-core)))
++ :hints (("Goal" :do-not-induct t
++          :in-theory (union-theories '(fn2-sim-inject update-fn2-core-ops update-fn2-core-pool nth-update-nth car-cons cdr-cons fn2-sim-project-mv-cons fn2-sim-project-mv-if fn2-sim-post-keeps-other-core-children (:t fn2-sim-post)
++                        (:e zp) (:e nfix) (:e binary-+) (:e binary-*) (:e unary--) (:e <) (:e car) (:e cdr) (:e equal))
++                       (theory 'minimal-theory)))))
++
++(defthm fn2-sim-terminal-post-keeps-other-core-children
++ (implies (not (equal (nfix k) *fn2-core-ops*))
++          (equal (nth k (mv-nth 1 (fn2-sim-terminal-post slot gen event outcome reason count aux0 aux1 fault word now release early fn2-core fn2-sim fn2-own))) (nth k fn2-core)))
++ :hints (("Goal" :do-not-induct t
++          :in-theory (union-theories '(fn2-sim-terminal-post update-fn2-core-ops update-fn2-core-pool nth-update-nth car-cons cdr-cons fn2-sim-project-mv-cons fn2-sim-project-mv-if fn2-sim-post-keeps-other-core-children (:t fn2-sim-post)
++                        (:e zp) (:e nfix) (:e binary-+) (:e binary-*) (:e unary--) (:e <) (:e car) (:e cdr) (:e equal))
++                       (theory 'minimal-theory)))))
++
++(defthm fn2-sim-complete-result-keeps-other-core-children
++ (implies (not (equal (nfix k) *fn2-core-ops*))
++          (equal (nth k (mv-nth 1 (fn2-sim-complete-result slot gen kind event len code physical-count aux fault word now release fn2-core fn2-sim fn2-own))) (nth k fn2-core)))
++ :hints (("Goal" :do-not-induct t
++          :in-theory (union-theories '(fn2-sim-complete-result update-fn2-core-ops update-fn2-core-pool nth-update-nth car-cons cdr-cons fn2-sim-project-mv-cons fn2-sim-project-mv-if fn2-sim-terminal-post-keeps-other-core-children (:t fn2-sim-terminal-post)
++                        (:e zp) (:e nfix) (:e binary-+) (:e binary-*) (:e unary--) (:e <) (:e car) (:e cdr) (:e equal))
++                       (theory 'minimal-theory)))))
++
++(defthm fn2-sim-native-post-keeps-other-core-children
++ (implies (not (equal (nfix k) *fn2-core-ops*))
++          (equal (nth k (mv-nth 1 (fn2-sim-native-post packet fn2-core fn2-sim fn2-own))) (nth k fn2-core)))
++ :hints (("Goal" :do-not-induct t
++          :in-theory (union-theories '(fn2-sim-native-post update-fn2-core-ops update-fn2-core-pool nth-update-nth car-cons cdr-cons fn2-sim-project-mv-cons fn2-sim-project-mv-if fn2-sim-complete-result-keeps-other-core-children (:t fn2-sim-complete-result)
++                        (:e zp) (:e nfix) (:e binary-+) (:e binary-*) (:e unary--) (:e <) (:e car) (:e cdr) (:e equal))
++                       (theory 'minimal-theory)))))
++
++(defthm fn2-sim-complete-keeps-other-core-children
++ (implies (and (not (equal (nfix k) *fn2-core-ops*)) (not (equal (nfix k) *fn2-core-pool*)))
++          (equal (nth k (mv-nth 1 (fn2-sim-complete slot fault word fn2-core fn2-sim fn2-own))) (nth k fn2-core)))
++ :hints (("Goal" :do-not-induct t
++          :in-theory (union-theories '(fn2-sim-complete update-fn2-core-ops update-fn2-core-pool nth-update-nth car-cons cdr-cons fn2-sim-project-mv-cons fn2-sim-project-mv-if fn2-sim-inject-keeps-other-core-children fn2-sim-post-keeps-other-core-children fn2-sim-physical-keeps-other-core-children fn2-sim-complete-result-keeps-other-core-children (:t fn2-sim-inject) (:t fn2-sim-post) (:t fn2-sim-physical) (:t fn2-sim-complete-result)
++                        (:e zp) (:e nfix) (:e binary-+) (:e binary-*) (:e unary--) (:e <) (:e car) (:e cdr) (:e equal))
++                       (theory 'minimal-theory)))))
++
++(defthm fn2-sim-post-clock-preserves-machine-phase
++ (equal (fn2-machine-phase id (fn2-sim-post-clock mono real fn2-core)) (fn2-machine-phase id fn2-core))
++ :hints (("Goal" :in-theory (e/d (fn2-machine-phase fn2-machine-idp fn2-machine-slot fn2-machine-kind fn2-core-machines fn2-machine-slot-read-code fn2-machine-kind-read-code fn2-auth-table fn2-boot-table fn2-cns-table fn2-commit-table fn2-conn-table fn2-ctl-table fn2-cursor-table fn2-echo-table fn2-listener-table fn2-recovery-machine-table fn2-scribe-table fn2-sealer-table fn2-tls-admit-table fn2-txn-table fn2-upload-table fn2-machine-phase-read-code) (fn2-sim-post-clock nth)))))
++
++(defthm fn2-sim-post-clock-preserves-uncertain-visibility
++ (fn2-commit-proof-preservedp (fn2-b-visibility ids fn2-core) (fn2-b-visibility ids (fn2-sim-post-clock mono real fn2-core)))
++ :hints (("Goal" :induct (fn2-b-visibility ids fn2-core)
++                 :in-theory (union-theories '(fn2-b-visibility fn2-commit-proof-preservedp
++                           fn2-b-visible-phase (:e nth) nth car-cons cdr-cons (:e zp) (:e binary-+) (:e car) (:e cdr)
++                           fn2-sim-post-clock-preserves-machine-phase) (theory 'minimal-theory)))) )
++
++(defthm fn2-sim-take-prefix-preserves-machine-phase
++ (equal (fn2-machine-phase id (mv-nth 1 (fn2-sim-take-prefix left taken fn2-core fn2-sim fn2-own))) (fn2-machine-phase id fn2-core))
++ :hints (("Goal" :in-theory (e/d (fn2-machine-phase fn2-machine-idp fn2-machine-slot fn2-machine-kind fn2-core-machines fn2-machine-slot-read-code fn2-machine-kind-read-code fn2-auth-table fn2-boot-table fn2-cns-table fn2-commit-table fn2-conn-table fn2-ctl-table fn2-cursor-table fn2-echo-table fn2-listener-table fn2-recovery-machine-table fn2-scribe-table fn2-sealer-table fn2-tls-admit-table fn2-txn-table fn2-upload-table fn2-machine-phase-read-code) (fn2-sim-take-prefix nth)))))
++
++(defthm fn2-sim-take-prefix-preserves-uncertain-visibility
++ (fn2-commit-proof-preservedp (fn2-b-visibility ids fn2-core) (fn2-b-visibility ids (mv-nth 1 (fn2-sim-take-prefix left taken fn2-core fn2-sim fn2-own))))
++ :hints (("Goal" :induct (fn2-b-visibility ids fn2-core)
++                 :in-theory (union-theories '(fn2-b-visibility fn2-commit-proof-preservedp
++                           fn2-b-visible-phase (:e nth) nth car-cons cdr-cons (:e zp) (:e binary-+) (:e car) (:e cdr)
++                           fn2-sim-take-prefix-preserves-machine-phase) (theory 'minimal-theory)))) )
++
++(defthm fn2-sim-native-stage-preserves-machine-phase
++ (equal (fn2-machine-phase id (mv-nth 2 (fn2-sim-native-stage slot fault word fn2-core fn2-sim fn2-own))) (fn2-machine-phase id fn2-core))
++ :hints (("Goal" :in-theory (e/d (fn2-machine-phase fn2-machine-idp fn2-machine-slot fn2-machine-kind fn2-core-machines fn2-machine-slot-read-code fn2-machine-kind-read-code fn2-auth-table fn2-boot-table fn2-cns-table fn2-commit-table fn2-conn-table fn2-ctl-table fn2-cursor-table fn2-echo-table fn2-listener-table fn2-recovery-machine-table fn2-scribe-table fn2-sealer-table fn2-tls-admit-table fn2-txn-table fn2-upload-table fn2-machine-phase-read-code) (fn2-sim-native-stage nth)))))
++
++(defthm fn2-sim-native-stage-preserves-uncertain-visibility
++ (fn2-commit-proof-preservedp (fn2-b-visibility ids fn2-core) (fn2-b-visibility ids (mv-nth 2 (fn2-sim-native-stage slot fault word fn2-core fn2-sim fn2-own))))
++ :hints (("Goal" :induct (fn2-b-visibility ids fn2-core)
++                 :in-theory (union-theories '(fn2-b-visibility fn2-commit-proof-preservedp
++                           fn2-b-visible-phase (:e nth) nth car-cons cdr-cons (:e zp) (:e binary-+) (:e car) (:e cdr)
++                           fn2-sim-native-stage-preserves-machine-phase) (theory 'minimal-theory)))) )
++
++(defthm fn2-sim-native-post-preserves-machine-phase
++ (equal (fn2-machine-phase id (mv-nth 1 (fn2-sim-native-post packet fn2-core fn2-sim fn2-own))) (fn2-machine-phase id fn2-core))
++ :hints (("Goal" :in-theory (e/d (fn2-machine-phase fn2-machine-idp fn2-machine-slot fn2-machine-kind fn2-core-machines fn2-machine-slot-read-code fn2-machine-kind-read-code fn2-auth-table fn2-boot-table fn2-cns-table fn2-commit-table fn2-conn-table fn2-ctl-table fn2-cursor-table fn2-echo-table fn2-listener-table fn2-recovery-machine-table fn2-scribe-table fn2-sealer-table fn2-tls-admit-table fn2-txn-table fn2-upload-table fn2-machine-phase-read-code) (fn2-sim-native-post nth)))))
++
++(defthm fn2-sim-native-post-preserves-uncertain-visibility
++ (fn2-commit-proof-preservedp (fn2-b-visibility ids fn2-core) (fn2-b-visibility ids (mv-nth 1 (fn2-sim-native-post packet fn2-core fn2-sim fn2-own))))
++ :hints (("Goal" :induct (fn2-b-visibility ids fn2-core)
++                 :in-theory (union-theories '(fn2-b-visibility fn2-commit-proof-preservedp
++                           fn2-b-visible-phase (:e nth) nth car-cons cdr-cons (:e zp) (:e binary-+) (:e car) (:e cdr)
++                           fn2-sim-native-post-preserves-machine-phase) (theory 'minimal-theory)))) )
++
++(defthm fn2-sim-complete-preserves-machine-phase
++ (equal (fn2-machine-phase id (mv-nth 1 (fn2-sim-complete slot fault word fn2-core fn2-sim fn2-own))) (fn2-machine-phase id fn2-core))
++ :hints (("Goal" :in-theory (e/d (fn2-machine-phase fn2-machine-idp fn2-machine-slot fn2-machine-kind fn2-core-machines fn2-machine-slot-read-code fn2-machine-kind-read-code fn2-auth-table fn2-boot-table fn2-cns-table fn2-commit-table fn2-conn-table fn2-ctl-table fn2-cursor-table fn2-echo-table fn2-listener-table fn2-recovery-machine-table fn2-scribe-table fn2-sealer-table fn2-tls-admit-table fn2-txn-table fn2-upload-table fn2-machine-phase-read-code) (fn2-sim-complete nth)))))
++
++(defthm fn2-sim-complete-preserves-uncertain-visibility
++ (fn2-commit-proof-preservedp (fn2-b-visibility ids fn2-core) (fn2-b-visibility ids (mv-nth 1 (fn2-sim-complete slot fault word fn2-core fn2-sim fn2-own))))
++ :hints (("Goal" :induct (fn2-b-visibility ids fn2-core)
++                 :in-theory (union-theories '(fn2-b-visibility fn2-commit-proof-preservedp
++                           fn2-b-visible-phase (:e nth) nth car-cons cdr-cons (:e zp) (:e binary-+) (:e car) (:e cdr)
++                           fn2-sim-complete-preserves-machine-phase) (theory 'minimal-theory)))) )
++
++(defthm fn2-core-stop-keeps-other-core-children
++ (implies (not (equal (nfix k) *fn2-core-control*)) (equal (nth k (fn2-core-stop reason fn2-core)) (nth k fn2-core)))
++ :hints (("Goal" :do-not-induct t :in-theory
++   (union-theories '(fn2-core-stop update-fn2-core-control nth-update-nth car-cons cdr-cons
++                    fn2-sim-project-mv-cons fn2-sim-project-mv-if (:e zp) (:e nfix)
++                    (:e binary-+) (:e binary-*) (:e unary--) (:e <) (:e car) (:e cdr) (:e equal))
++                   (theory 'minimal-theory)))) )
++
++(defthm fn2-exec-clock-keeps-other-core-children
++ (implies (not (equal (nfix k) *fn2-core-control*)) (equal (nth k (fn2-exec-clock mono fn2-core)) (nth k fn2-core)))
++ :hints (("Goal" :do-not-induct t :in-theory
++   (union-theories '(fn2-exec-clock fn2-exec-set-now fn2-exec-set-armed-deadline fn2-exec-set-idle-deadline fn2-exec-set-wake-generation fn2-core-stop-keeps-other-core-children update-fn2-core-control nth-update-nth car-cons cdr-cons
++                    fn2-sim-project-mv-cons fn2-sim-project-mv-if (:e zp) (:e nfix)
++                    (:e binary-+) (:e binary-*) (:e unary--) (:e <) (:e car) (:e cdr) (:e equal))
++                   (theory 'minimal-theory)))) )
++
++(defthm fn2-exec-trace-actions-keeps-other-core-children
++ (implies (not (equal (nfix k) *fn2-core-trace*)) (equal (nth k (fn2-exec-trace-actions left ordinal start fn2-core)) (nth k fn2-core)))
++ :hints (("Goal" :induct (fn2-exec-trace-actions left ordinal start fn2-core) :in-theory
++   (union-theories '(fn2-exec-trace-actions update-fn2-core-trace nth-update-nth car-cons cdr-cons
++                    fn2-sim-project-mv-cons fn2-sim-project-mv-if (:e zp) (:e nfix)
++                    (:e binary-+) (:e binary-*) (:e unary--) (:e <) (:e car) (:e cdr) (:e equal))
++                   (theory 'minimal-theory)))) )
++
++(defthm fn2-exec-record-keeps-other-core-children
++ (implies (and (not (equal (nfix k) *fn2-core-trace*)) (not (equal (nfix k) *fn2-core-control*))) (equal (nth k (fn2-exec-record kind id principal position bytes steps actions runnable wake start fn2-core)) (nth k fn2-core)))
++ :hints (("Goal" :do-not-induct t :in-theory
++   (union-theories '(fn2-exec-record fn2-exec-trace-actions-keeps-other-core-children fn2-core-stop-keeps-other-core-children update-fn2-core-trace update-fn2-core-control nth-update-nth car-cons cdr-cons
++                    fn2-sim-project-mv-cons fn2-sim-project-mv-if (:e zp) (:e nfix)
++                    (:e binary-+) (:e binary-*) (:e unary--) (:e <) (:e car) (:e cdr) (:e equal))
++                   (theory 'minimal-theory)))) )
++
++(defthm fn2-exec-mailbox-keeps-other-core-children
++ (implies (and (not (equal (nfix k) *fn2-core-trace*)) (not (equal (nfix k) *fn2-core-control*)) (not (equal (nfix k) *fn2-core-ops*))) (equal (nth k (mv-nth 5 (fn2-exec-mailbox fn2-core))) (nth k fn2-core)))
++ :hints (("Goal" :do-not-induct t :in-theory
++   (union-theories '(fn2-exec-mailbox fn2-exec-clock-keeps-other-core-children fn2-exec-record-keeps-other-core-children fn2-core-stop-keeps-other-core-children update-fn2-core-trace update-fn2-core-control update-fn2-core-ops nth-update-nth car-cons cdr-cons
++                    fn2-sim-project-mv-cons fn2-sim-project-mv-if (:e zp) (:e nfix)
++                    (:e binary-+) (:e binary-*) (:e unary--) (:e <) (:e car) (:e cdr) (:e equal))
++                   (theory 'minimal-theory)))) )
++
++(defthm fn2-exec-mailbox-preserves-machine-phase
++ (equal (fn2-machine-phase id (mv-nth 5 (fn2-exec-mailbox fn2-core))) (fn2-machine-phase id fn2-core))
++ :hints (("Goal" :in-theory (e/d (fn2-machine-phase fn2-machine-idp fn2-machine-slot fn2-machine-kind fn2-core-machines fn2-machine-slot-read-code fn2-machine-kind-read-code fn2-auth-table fn2-boot-table fn2-cns-table fn2-commit-table fn2-conn-table fn2-ctl-table fn2-cursor-table fn2-echo-table fn2-listener-table fn2-recovery-machine-table fn2-scribe-table fn2-sealer-table fn2-tls-admit-table fn2-txn-table fn2-upload-table fn2-machine-phase-read-code) (fn2-exec-mailbox nth)))))
++
++(defthm fn2-exec-mailbox-preserves-uncertain-visibility
++ (fn2-commit-proof-preservedp (fn2-b-visibility ids fn2-core) (fn2-b-visibility ids (mv-nth 5 (fn2-exec-mailbox fn2-core))))
++ :hints (("Goal" :induct (fn2-b-visibility ids fn2-core)
++                 :in-theory (union-theories '(fn2-b-visibility fn2-commit-proof-preservedp
++                           fn2-b-visible-phase (:e nth) nth car-cons cdr-cons (:e zp) (:e binary-+) (:e car) (:e cdr)
++                           fn2-exec-mailbox-preserves-machine-phase) (theory 'minimal-theory)))) )
++
++(defthm fn2-post-clock-preserves-monitored-owner-at
++ (implies (fn2-op-owner-active-p i owner fn2-ops) (fn2-op-owner-active-p i owner (fn2-post-clock mono real flags fn2-ops)))
++ :hints (("Goal" :do-not-induct t :in-theory (fn2-op-row-owner-theory fn2-post-clock update-fn2-ops-clock-coalesced update-fn2-ops-clock-posted update-fn2-ops-clock-rejected update-fn2-ops-clock-flags update-fn2-ops-clock-mono update-fn2-ops-clock-real update-fn2-ops-clock-seen  fn2-op-owner-mv-cons fn2-op-owner-mv-choice mv-nth (:e mv-nth)))) )
++
++(defthm fn2-take-clock-preserves-monitored-owner-at
++ (implies (fn2-op-owner-active-p i owner fn2-ops) (fn2-op-owner-active-p i owner (mv-nth 4 (fn2-take-clock fn2-ops))))
++ :hints (("Goal" :do-not-induct t :in-theory (fn2-op-row-owner-theory fn2-take-clock update-fn2-ops-clock-posted update-fn2-ops-clock-flags  fn2-op-owner-mv-cons fn2-op-owner-mv-choice mv-nth (:e mv-nth)))) )
++
++(defthm fn2-take-signal-preserves-monitored-owner-at
++ (implies (fn2-op-owner-active-p i owner fn2-ops) (fn2-op-owner-active-p i owner (mv-nth 1 (fn2-take-signal fn2-ops))))
++ :hints (("Goal" :do-not-induct t :in-theory (fn2-op-row-owner-theory fn2-take-signal update-fn2-ops-signals  fn2-op-owner-mv-cons fn2-op-owner-mv-choice mv-nth (:e mv-nth)))) )
++
++(defthm fn2-post-accept-result-preserves-monitored-owner-at
++ (implies (fn2-op-owner-active-p i owner fn2-ops) (fn2-op-owner-active-p i owner (fn2-post-accept-result slot gen outcome reason cap-index cap-nonce family port w0 w1 w2 w3 fn2-ops)))
++ :hints (("Goal" :do-not-induct t :in-theory (fn2-op-row-owner-theory fn2-post-accept-result  fn2-count-stray update-fn2-ops-stray fn2-op-post-result-keeps-active-owner fn2-post-result update-fn2-ops-posted-fifoi update-fn2-ops-post-tail update-fn2-ops-post-count update-nth-array fn2-op-owner-mv-cons fn2-op-owner-mv-choice mv-nth (:e mv-nth)))) )
++
++(defthm fn2-own-post-result-keeps-monitored-owner-at
++ (implies (fn2-op-owner-active-p i owner fn2-ops)
++          (fn2-op-owner-active-p i owner (mv-nth 1 (fn2-own-post-result cell slot gen evkind outcome reason count aux0 aux1 family port w0 w1 w2 w3 expected-stray fn2-ops fn2-own))))
++ :hints (("Goal" :in-theory (union-theories '(fn2-own-post-result fn2-op-post-result-keeps-active-owner fn2-post-accept-result-preserves-monitored-owner-at) (theory 'fn2-arm-frame-base)))))
++
++(defthm fn2-sim-post-clock-keeps-monitored-owner-at
++ (implies (fn2-op-owner-active-p i owner (fn2-core-ops fn2-core))
++          (fn2-op-owner-active-p i owner (fn2-core-ops (fn2-sim-post-clock mono real fn2-core))))
++ :hints (("Goal" :do-not-induct t :in-theory (union-theories '(fn2-sim-post-clock fn2-commit-owner-observes-updated-ops fn2-commit-owner-observes-pool-only-update
++   fn2-op-owner-mv-choice fn2-op-owner-mv-cons  fn2-post-clock-preserves-monitored-owner-at) (theory 'fn2-arm-frame-base)))))
++
++(defthm fn2-sim-take-one-keeps-monitored-owner-at
++ (implies (fn2-op-owner-active-p i owner (fn2-core-ops fn2-core))
++          (fn2-op-owner-active-p i owner (fn2-core-ops (mv-nth 1 (fn2-sim-take-one fn2-core fn2-sim fn2-own)))))
++ :hints (("Goal" :do-not-induct t :in-theory (union-theories '(fn2-sim-take-one fn2-commit-owner-observes-updated-ops fn2-commit-owner-observes-pool-only-update
++   fn2-op-owner-mv-choice fn2-op-owner-mv-cons  fn2-op-ack-one-keeps-active-owner-at fn2-op-finish-keeps-active-owner-at (:t fn2-outbox-ack) (:t fn2-op-finish)) (theory 'fn2-arm-frame-base)))))
++
++(defthm fn2-sim-take-prefix-keeps-monitored-owner-at
++ (implies (fn2-op-owner-active-p i owner (fn2-core-ops fn2-core))
++          (fn2-op-owner-active-p i owner (fn2-core-ops (mv-nth 1 (fn2-sim-take-prefix left taken fn2-core fn2-sim fn2-own)))))
++ :hints (("Goal" :induct (fn2-sim-take-prefix left taken fn2-core fn2-sim fn2-own) :in-theory (union-theories '(fn2-sim-take-prefix fn2-commit-owner-observes-updated-ops fn2-commit-owner-observes-pool-only-update
++   fn2-op-owner-mv-choice fn2-op-owner-mv-cons fn2-sim-take-one-keeps-monitored-owner-at (:t fn2-sim-take-one) ) (theory 'fn2-arm-frame-base)))))
++
++(defthm fn2-sim-physical-keeps-monitored-owner-at
++ (implies (fn2-op-owner-active-p i owner (fn2-core-ops fn2-core))
++          (fn2-op-owner-active-p i owner (fn2-core-ops (mv-nth 3 (fn2-sim-physical slot fault word fn2-core fn2-sim fn2-own)))))
++ :hints (("Goal" :do-not-induct t :in-theory (union-theories '(fn2-sim-physical fn2-commit-owner-observes-updated-ops fn2-commit-owner-observes-pool-only-update
++   fn2-op-owner-mv-choice fn2-op-owner-mv-cons  fn2-core-ops fn2-sim-physical-act-keeps-other-core-children (:e nfix)) (theory 'fn2-arm-frame-base)))))
++
++(defthm fn2-sim-native-stage-keeps-monitored-owner-at
++ (implies (fn2-op-owner-active-p i owner (fn2-core-ops fn2-core))
++          (fn2-op-owner-active-p i owner (fn2-core-ops (mv-nth 2 (fn2-sim-native-stage slot fault word fn2-core fn2-sim fn2-own)))))
++ :hints (("Goal" :do-not-induct t :in-theory (union-theories '(fn2-sim-native-stage fn2-commit-owner-observes-updated-ops fn2-commit-owner-observes-pool-only-update
++   fn2-op-owner-mv-choice fn2-op-owner-mv-cons fn2-sim-physical-keeps-monitored-owner-at (:t fn2-sim-physical) ) (theory 'fn2-arm-frame-base)))))
++
++(defthm fn2-sim-post-keeps-monitored-owner-at
++ (implies (fn2-op-owner-active-p i owner (fn2-core-ops fn2-core))
++          (fn2-op-owner-active-p i owner (fn2-core-ops (mv-nth 1 (fn2-sim-post cell slot gen evkind outcome reason count aux0 aux1 fault expected-stray fn2-core fn2-sim fn2-own)))))
++ :hints (("Goal" :do-not-induct t :in-theory (union-theories '(fn2-sim-post fn2-commit-owner-observes-updated-ops fn2-commit-owner-observes-pool-only-update
++   fn2-op-owner-mv-choice fn2-op-owner-mv-cons  fn2-own-post-result-keeps-monitored-owner-at (:t fn2-own-post-result)) (theory 'fn2-arm-frame-base)))))
++
++(defthm fn2-sim-inject-keeps-monitored-owner-at
++ (implies (fn2-op-owner-active-p i owner (fn2-core-ops fn2-core))
++          (fn2-op-owner-active-p i owner (fn2-core-ops (mv-nth 1 (fn2-sim-inject slot fault fn2-core fn2-sim fn2-own)))))
++ :hints (("Goal" :do-not-induct t :in-theory (union-theories '(fn2-sim-inject fn2-commit-owner-observes-updated-ops fn2-commit-owner-observes-pool-only-update
++   fn2-op-owner-mv-choice fn2-op-owner-mv-cons fn2-sim-post-keeps-monitored-owner-at (:t fn2-sim-post) ) (theory 'fn2-arm-frame-base)))))
++
++(defthm fn2-sim-terminal-post-keeps-monitored-owner-at
++ (implies (fn2-op-owner-active-p i owner (fn2-core-ops fn2-core))
++          (fn2-op-owner-active-p i owner (fn2-core-ops (mv-nth 1 (fn2-sim-terminal-post slot gen event outcome reason count aux0 aux1 fault word now release early fn2-core fn2-sim fn2-own)))))
++ :hints (("Goal" :do-not-induct t :in-theory (union-theories '(fn2-sim-terminal-post fn2-commit-owner-observes-updated-ops fn2-commit-owner-observes-pool-only-update
++   fn2-op-owner-mv-choice fn2-op-owner-mv-cons fn2-sim-post-keeps-monitored-owner-at (:t fn2-sim-post) ) (theory 'fn2-arm-frame-base)))))
++
++(defthm fn2-sim-complete-result-keeps-monitored-owner-at
++ (implies (fn2-op-owner-active-p i owner (fn2-core-ops fn2-core))
++          (fn2-op-owner-active-p i owner (fn2-core-ops (mv-nth 1 (fn2-sim-complete-result slot gen kind event len code physical-count aux fault word now release fn2-core fn2-sim fn2-own)))))
++ :hints (("Goal" :do-not-induct t :in-theory (union-theories '(fn2-sim-complete-result fn2-commit-owner-observes-updated-ops fn2-commit-owner-observes-pool-only-update
++   fn2-op-owner-mv-choice fn2-op-owner-mv-cons fn2-sim-terminal-post-keeps-monitored-owner-at (:t fn2-sim-terminal-post) ) (theory 'fn2-arm-frame-base)))))
++
++(defthm fn2-sim-native-post-keeps-monitored-owner-at
++ (implies (fn2-op-owner-active-p i owner (fn2-core-ops fn2-core))
++          (fn2-op-owner-active-p i owner (fn2-core-ops (mv-nth 1 (fn2-sim-native-post packet fn2-core fn2-sim fn2-own)))))
++ :hints (("Goal" :do-not-induct t :in-theory (union-theories '(fn2-sim-native-post fn2-commit-owner-observes-updated-ops fn2-commit-owner-observes-pool-only-update
++   fn2-op-owner-mv-choice fn2-op-owner-mv-cons fn2-sim-complete-result-keeps-monitored-owner-at (:t fn2-sim-complete-result) ) (theory 'fn2-arm-frame-base)))))
++
++(defthm fn2-sim-complete-keeps-monitored-owner-at
++ (implies (fn2-op-owner-active-p i owner (fn2-core-ops fn2-core))
++          (fn2-op-owner-active-p i owner (fn2-core-ops (mv-nth 1 (fn2-sim-complete slot fault word fn2-core fn2-sim fn2-own)))))
++ :hints (("Goal" :do-not-induct t :in-theory (union-theories '(fn2-sim-complete fn2-commit-owner-observes-updated-ops fn2-commit-owner-observes-pool-only-update
++   fn2-op-owner-mv-choice fn2-op-owner-mv-cons fn2-sim-complete-result-keeps-monitored-owner-at (:t fn2-sim-complete-result) fn2-sim-inject-keeps-monitored-owner-at (:t fn2-sim-inject) fn2-sim-post-keeps-monitored-owner-at (:t fn2-sim-post) fn2-sim-physical-keeps-monitored-owner-at (:t fn2-sim-physical) ) (theory 'fn2-arm-frame-base)))))
++
++(defthm fn2-commit-owner-clock-operations
++ (equal (fn2-core-ops (fn2-exec-clock mono fn2-core)) (fn2-core-ops fn2-core))
++ :hints (("Goal" :in-theory '(fn2-core-ops fn2-exec-clock-keeps-other-core-children (:e nfix) (:e equal)))))
++
++(defthm fn2-exec-mailbox-keeps-monitored-owner-at
++ (implies (fn2-op-owner-active-p i owner (fn2-core-ops fn2-core))
++          (fn2-op-owner-active-p i owner (fn2-core-ops (mv-nth 5 (fn2-exec-mailbox fn2-core)))))
++ :hints (("Goal" :do-not-induct t :in-theory (union-theories '(fn2-exec-mailbox fn2-commit-owner-observes-updated-ops fn2-commit-owner-observes-pool-only-update
++   fn2-op-owner-mv-choice fn2-op-owner-mv-cons  fn2-exec-record-ops-child-frame fn2-core-stop-ops-child-frame fn2-commit-owner-clock-operations fn2-take-clock-preserves-monitored-owner-at fn2-take-signal-preserves-monitored-owner-at (:t fn2-take-clock) (:t fn2-take-signal)) (theory 'fn2-arm-frame-base)))))
+--- /dev/null
++++ b/books/commit-uncertainty-rows-proof.lisp
+@@ -0,0 +1,280 @@
++; Every legal action preserves the readable directory and commit row counts.
++(in-package "ACL2")
++(include-book "commit-uncertainty-adapter-proof")
++(fn2-book-layer :b)
++
++(defmacro fn2-commit-replay-child-frame (f child)
++ `(make-event (let* ((f ',f) (child ',child) (world (w state))
++  (d (fn2-dc-entry f 'fn2-commit world)) (k (fn2-arm-frame-child-index child world))
++  (out (fn2-arm-frame-out-term f (cons f (formals f world)) world))
++  (name (fn2-columns-sym f (concatenate 'string "-PRESERVES-" (symbol-name child)))))
++  (value `(defthm ,name (equal (,child ,out) (,child fn2-core))
++      :hints (("Goal" :in-theory (union-theories '(,child) (theory 'fn2-arm-frame-base))
++               :use ((:instance ,(cdr d) (fn2-arm-free ',(car d)) (fn2-arm-c0 fn2-core))
++                     (:instance fn2-arm-kids-refl (i 0) (free ',(car d)) (a fn2-core))
++                     (:instance fn2-arm-kids-nth (i 0) (k ,k) (free ',(car d)) (a fn2-core) (b ,out))))))))))
++
++(fn2-commit-replay-child-frame fn2-b-start fn2-core-machines)
++
++(fn2-commit-replay-child-frame fn2-commit-run fn2-core-machines)
++
++(fn2-commit-replay-child-frame fn2-exec-mailbox fn2-core-machines)
++
++(fn2-commit-replay-child-frame fn2-harvest-one fn2-core-machines)
++
++(fn2-commit-replay-child-frame fn2-machine-observe-route-fn2-commit fn2-core-machines)
++
++(fn2-commit-replay-child-frame fn2-machine-refuse-observation fn2-core-machines)
++
++(fn2-commit-replay-child-frame fn2-exec-record fn2-core-machines)
++
++(fn2-commit-replay-child-frame fn2-exec-wake fn2-core-machines)
++
++(defthm fn2-commit-routed-observation-keeps-directory
++ (let ((b (mv-nth 1 (fn2-machine-observe *fn2-commit-kind* id gen event outcome reason count aux0 aux1 fn2-core))))
++  (equal (fn2-core-machines b) (fn2-core-machines fn2-core)))
++ :hints (("Goal" :in-theory (union-theories '(fn2-machine-observe
++                fn2-machine-observe-route-fn2-commit-preserves-fn2-core-machines
++                fn2-machine-refuse-observation-preserves-fn2-core-machines)
++                (theory 'fn2-arm-frame-base)))))
++
++(defthm fn2-exec-harvest-keeps-commit-directory
++ (implies (fn2-op-active-owners-p *fn2-commit-kind* (fn2-core-ops fn2-core))
++          (equal (fn2-core-machines (mv-nth 5 (fn2-exec-harvest fn2-core))) (fn2-core-machines fn2-core)))
++ :hints (("Goal" :use (fn2-commit-active-owners-imply-harvest-commit)
++          :in-theory (union-theories '(fn2-exec-harvest fn2-commit-routed-observation-keeps-directory
++                fn2-exec-record-preserves-fn2-core-machines fn2-exec-wake-preserves-fn2-core-machines fn2-harvest-one-preserves-fn2-core-machines
++                fn2-ctf-mv-nth-of-if fn2-ctf-mv-nth-cons (:e equal))
++                (theory 'minimal-theory)))))
++
++(defthm fn2-replay-reads-replaced-commit-table
++ (equal (fn2-commit-table (update-fn2-commit-table x c)) x)
++ :hints (("Goal" :in-theory '(fn2-commit-table update-fn2-commit-table nth-update-nth (:e nfix) (:e equal)))))
++
++(defun fn2-replay-column-setter-rows (fields)
++ (declare (xargs :verify-guards nil))
++ (if (atom fields) nil
++  (cons (fn2-columns-sym (fn2-columns-col-name 'fn2-commit (fn2-columns-pre "SET-" (car fields))) "-ROWS")
++        (fn2-replay-column-setter-rows (cdr fields)))))
++
++(defun fn2-commit-replay-size-work (fns world seen fuel)
++ (declare (xargs :verify-guards nil :measure (make-ord 1 (+ 1 (nfix fuel)) (acl2-count fns))))
++ (if (or (atom fns) (zp fuel)) seen
++  (let* ((f (car fns)) (d (fn2-dc-entry f 'fn2-commit world))
++         (e (fn2-arm-frame-known f 'fn2-commit world))
++         (direct (cond ((eq f 'update-fn2-commit-table) :setter) ((and d (not (member-equal 9 (car d)))) :table)
++                       ((equal (fn2-arm-frame-entry-tk e world) 9) :row))))
++    (if (assoc-eq f seen) (fn2-commit-replay-size-work (cdr fns) world seen fuel)
++     (fn2-commit-replay-size-work (cdr fns) world
++       (append (if direct seen (fn2-commit-replay-size-work (fn2-arm-frame-body-callees f world) world seen (- fuel 1)))
++         (list (cons f direct))) fuel)))))
++
++(defun fn2-commit-replay-size-runes (fns)
++ (declare (xargs :verify-guards nil))
++ (cond ((atom fns) nil) ((eq (car fns) 'update-fn2-commit-table) (fn2-commit-replay-size-runes (cdr fns)))
++ (t (cons (fn2-columns-sym (car fns) "-KEEPS-COMMIT-ROW-COUNT") (fn2-commit-replay-size-runes (cdr fns))))))
++
++(defun fn2-commit-table-count-event (entry world)
++ (declare (xargs :verify-guards nil))
++ (let* ((f (car entry)) (k (cdr entry)) (name (fn2-columns-sym f "-KEEPS-COMMIT-ROW-COUNT"))
++        (out (fn2-arm-frame-out-term f (cons f (formals f world)) world))
++        (d (fn2-dc-entry f 'fn2-commit world)) (ks (car d))
++        (e (fn2-arm-frame-known f 'fn2-commit world))
++        (cs (fn2-arm-frame-entry-j e)) (ch (fn2-arm-frame-entry-s e)))
++  `(defthm ,name
++    (equal (fn2-commit-rows (fn2-commit-table ,out)) (fn2-commit-rows (fn2-commit-table fn2-core)))
++    :hints (("Goal" ,@(if (and (not k) (recursivep f nil world)) (list :induct (cons f (formals f world))) '(:do-not-induct t))
++      ,@(cond ((and (eq k :table) (fn2-arm-frame-child-updater f world))
++                `(:in-theory (union-theories '(,f fn2-commit-table nth-update-nth (:e equal) (:e nfix)) (theory 'minimal-theory))))
++              ((eq k :table)
++               `(:in-theory (union-theories '(fn2-commit-table) (theory 'fn2-arm-frame-base))
++                 :use ((:instance ,(cdr d) (fn2-arm-free ',ks) (fn2-arm-c0 fn2-core))
++                       (:instance fn2-arm-kids-refl (i 0) (free ',ks) (a fn2-core))
++                       (:instance fn2-arm-kids-nth (i 0) (k 9) (free ',ks) (a fn2-core) (b ,out)))))
++              ((eq k :row)
++               `(:in-theory (union-theories '(fn2-commit-table fn2-commit-rows fn2-arm-row-frame-refl) (theory 'fn2-arm-frame-base))
++                 :use ((:instance ,(fn2-arm-frame-lemma f e "-ARM-ROW-FRAME" 'fn2-commit world)
++                                (fn2-arm-tb 9) (fn2-arm-row (fn2-machine-slot id fn2-core))
++                                (fn2-arm-cs ',cs) (fn2-arm-ch ',ch) (fn2-arm-c0 fn2-core))
++                      (:instance fn2-arm-row-frame-cols (table 9) (row (fn2-machine-slot id fn2-core)) (columns ',cs) (children ',ch) (a fn2-core) (b ,out))
++                      (:instance fn2-arm-cols-nth (row (fn2-machine-slot id fn2-core)) (k 0) (j *fn2-commit-rows*) (columns ',cs) (a (nth 9 fn2-core)) (b (nth 9 ,out))))))
++              (t `(:in-theory (union-theories '(,f fn2-replay-reads-replaced-commit-table ,@(fn2-replay-column-setter-rows (strip-cars (fn2-decl-get :columns (fn2-decl-row '(:columns fn2-commit) world)))) ,@(fn2-commit-replay-size-runes (fn2-arm-frame-body-callees f world))) (theory 'fn2-arm-frame-base))))))))))
++
++(defun fn2-commit-table-count-events (entries)
++ (declare (xargs :verify-guards nil))
++ (cond ((atom entries) nil) ((eq (cdar entries) :setter) (fn2-commit-table-count-events (cdr entries))) (t (cons `(make-event (value (fn2-commit-table-count-event ',(car entries) (w state))))
++                            (fn2-commit-table-count-events (cdr entries))))))
++
++(make-event (value (cons 'progn (fn2-commit-table-count-events (fn2-commit-replay-size-work '(fn2-b-start) (w state) nil 32)))))
++
++(defun fn2-replay-commit-rows-ready-p (a b fn2-core)
++ (declare (xargs :stobjs fn2-core :verify-guards nil))
++ (and (fn2-commit-idp a fn2-core) (fn2-commit-idp b fn2-core)
++      (equal a (fn2-machine-kind-base *fn2-commit-kind* fn2-core))
++      (equal b (+ 1 a))))
++
++(defthm fn2-commit-replay-idp-from-directory-and-rows
++ (implies (and (equal (fn2-core-machines next) (fn2-core-machines fn2-core))
++               (equal (fn2-commit-rows (fn2-commit-table next)) (fn2-commit-rows (fn2-commit-table fn2-core))))
++          (equal (fn2-commit-idp i next) (fn2-commit-idp i fn2-core)))
++ :rule-classes nil
++ :hints (("Goal" :in-theory (union-theories '(fn2-commit-idp fn2-commit-snapshot-read-code fn2-machine-phase-read-code
++            fn2-machine-idp fn2-machine-kind fn2-machine-kind-read-code fn2-machine-slot fn2-machine-slot-read-code)
++            (theory 'minimal-theory)))))
++
++(defthm fn2-commit-start-keeps-readable-id
++ (equal (fn2-commit-idp i (mv-nth 3 (fn2-b-start id members key mode partner fn2-core))) (fn2-commit-idp i fn2-core))
++ :hints (("Goal" :use ((:instance fn2-commit-replay-idp-from-directory-and-rows
++                  (next (mv-nth 3 (fn2-b-start id members key mode partner fn2-core)))))
++          :in-theory '(fn2-b-start-preserves-fn2-core-machines fn2-b-start-keeps-commit-row-count))))
++
++(defthm fn2-commit-start-keeps-monitored-phase
++ (implies (and (fn2-replay-commit-rows-ready-p a b fn2-core)
++               (or (equal i a) (equal i b))
++               (equal (fn2-machine-phase i fn2-core) *fn2-commit-state-uncertain*))
++          (equal (fn2-machine-phase i (mv-nth 3 (fn2-b-start id members key mode partner fn2-core)))
++                 *fn2-commit-state-uncertain*))
++ :rule-classes nil
++ :hints (("Goal" :use ((:instance fn2-commit-start-command-preserves-uncertain-core (first-key key)))
++          :in-theory '(fn2-replay-commit-rows-ready-p fn2-commit-has-uncertain-row))))
++
++(defthm fn2-sim-take-prefix-keeps-checked-replay-rows
++  (and (equal (fn2-commit-idp i (mv-nth 1 (fn2-sim-take-prefix left taken fn2-core fn2-sim fn2-own))) (fn2-commit-idp i fn2-core))
++       (equal (fn2-core-machines (mv-nth 1 (fn2-sim-take-prefix left taken fn2-core fn2-sim fn2-own))) (fn2-core-machines fn2-core)))
++  :hints (("Goal" :use ((:instance fn2-commit-replay-idp-from-directory-and-rows (next (mv-nth 1 (fn2-sim-take-prefix left taken fn2-core fn2-sim fn2-own)))))
++        :in-theory (union-theories '(fn2-core-machines fn2-commit-table fn2-sim-take-prefix-keeps-other-core-children
++                       (:e nfix) (:e equal)) (theory 'minimal-theory)))))
++
++(defthm fn2-sim-take-prefix-keeps-replay-active-owners
++  (implies (fn2-op-active-owners-p owner (fn2-core-ops fn2-core))
++           (fn2-op-active-owners-p owner (fn2-core-ops (mv-nth 1 (fn2-sim-take-prefix left taken fn2-core fn2-sim fn2-own)))))
++  :hints (("Goal" :expand ((fn2-op-active-owners-p owner (fn2-core-ops (mv-nth 1 (fn2-sim-take-prefix left taken fn2-core fn2-sim fn2-own)))))
++        :use ((:instance fn2-op-active-owners-p-necc (kind owner) (ops (fn2-core-ops fn2-core))
++                 (slot (fn2-op-active-owners-p-witness owner (fn2-core-ops (mv-nth 1 (fn2-sim-take-prefix left taken fn2-core fn2-sim fn2-own)))))))
++        :in-theory '(fn2-sim-take-prefix-keeps-monitored-owner-at))))
++
++(defthm fn2-sim-native-stage-keeps-checked-replay-rows
++  (and (equal (fn2-commit-idp i (mv-nth 2 (fn2-sim-native-stage slot fault word fn2-core fn2-sim fn2-own))) (fn2-commit-idp i fn2-core))
++       (equal (fn2-core-machines (mv-nth 2 (fn2-sim-native-stage slot fault word fn2-core fn2-sim fn2-own))) (fn2-core-machines fn2-core)))
++  :hints (("Goal" :use ((:instance fn2-commit-replay-idp-from-directory-and-rows (next (mv-nth 2 (fn2-sim-native-stage slot fault word fn2-core fn2-sim fn2-own)))))
++        :in-theory (union-theories '(fn2-core-machines fn2-commit-table fn2-sim-native-stage-keeps-other-core-children
++                       (:e nfix) (:e equal)) (theory 'minimal-theory)))))
++
++(defthm fn2-sim-native-stage-keeps-replay-active-owners
++  (implies (fn2-op-active-owners-p owner (fn2-core-ops fn2-core))
++           (fn2-op-active-owners-p owner (fn2-core-ops (mv-nth 2 (fn2-sim-native-stage slot fault word fn2-core fn2-sim fn2-own)))))
++  :hints (("Goal" :expand ((fn2-op-active-owners-p owner (fn2-core-ops (mv-nth 2 (fn2-sim-native-stage slot fault word fn2-core fn2-sim fn2-own)))))
++        :use ((:instance fn2-op-active-owners-p-necc (kind owner) (ops (fn2-core-ops fn2-core))
++                 (slot (fn2-op-active-owners-p-witness owner (fn2-core-ops (mv-nth 2 (fn2-sim-native-stage slot fault word fn2-core fn2-sim fn2-own)))))))
++        :in-theory '(fn2-sim-native-stage-keeps-monitored-owner-at))))
++
++(defthm fn2-sim-native-post-keeps-checked-replay-rows
++  (and (equal (fn2-commit-idp i (mv-nth 1 (fn2-sim-native-post packet fn2-core fn2-sim fn2-own))) (fn2-commit-idp i fn2-core))
++       (equal (fn2-core-machines (mv-nth 1 (fn2-sim-native-post packet fn2-core fn2-sim fn2-own))) (fn2-core-machines fn2-core)))
++  :hints (("Goal" :use ((:instance fn2-commit-replay-idp-from-directory-and-rows (next (mv-nth 1 (fn2-sim-native-post packet fn2-core fn2-sim fn2-own)))))
++        :in-theory (union-theories '(fn2-core-machines fn2-commit-table fn2-sim-native-post-keeps-other-core-children
++                       (:e nfix) (:e equal)) (theory 'minimal-theory)))))
++
++(defthm fn2-sim-native-post-keeps-replay-active-owners
++  (implies (fn2-op-active-owners-p owner (fn2-core-ops fn2-core))
++           (fn2-op-active-owners-p owner (fn2-core-ops (mv-nth 1 (fn2-sim-native-post packet fn2-core fn2-sim fn2-own)))))
++  :hints (("Goal" :expand ((fn2-op-active-owners-p owner (fn2-core-ops (mv-nth 1 (fn2-sim-native-post packet fn2-core fn2-sim fn2-own)))))
++        :use ((:instance fn2-op-active-owners-p-necc (kind owner) (ops (fn2-core-ops fn2-core))
++                 (slot (fn2-op-active-owners-p-witness owner (fn2-core-ops (mv-nth 1 (fn2-sim-native-post packet fn2-core fn2-sim fn2-own)))))))
++        :in-theory '(fn2-sim-native-post-keeps-monitored-owner-at))))
++
++(defthm fn2-sim-complete-keeps-checked-replay-rows
++  (and (equal (fn2-commit-idp i (mv-nth 1 (fn2-sim-complete slot fault word fn2-core fn2-sim fn2-own))) (fn2-commit-idp i fn2-core))
++       (equal (fn2-core-machines (mv-nth 1 (fn2-sim-complete slot fault word fn2-core fn2-sim fn2-own))) (fn2-core-machines fn2-core)))
++  :hints (("Goal" :use ((:instance fn2-commit-replay-idp-from-directory-and-rows (next (mv-nth 1 (fn2-sim-complete slot fault word fn2-core fn2-sim fn2-own)))))
++        :in-theory (union-theories '(fn2-core-machines fn2-commit-table fn2-sim-complete-keeps-other-core-children
++                       (:e nfix) (:e equal)) (theory 'minimal-theory)))))
++
++(defthm fn2-sim-complete-keeps-replay-active-owners
++  (implies (fn2-op-active-owners-p owner (fn2-core-ops fn2-core))
++           (fn2-op-active-owners-p owner (fn2-core-ops (mv-nth 1 (fn2-sim-complete slot fault word fn2-core fn2-sim fn2-own)))))
++  :hints (("Goal" :expand ((fn2-op-active-owners-p owner (fn2-core-ops (mv-nth 1 (fn2-sim-complete slot fault word fn2-core fn2-sim fn2-own)))))
++        :use ((:instance fn2-op-active-owners-p-necc (kind owner) (ops (fn2-core-ops fn2-core))
++                 (slot (fn2-op-active-owners-p-witness owner (fn2-core-ops (mv-nth 1 (fn2-sim-complete slot fault word fn2-core fn2-sim fn2-own)))))))
++        :in-theory '(fn2-sim-complete-keeps-monitored-owner-at))))
++
++(defthm fn2-sim-post-clock-keeps-checked-replay-rows
++  (and (equal (fn2-commit-idp i (fn2-sim-post-clock mono real fn2-core)) (fn2-commit-idp i fn2-core))
++       (equal (fn2-core-machines (fn2-sim-post-clock mono real fn2-core)) (fn2-core-machines fn2-core)))
++  :hints (("Goal" :use ((:instance fn2-commit-replay-idp-from-directory-and-rows (next (fn2-sim-post-clock mono real fn2-core))))
++        :in-theory (union-theories '(fn2-core-machines fn2-commit-table fn2-sim-post-clock-keeps-other-core-children
++                       (:e nfix) (:e equal)) (theory 'minimal-theory)))))
++
++(defthm fn2-sim-post-clock-keeps-replay-active-owners
++  (implies (fn2-op-active-owners-p owner (fn2-core-ops fn2-core))
++           (fn2-op-active-owners-p owner (fn2-core-ops (fn2-sim-post-clock mono real fn2-core))))
++  :hints (("Goal" :expand ((fn2-op-active-owners-p owner (fn2-core-ops (fn2-sim-post-clock mono real fn2-core))))
++        :use ((:instance fn2-op-active-owners-p-necc (kind owner) (ops (fn2-core-ops fn2-core))
++                 (slot (fn2-op-active-owners-p-witness owner (fn2-core-ops (fn2-sim-post-clock mono real fn2-core))))))
++        :in-theory '(fn2-sim-post-clock-keeps-monitored-owner-at))))
++
++(defthm fn2-exec-mailbox-keeps-checked-replay-rows
++  (and (equal (fn2-commit-idp i (mv-nth 5 (fn2-exec-mailbox fn2-core))) (fn2-commit-idp i fn2-core))
++       (equal (fn2-core-machines (mv-nth 5 (fn2-exec-mailbox fn2-core))) (fn2-core-machines fn2-core)))
++  :hints (("Goal" :use ((:instance fn2-commit-replay-idp-from-directory-and-rows (next (mv-nth 5 (fn2-exec-mailbox fn2-core)))))
++        :in-theory (union-theories '(fn2-core-machines fn2-commit-table fn2-exec-mailbox-keeps-other-core-children
++                       (:e nfix) (:e equal)) (theory 'minimal-theory)))))
++
++(defthm fn2-exec-mailbox-keeps-replay-active-owners
++  (implies (fn2-op-active-owners-p owner (fn2-core-ops fn2-core))
++           (fn2-op-active-owners-p owner (fn2-core-ops (mv-nth 5 (fn2-exec-mailbox fn2-core)))))
++  :hints (("Goal" :expand ((fn2-op-active-owners-p owner (fn2-core-ops (mv-nth 5 (fn2-exec-mailbox fn2-core)))))
++        :use ((:instance fn2-op-active-owners-p-necc (kind owner) (ops (fn2-core-ops fn2-core))
++                 (slot (fn2-op-active-owners-p-witness owner (fn2-core-ops (mv-nth 5 (fn2-exec-mailbox fn2-core)))))))
++        :in-theory '(fn2-exec-mailbox-keeps-monitored-owner-at))))
++
++(defthm fn2-replay-ready-of-unchanged-readers
++ (implies (and (equal (fn2-core-machines next) (fn2-core-machines c))
++               (equal (fn2-commit-idp a next) (fn2-commit-idp a c)) (equal (fn2-commit-idp b next) (fn2-commit-idp b c)))
++          (equal (fn2-replay-commit-rows-ready-p a b next) (fn2-replay-commit-rows-ready-p a b c)))
++ :rule-classes nil :hints (("Goal" :in-theory '(fn2-replay-commit-rows-ready-p fn2-machine-kind-base))))
++
++(defthm fn2-sim-take-prefix-keeps-replay-ready
++ (implies t
++          (equal (fn2-replay-commit-rows-ready-p a b (mv-nth 1 (fn2-sim-take-prefix left taken fn2-core fn2-sim fn2-own))) (fn2-replay-commit-rows-ready-p a b fn2-core)))
++ :hints (("Goal" :use ((:instance fn2-replay-ready-of-unchanged-readers (c fn2-core) (next (mv-nth 1 (fn2-sim-take-prefix left taken fn2-core fn2-sim fn2-own))))) :in-theory '(fn2-sim-take-prefix-keeps-checked-replay-rows))))
++
++(defthm fn2-sim-native-stage-keeps-replay-ready
++ (implies t
++          (equal (fn2-replay-commit-rows-ready-p a b (mv-nth 2 (fn2-sim-native-stage slot fault word fn2-core fn2-sim fn2-own))) (fn2-replay-commit-rows-ready-p a b fn2-core)))
++ :hints (("Goal" :use ((:instance fn2-replay-ready-of-unchanged-readers (c fn2-core) (next (mv-nth 2 (fn2-sim-native-stage slot fault word fn2-core fn2-sim fn2-own))))) :in-theory '(fn2-sim-native-stage-keeps-checked-replay-rows))))
++
++(defthm fn2-sim-native-post-keeps-replay-ready
++ (implies t
++          (equal (fn2-replay-commit-rows-ready-p a b (mv-nth 1 (fn2-sim-native-post packet fn2-core fn2-sim fn2-own))) (fn2-replay-commit-rows-ready-p a b fn2-core)))
++ :hints (("Goal" :use ((:instance fn2-replay-ready-of-unchanged-readers (c fn2-core) (next (mv-nth 1 (fn2-sim-native-post packet fn2-core fn2-sim fn2-own))))) :in-theory '(fn2-sim-native-post-keeps-checked-replay-rows))))
++
++(defthm fn2-sim-complete-keeps-replay-ready
++ (implies t
++          (equal (fn2-replay-commit-rows-ready-p a b (mv-nth 1 (fn2-sim-complete slot fault word fn2-core fn2-sim fn2-own))) (fn2-replay-commit-rows-ready-p a b fn2-core)))
++ :hints (("Goal" :use ((:instance fn2-replay-ready-of-unchanged-readers (c fn2-core) (next (mv-nth 1 (fn2-sim-complete slot fault word fn2-core fn2-sim fn2-own))))) :in-theory '(fn2-sim-complete-keeps-checked-replay-rows))))
++
++(defthm fn2-sim-post-clock-keeps-replay-ready
++ (implies t
++          (equal (fn2-replay-commit-rows-ready-p a b (fn2-sim-post-clock mono real fn2-core)) (fn2-replay-commit-rows-ready-p a b fn2-core)))
++ :hints (("Goal" :use ((:instance fn2-replay-ready-of-unchanged-readers (c fn2-core) (next (fn2-sim-post-clock mono real fn2-core)))) :in-theory '(fn2-sim-post-clock-keeps-checked-replay-rows))))
++
++(defthm fn2-exec-mailbox-keeps-replay-ready
++ (implies t
++          (equal (fn2-replay-commit-rows-ready-p a b (mv-nth 5 (fn2-exec-mailbox fn2-core))) (fn2-replay-commit-rows-ready-p a b fn2-core)))
++ :hints (("Goal" :use ((:instance fn2-replay-ready-of-unchanged-readers (c fn2-core) (next (mv-nth 5 (fn2-exec-mailbox fn2-core))))) :in-theory '(fn2-exec-mailbox-keeps-checked-replay-rows))))
++
++(defthm fn2-b-start-keeps-replay-ready
++ (implies t
++          (equal (fn2-replay-commit-rows-ready-p a b (mv-nth 3 (fn2-b-start id members first-key mode partner fn2-core))) (fn2-replay-commit-rows-ready-p a b fn2-core)))
++ :hints (("Goal" :use ((:instance fn2-replay-ready-of-unchanged-readers (c fn2-core) (next (mv-nth 3 (fn2-b-start id members first-key mode partner fn2-core))))) :in-theory '(fn2-commit-start-keeps-readable-id fn2-b-start-preserves-fn2-core-machines))))
++
++(defthm fn2-exec-harvest-keeps-replay-ready
++ (implies (fn2-op-active-owners-p *fn2-commit-kind* (fn2-core-ops fn2-core))
++          (equal (fn2-replay-commit-rows-ready-p a b (mv-nth 5 (fn2-exec-harvest fn2-core))) (fn2-replay-commit-rows-ready-p a b fn2-core)))
++ :hints (("Goal" :use ((:instance fn2-replay-ready-of-unchanged-readers (c fn2-core) (next (mv-nth 5 (fn2-exec-harvest fn2-core))))) :in-theory '(fn2-commit-harvest-preserves-monitored-uncertainty fn2-exec-harvest-keeps-commit-directory))))
++
++(defthm fn2-commit-run-keeps-replay-ready
++ (implies t
++          (equal (fn2-replay-commit-rows-ready-p a b (mv-nth 4 (fn2-commit-run id budget fn2-core))) (fn2-replay-commit-rows-ready-p a b fn2-core)))
++ :hints (("Goal" :use ((:instance fn2-replay-ready-of-unchanged-readers (c fn2-core) (next (mv-nth 4 (fn2-commit-run id budget fn2-core))))) :in-theory '(fn2-commit-visit-preserves-readable-rows fn2-commit-run-preserves-fn2-core-machines))))
+--- /dev/null
++++ b/books/commit-uncertainty-step-proof.lisp
+@@ -0,0 +1,155 @@
++; Initialization establishes the row invariant and one real command preserves it.
++(in-package "ACL2")
++(include-book "commit-uncertainty-rows-proof")
++(fn2-book-layer :b)
++
++(defun fn2-replay-check-owner-rows (left kind fn2-ops)
++ (declare (xargs :stobjs fn2-ops :measure (nfix left) :verify-guards nil))
++ (or (zp left) (and (fn2-op-owner-active-p (- left 1) kind fn2-ops)
++                    (fn2-replay-check-owner-rows (- left 1) kind fn2-ops))))
++
++(defthm fn2-replay-checked-owner-row
++ (implies (and (fn2-replay-check-owner-rows left kind ops) (natp i) (natp left) (< i left))
++          (fn2-op-owner-active-p i kind ops))
++ :hints (("Goal" :induct (fn2-replay-check-owner-rows left kind ops)
++          :in-theory (e/d (fn2-replay-check-owner-rows) (fn2-op-owner-active-p)))))
++
++(defthm fn2-replay-checked-table-has-owners
++ (implies (and (natp (fn2-ops-rows ops)) (fn2-replay-check-owner-rows (fn2-ops-rows ops) kind ops))
++          (fn2-op-active-owners-p kind ops))
++ :hints (("Goal" :expand ((fn2-op-active-owners-p kind ops))
++          :cases ((and (natp (fn2-op-active-owners-p-witness kind ops)) (< (fn2-op-active-owners-p-witness kind ops) (fn2-ops-rows ops))))
++          :use ((:instance fn2-replay-checked-owner-row (i (fn2-op-active-owners-p-witness kind ops))
++                            (left (fn2-ops-rows ops)))
++                (:instance fn2-op-owner-outside-table (i (fn2-op-active-owners-p-witness kind ops))))
++          :in-theory nil)))
++
++(defun fn2-replay-initial-commit-check (mode)
++ (declare (xargs :verify-guards nil))
++ (with-local-stobj fn2-core
++  (mv-let (ok fn2-core)
++   (b* ((profile (fn2-b-test-profile *fn2-profile-tiny* mode))
++        (a (fn2-machine-global-id *fn2-commit-kind* 0 profile))
++        (b (fn2-machine-global-id *fn2-commit-kind* 1 profile))
++        (fn2-core (fn2-core-init profile fn2-core))
++        (owners
++         (stobj-let ((fn2-ops (fn2-core-ops fn2-core))) (ok)
++          (and (natp (fn2-ops-rows fn2-ops))
++               (fn2-replay-check-owner-rows (fn2-ops-rows fn2-ops) *fn2-commit-kind* fn2-ops)) ok)))
++     (mv (and (fn2-replay-commit-rows-ready-p a b fn2-core) owners) fn2-core))
++   ok)))
++
++(defthm fn2-replay-initial-modes-have-readable-owned-rows
++ (implies (member-equal mode '(0 1)) (fn2-replay-initial-commit-check mode))
++ :hints (("Goal" :in-theory '(member-equal (:e fn2-replay-initial-commit-check) (:e member-equal)
++                               car-cons cdr-cons (:e car) (:e cdr)))))
++
++(make-event (let* ((p '(fn2-b-test-profile *fn2-profile-tiny* mode))
++        (c `(fn2-core-init ,p (create-fn2-core)))
++        (a `(fn2-machine-global-id *fn2-commit-kind* 0 ,p))
++        (b `(fn2-machine-global-id *fn2-commit-kind* 1 ,p)))
++ (value `(defthm fn2-replay-created-core-has-readable-owned-commit-rows
++    (implies (member-equal mode '(0 1))
++             (and (fn2-replay-commit-rows-ready-p ,a ,b ,c)
++                  (fn2-op-active-owners-p *fn2-commit-kind* (fn2-core-ops ,c))))
++    :rule-classes nil
++    :hints (("Goal" :use (fn2-replay-initial-modes-have-readable-owned-rows
++                     (:instance fn2-replay-checked-table-has-owners (kind *fn2-commit-kind*) (ops (fn2-core-ops ,c))))
++              :in-theory (union-theories '(fn2-replay-initial-commit-check fn2-ctf-mv-nth-cons
++                       car-cons cdr-cons (:e zp) (:e binary-+) (:e equal)) (theory 'minimal-theory))))))))
++
++(defthm fn2-replay-begin-epoch-keeps-readers
++ (let ((next (update-fn2-core-extents x fn2-core)))
++  (and (equal (fn2-commit-idp i next) (fn2-commit-idp i fn2-core))
++       (equal (fn2-core-machines next) (fn2-core-machines fn2-core))
++       (equal (fn2-core-ops next) (fn2-core-ops fn2-core))))
++ :hints (("Goal" :use ((:instance fn2-commit-replay-idp-from-directory-and-rows (next (update-fn2-core-extents x fn2-core))))
++          :in-theory '(fn2-core-machines fn2-core-ops fn2-commit-table update-fn2-core-extents nth-update-nth (:e nfix) (:e equal)))))
++
++(defthm fn2-replay-begin-epoch-keeps-ready
++ (equal (fn2-replay-commit-rows-ready-p a b (update-fn2-core-extents x fn2-core))
++        (fn2-replay-commit-rows-ready-p a b fn2-core))
++ :hints (("Goal" :in-theory '(fn2-replay-commit-rows-ready-p fn2-machine-kind-base fn2-replay-begin-epoch-keeps-readers))))
++
++(defthm fn2-replay-ready-readable-member
++ (implies (and (fn2-replay-commit-rows-ready-p a b c) (member-equal id (list a b)))
++          (fn2-commit-idp id c))
++ :hints (("Goal" :in-theory '(fn2-replay-commit-rows-ready-p member-equal (:e member-equal) car-cons cdr-cons))))
++
++(defthm fn2-replay-start-keeps-both-uncertain-rows
++ (implies (fn2-replay-commit-rows-ready-p a b fn2-core)
++   (let ((next (mv-nth 3 (fn2-b-start id members key mode partner fn2-core))))
++    (and (implies (equal (fn2-machine-phase a fn2-core) *fn2-commit-state-uncertain*)
++                  (equal (fn2-machine-phase a next) *fn2-commit-state-uncertain*))
++         (implies (equal (fn2-machine-phase b fn2-core) *fn2-commit-state-uncertain*)
++                  (equal (fn2-machine-phase b next) *fn2-commit-state-uncertain*)))))
++ :rule-classes nil
++ :hints (("Goal" :in-theory nil
++          :use ((:instance fn2-commit-start-keeps-monitored-phase (i a))
++                (:instance fn2-commit-start-keeps-monitored-phase (i b))))))
++
++(defthm fn2-replay-start-monitors-either-row
++ (implies (and (fn2-replay-commit-rows-ready-p a b fn2-core)
++               (member-equal i (list a b))
++               (equal (fn2-machine-phase i fn2-core) *fn2-commit-state-uncertain*))
++          (equal (fn2-machine-phase i (mv-nth 3 (fn2-b-start id members key mode partner fn2-core)))
++                 *fn2-commit-state-uncertain*))
++ :hints (("Goal" :in-theory '(member-equal (:e member-equal) car-cons cdr-cons)
++          :use fn2-replay-start-keeps-both-uncertain-rows)))
++
++(defthm fn2-commit-replay-ready-first (implies (fn2-replay-commit-rows-ready-p a b c)
++             (fn2-commit-idp a c)) :hints (("Goal" :in-theory '(fn2-replay-commit-rows-ready-p))))
++
++(defthm fn2-commit-replay-ready-second (implies (fn2-replay-commit-rows-ready-p a b c)
++             (fn2-commit-idp b c)) :hints (("Goal" :in-theory '(fn2-replay-commit-rows-ready-p))))
++
++(defthm fn2-commit-step-reads-two-visible-phases
++ (equal (fn2-commit-proof-preservedp (fn2-b-visibility (list a b) c)
++                                     (fn2-b-visibility (list a b) next))
++        (and (implies (equal (fn2-machine-phase a c) *fn2-commit-state-uncertain*)
++                      (equal (fn2-machine-phase a next) *fn2-commit-state-uncertain*))
++             (implies (equal (fn2-machine-phase b c) *fn2-commit-state-uncertain*)
++                      (equal (fn2-machine-phase b next) *fn2-commit-state-uncertain*))))
++ :hints (("Goal" :in-theory (union-theories '(fn2-b-visibility fn2-commit-proof-preservedp fn2-b-visible-phase
++            nth (:e nth) car-cons cdr-cons (:e zp) (:e binary-+) (:e unary--) (:e cdr) (:e car))
++           (theory 'minimal-theory)))))
++
++(deftheory fn2-commit-supported-step-theory
++ (union-theories '(fn2-commit-proof-step fn2-ctf-mv-nth-of-if fn2-ctf-mv-nth-cons car-cons cdr-cons member-equal
++   nth nfix natp (:e natp) (:e binary-+) (:e unary--) (:e car) (:e cdr) (:e nth) (:e zp) (:e nfix) (:e equal)
++   (:e member-equal) (:e <) (:e consp)
++   fn2-commit-run-keeps-replay-ready fn2-exec-harvest-keeps-replay-ready fn2-b-start-keeps-replay-ready
++   fn2-sim-post-clock-keeps-replay-ready fn2-sim-take-prefix-keeps-replay-ready
++   fn2-sim-native-stage-keeps-replay-ready fn2-sim-native-post-keeps-replay-ready
++   fn2-sim-complete-keeps-replay-ready fn2-exec-mailbox-keeps-replay-ready
++   fn2-b-start-ops-child-frame fn2-commit-run-keeps-active-owners fn2-exec-harvest-keeps-active-owners
++   fn2-sim-post-clock-keeps-replay-active-owners fn2-sim-take-prefix-keeps-replay-active-owners
++   fn2-sim-native-stage-keeps-replay-active-owners fn2-sim-native-post-keeps-replay-active-owners
++   fn2-sim-complete-keeps-replay-active-owners fn2-exec-mailbox-keeps-replay-active-owners
++   fn2-commit-harvest-preserves-monitored-uncertainty fn2-replay-ready-readable-member
++   fn2-commit-replay-ready-first fn2-commit-replay-ready-second fn2-replay-start-monitors-either-row
++   fn2-commit-visit-keeps-any-uncertain-row fn2-commit-visit-preserves-readable-rows
++   fn2-sim-post-clock-preserves-machine-phase fn2-sim-take-prefix-preserves-machine-phase
++   fn2-sim-native-stage-preserves-machine-phase fn2-sim-native-post-preserves-machine-phase
++   fn2-sim-complete-preserves-machine-phase fn2-exec-mailbox-preserves-machine-phase
++   fn2-sim-post-clock-keeps-checked-replay-rows fn2-exec-mailbox-keeps-checked-replay-rows
++   fn2-commit-step-reads-two-visible-phases
++   (:t fn2-b-start) (:t fn2-exec-harvest) (:t fn2-commit-run) (:t fn2-exec-mailbox)
++   (:t fn2-sim-take-prefix) (:t fn2-sim-native-stage) (:t fn2-sim-native-post) (:t fn2-sim-complete))
++   (theory 'minimal-theory)))
++
++(defthm fn2-commit-supported-step-keeps-readiness-and-owners
++ (b* (((mv legal & next & &) (fn2-commit-proof-step command turn (list a b) profile fn2-core fn2-sim fn2-own)))
++  (implies (and legal (fn2-replay-commit-rows-ready-p a b fn2-core)
++                (fn2-op-active-owners-p *fn2-commit-kind* (fn2-core-ops fn2-core)))
++           (and (fn2-replay-commit-rows-ready-p a b next)
++                (fn2-op-active-owners-p *fn2-commit-kind* (fn2-core-ops next)))))
++ :hints (("Goal" :do-not-induct t :in-theory (theory 'fn2-commit-supported-step-theory))))
++
++(defthm fn2-commit-supported-step-keeps-uncertain-rows
++ (b* (((mv legal & next & &) (fn2-commit-proof-step command turn (list a b) profile fn2-core fn2-sim fn2-own)))
++  (implies (and legal (fn2-replay-commit-rows-ready-p a b fn2-core)
++                (fn2-op-active-owners-p *fn2-commit-kind* (fn2-core-ops fn2-core)))
++           (fn2-commit-proof-preservedp (fn2-b-visibility (list a b) fn2-core)
++                                        (fn2-b-visibility (list a b) next))))
++ :hints (("Goal" :do-not-induct t :in-theory (theory 'fn2-commit-supported-step-theory))))
+--- /dev/null
++++ b/books/commit-uncertainty-replay-proof.lisp
+@@ -0,0 +1,77 @@
++; Induction over legal commands preserves uncertainty through the end of the epoch.
++(in-package "ACL2")
++(include-book "commit-uncertainty-step-proof")
++(include-book "owed-discharge")
++(fn2-book-layer :b)
++
++(defthm fn2-commit-replay-cannot-restore-admission
++ (implies (not admitted)
++          (not (mv-nth 0 (fn2-commit-proof-replay commands turn ids profile admitted fresh refused stable saw replies seen manifests events
++                                     fn2-core fn2-sim fn2-own))))
++ :hints (("Goal" :induct (fn2-commit-proof-replay commands turn ids profile admitted fresh refused stable saw replies seen manifests events
++                                     fn2-core fn2-sim fn2-own)
++                 :in-theory (union-theories '(fn2-commit-proof-replay fn2-ctf-mv-nth-cons fn2-ctf-mv-nth-of-if)
++                              (theory 'fn2-arm-frame-base)))))
++
++(defthm fn2-commit-admitted-replay-started-admitted
++ (implies (mv-nth 0 (fn2-commit-proof-replay commands turn ids profile admitted fresh refused stable saw replies seen manifests events fn2-core fn2-sim fn2-own)) admitted)
++ :rule-classes ((:forward-chaining :trigger-terms ((mv-nth 0 (fn2-commit-proof-replay commands turn ids profile admitted fresh refused stable saw replies seen manifests events fn2-core fn2-sim fn2-own)))))
++ :hints (("Goal" :use fn2-commit-replay-cannot-restore-admission :in-theory nil)))
++
++(defthm fn2-commit-admitted-replay-keeps-uncertainty
++ (let ((r (fn2-commit-proof-replay commands turn (list a b) profile admitted fresh refused stable saw replies seen manifests events
++                                     fn2-core fn2-sim fn2-own)))
++  (implies (and (mv-nth 0 r) stable
++                (fn2-replay-commit-rows-ready-p a b fn2-core)
++                (fn2-op-active-owners-p *fn2-commit-kind* (fn2-core-ops fn2-core)))
++           (mv-nth 2 r)))
++ :rule-classes nil
++ :hints (("Goal" :induct (fn2-commit-proof-replay commands turn (list a b) profile admitted fresh refused stable saw replies seen manifests events
++                                     fn2-core fn2-sim fn2-own)
++                 :in-theory (union-theories '(fn2-commit-proof-replay fn2-commit-admitted-replay-started-admitted fn2-commit-replay-cannot-restore-admission
++                      fn2-commit-supported-step-keeps-readiness-and-owners fn2-commit-supported-step-keeps-uncertain-rows
++                      (:t fn2-commit-proof-step) (:t fn2-b-project-issues) (:t fn2-commit-proof-replay)
++                      fn2-ctf-mv-nth-of-if fn2-ctf-mv-nth-cons (:e equal) (:e zp) (:e binary-+) (:e unary--) car-cons cdr-cons)
++                      (set-difference-theories (theory 'minimal-theory) '(mv-nth))))
++         ("Subgoal *1/2" :cases ((mv-nth 0 (fn2-commit-proof-step (car commands) turn (list a b) profile fn2-core fn2-sim fn2-own)))
++           :use ((:instance fn2-commit-supported-step-keeps-readiness-and-owners (command (car commands)))
++                 (:instance fn2-commit-supported-step-keeps-uncertain-rows (command (car commands)))))))
++
++(defthm fn2-commit-ready-replay-stable-result
++ (let ((r (fn2-commit-proof-replay commands turn (list a b) profile admitted fresh refused stable saw replies seen manifests events
++                                     fn2-core fn2-sim fn2-own)))
++  (implies (and (mv-nth 0 r) stable
++                (fn2-replay-commit-rows-ready-p a b fn2-core)
++                (fn2-op-active-owners-p *fn2-commit-kind* (fn2-core-ops fn2-core)))
++           (mv-nth 2 r)))
++ :hints (("Goal" :use fn2-commit-admitted-replay-keeps-uncertainty :in-theory nil)))
++
++(defthm fn2-commit-execution-from-created-core-preserves-uncertainty
++ (let ((r (mv-nth 0 (fn2-commit-proof-execute commands model-profile mode members seed faults
++                                  (create-fn2-core) fn2-sim fn2-own))))
++  (implies (fn2-commit-proof-admitted r) (fn2-commit-proof-stable r)))
++ :hints (("Goal" :do-not-induct t :use (fn2-replay-created-core-has-readable-owned-commit-rows)
++    :in-theory (union-theories '(fn2-commit-proof-execute fn2-commit-proof-admitted fn2-commit-proof-stable
++         fn2-replay-begin-epoch-keeps-ready fn2-replay-begin-epoch-keeps-readers
++         fn2-b-start-ops-child-frame fn2-b-start-keeps-replay-ready fn2-commit-ready-replay-stable-result
++         fn2-ctf-mv-nth-cons fn2-ctf-mv-nth-of-if car-cons cdr-cons nth (:e nth) (:e car) (:e cdr)
++         (:e zp) (:e binary-+) (:e unary--) (:e equal)
++         (:t fn2-commit-proof-replay) (:t fn2-b-start) (:t fn2-b-crash-recover) (:t fn2-alloc-begin-epoch))
++         (set-difference-theories (theory 'minimal-theory) '(mv-nth))))))
++
++(defthm fn2-commit-epoch-preserves-uncertainty
++ (let ((result (fn2-commit-proof-run commands profile mode members seed)))
++  (implies (fn2-commit-proof-admitted result) (fn2-commit-proof-stable result)))
++ :rule-classes nil
++ :hints (("Goal" :do-not-induct t :in-theory
++      (union-theories '(fn2-commit-proof-run fn2-commit-proof-run-faults fn2-ctf-mv-nth-cons
++        fn2-ctf-mv-nth-of-if car-cons cdr-cons (:e zp) (:e binary-+) (:e unary--) (:e equal)
++        fn2-commit-execution-from-created-core-preserves-uncertainty)
++        (set-difference-theories (theory 'minimal-theory) '(mv-nth))))))
++
++(fn2-owed-discharge fn2-commit-uncertain-persists fn2-commit-epoch-preserves-uncertainty)
++
++(make-event
++ (let* ((row (fn2-decl-row '(:square fn2-commit-uncertain-persists) (w state)))
++        (proof (fn2-decl-get :proof row)))
++  (value (list 'assert-event (list 'equal (list 'quote proof) ''(:proved fn2-commit-epoch-preserves-uncertainty))))))
+--- a/Makefile
++++ b/Makefile
+@@ -194,4 +194,12 @@
+   books/commit-settled-reservation-proof \
+   books/commit-turn-frame \
++  books/commit-uncertainty-adapter-proof \
++  books/commit-uncertainty-completion-proof \
++  books/commit-uncertainty-harvest-proof \
++  books/commit-uncertainty-replay-proof \
++  books/commit-uncertainty-route-proof \
++  books/commit-uncertainty-rows-proof \
++  books/commit-uncertainty-step-proof \
++  books/commit-uncertainty-visit-proof \
+   books/conn \
+   books/conn-answer \
+--- a/tools/owed-export.lsp
++++ b/tools/owed-export.lsp
+@@ -32,2 +32,3 @@
+ (include-book "tests/commit-proof-unit")
++(include-book "books/commit-uncertainty-replay-proof")
+ (include-book "tests/commit-durable-all-unit")
