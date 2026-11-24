@@ -185,6 +185,7 @@ ACL2_BOOKS = \
   books/commit-members \
   books/commit-proof \
   books/commit-proof-theory \
+  books/commit-settled-reservation-proof \
   books/commit-turn-frame \
   books/conn \
   books/conn-answer \
