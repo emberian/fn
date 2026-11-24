@@ -472,3 +472,62 @@
              (list :ok :closing (fn2-cau-crlf '("439 <a@b.example>"))))
       (equal (fn2-cau-run-outcome :takethis :framing "<a@b.example>")
              (list :ok :closing (fn2-cau-crlf '("439 <a@b.example>"))))))
+
+; CAPABILITIES under peer, STARTTLS, and COMPRESS DEFLATE combinations:
+; peer connections advertise IHAVE and STREAMING alongside POST/TLS/COMPRESS,
+; while reader connections never advertise transit capabilities.
+(defun fn2-cau-run-caps (mask posting)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn2-pool
+    (mv-let (result fn2-pool)
+      (let ((fn2-pool (fn2-pool-init '((2 . 8192)) 1 1000 fn2-pool)))
+        (mv-let (c1 slot gen fn2-pool) (fn2-pool-reserve 0 1 1 1 fn2-pool)
+          (declare (ignore c1))
+          (mv-let (c2 tslot tgen fn2-pool) (fn2-pool-reserve 0 1 1 1 fn2-pool)
+            (declare (ignore c2))
+            (let* ((octets (fn2-cau-octets (coerce (fn2-cau-crlf '("CAPABILITIES")) 'list)))
+                   (fn2-pool (fn2-cau-feed octets slot gen fn2-pool)))
+              (mv-let (code after pending fn2-pool)
+                (fn2-answer 0 (len octets) mask :none posting nil nil 0 0 slot gen tslot tgen 1 1 1 fn2-pool)
+                (mv (list code after pending
+                          (coerce (fn2-cau-chars 0 (fn2-gram-fill tslot fn2-pool) tslot tgen fn2-pool) 'string))
+                    fn2-pool))))))
+      result)))
+
+(assert-event
+ (let ((caps-reader-tls (nth 3 (fn2-cau-run-caps (logior *fn2-cau-reader* *fn2-nntp-state-tls-available*) t)))
+       (caps-reader-cmp (nth 3 (fn2-cau-run-caps (logior *fn2-cau-authed* *fn2-nntp-state-compress-available*) nil)))
+       (caps-peer-ro (nth 3 (fn2-cau-run-caps *fn2-cau-peer* nil)))
+       (caps-peer-post (nth 3 (fn2-cau-run-caps *fn2-cau-peer* t)))
+       (caps-peer-tls (nth 3 (fn2-cau-run-caps (logior *fn2-cau-peer* *fn2-nntp-state-tls-available*) t)))
+       (caps-peer-cmp (nth 3 (fn2-cau-run-caps (logior *fn2-nntp-state-peer* *fn2-nntp-state-authenticated* *fn2-nntp-state-compress-available*) t))))
+   (and (equal caps-reader-tls
+               (fn2-cau-crlf '("101 capability list follows" "VERSION 2" "READER" "POST" "IMPLEMENTATION fn2"
+                               "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS MOTD NEWSGROUPS OVERVIEW.FMT SUBSCRIPTIONS"
+                               "OVER MSGID" "HDR" "XPAT" "NEWNEWS" "STARTTLS" ".")))
+        (equal caps-reader-cmp
+               (fn2-cau-crlf '("101 capability list follows" "VERSION 2" "READER" "IMPLEMENTATION fn2"
+                               "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS MOTD NEWSGROUPS OVERVIEW.FMT SUBSCRIPTIONS"
+                               "OVER MSGID" "HDR" "XPAT" "NEWNEWS" "COMPRESS DEFLATE" ".")))
+        (equal caps-peer-ro
+               (fn2-cau-crlf '("101 capability list follows" "VERSION 2" "READER" "IMPLEMENTATION fn2"
+                               "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS MOTD NEWSGROUPS OVERVIEW.FMT SUBSCRIPTIONS"
+                               "OVER MSGID" "HDR" "XPAT" "NEWNEWS" "IHAVE" "STREAMING" ".")))
+        (equal caps-peer-post
+               (fn2-cau-crlf '("101 capability list follows" "VERSION 2" "READER" "POST" "IMPLEMENTATION fn2"
+                               "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS MOTD NEWSGROUPS OVERVIEW.FMT SUBSCRIPTIONS"
+                               "OVER MSGID" "HDR" "XPAT" "NEWNEWS" "IHAVE" "STREAMING" ".")))
+        (equal caps-peer-tls
+               (fn2-cau-crlf '("101 capability list follows" "VERSION 2" "READER" "POST" "IMPLEMENTATION fn2"
+                               "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS MOTD NEWSGROUPS OVERVIEW.FMT SUBSCRIPTIONS"
+                               "OVER MSGID" "HDR" "XPAT" "NEWNEWS" "IHAVE" "STREAMING" "STARTTLS" ".")))
+        (equal caps-peer-cmp
+               (fn2-cau-crlf '("101 capability list follows" "VERSION 2" "READER" "POST" "IMPLEMENTATION fn2"
+                               "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS MOTD NEWSGROUPS OVERVIEW.FMT SUBSCRIPTIONS"
+                               "OVER MSGID" "HDR" "XPAT" "NEWNEWS" "IHAVE" "STREAMING" "COMPRESS DEFLATE" ".")))
+        ;; Negative controls: reader capabilities never leak transit labels,
+        ;; and peer capabilities strictly differ from non-peer ones.
+        (not (search "IHAVE" caps-reader-tls))
+        (not (search "STREAMING" caps-reader-cmp))
+        (not (equal caps-peer-tls caps-reader-tls))
+        (not (equal caps-peer-post (nth 3 (fn2-cau-run-posting "CAPABILITIES")))))))

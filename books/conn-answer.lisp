@@ -26,26 +26,29 @@
     (concatenate 'string (car lines) (coerce (list (code-char 13) (code-char 10)) 'string)
                  (fn2-answer-crlf-lines (cdr lines)))))
 
-;; CAPABILITIES' always-on labels (RFC 3977 section 5.2; specs/nntp.md:3-23).
-;; The conditional labels (POST from D5; IHAVE and STREAMING with the peer
-;; bit; AUTHINFO and SASL from E2; COMPRESS DEFLATE after
-;; authentication, from E2) render nothing until their quest (section 11).
-(defconst *fn2-answer-capabilities-text*
+;; CAPABILITIES' always-on labels (RFC 3977 section 5.2; specs/nntp.md:3-23)
+;; and conditional slots: POST when posting is served, IHAVE and STREAMING on
+;; peer connections, STARTTLS before upgrade when TLS is offered, and
+;; COMPRESS DEFLATE after authentication when compression is offered
+;; (AUTHINFO/SASL stay unadvertised without a credential store).
+(defconst *fn2-answer-cap-head-text*
+  (fn2-answer-crlf-lines '("VERSION 2" "READER")))
+(defconst *fn2-answer-cap-post-text*
+  (fn2-answer-crlf-lines '("POST")))
+(defconst *fn2-answer-cap-tail-text*
   (fn2-answer-crlf-lines
-   '("VERSION 2" "READER" "IMPLEMENTATION fn2"
+   '("IMPLEMENTATION fn2"
      "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS MOTD NEWSGROUPS OVERVIEW.FMT SUBSCRIPTIONS"
      "OVER MSGID" "HDR" "XPAT" "NEWNEWS")))
-(defconst *fn2-answer-capabilities-posting-text*
-  (fn2-answer-crlf-lines
-   '("VERSION 2" "READER" "POST" "IMPLEMENTATION fn2"
-     "LIST ACTIVE ACTIVE.TIMES COUNTS HEADERS MOTD NEWSGROUPS OVERVIEW.FMT SUBSCRIPTIONS"
-     "OVER MSGID" "HDR" "XPAT" "NEWNEWS")))
-(defconst *fn2-answer-capabilities-tls-text*
- (concatenate 'string *fn2-answer-capabilities-text* (fn2-answer-crlf-lines '("STARTTLS"))))
-(defconst *fn2-answer-capabilities-posting-tls-text*
- (concatenate 'string *fn2-answer-capabilities-posting-text* (fn2-answer-crlf-lines '("STARTTLS"))))
-(assert-event (and (<= (length *fn2-answer-capabilities-tls-text*) *fn2-answer-body-bytes*)
-                   (<= (length *fn2-answer-capabilities-posting-tls-text*) *fn2-answer-body-bytes*)))
+(defconst *fn2-answer-cap-peer-text*
+  (fn2-answer-crlf-lines '("IHAVE" "STREAMING")))
+(defconst *fn2-answer-cap-tls-text*
+  (fn2-answer-crlf-lines '("STARTTLS")))
+(defconst *fn2-answer-cap-compress-text*
+  (fn2-answer-crlf-lines '("COMPRESS DEFLATE")))
+(defun fn2-answer-peer-p (mask)
+  (declare (xargs :guard t))
+  (not (equal 0 (logand (nfix mask) *fn2-nntp-state-peer*))))
 (defun fn2-answer-tls-disallowed-p (mask)
  (declare (xargs :guard t))
  (not (equal 0 (logand (nfix mask)
@@ -59,12 +62,6 @@
  (and (not (equal 0 (logand (nfix mask) *fn2-nntp-state-authenticated*)))
       (not (equal 0 (logand (nfix mask) *fn2-nntp-state-compress-available*)))
       (equal 0 (logand (nfix mask) *fn2-nntp-state-compressed*))))
-(defconst *fn2-answer-capabilities-compress-text*
- (concatenate 'string *fn2-answer-capabilities-text* (fn2-answer-crlf-lines '("COMPRESS DEFLATE"))))
-(defconst *fn2-answer-capabilities-posting-compress-text*
- (concatenate 'string *fn2-answer-capabilities-posting-text* (fn2-answer-crlf-lines '("COMPRESS DEFLATE"))))
-(assert-event (and (<= (length *fn2-answer-capabilities-compress-text*) *fn2-answer-body-bytes*)
-                   (<= (length *fn2-answer-capabilities-posting-compress-text*) *fn2-answer-body-bytes*)))
 ;; LIST OVERVIEW.FMT (RFC 3977 section 8.4; the overview fields C stores).
 (defconst *fn2-answer-overview-fmt-text*
   (fn2-answer-crlf-lines '("Subject:" "From:" "Date:" "Message-ID:" "References:" "Bytes:" "Lines:" "Xref:full")))
@@ -72,8 +69,13 @@
 ;; metadata items every article has.
 (defconst *fn2-answer-headers-text* (fn2-answer-crlf-lines '(":" ":bytes" ":lines")))
 
-(assert-event (and (<= (length *fn2-answer-capabilities-text*) *fn2-answer-body-bytes*)
-                   (<= (length *fn2-answer-capabilities-posting-text*) *fn2-answer-body-bytes*)
+(assert-event (and (<= (+ (length *fn2-answer-cap-head-text*)
+                          (length *fn2-answer-cap-post-text*)
+                          (length *fn2-answer-cap-tail-text*)
+                          (length *fn2-answer-cap-peer-text*)
+                          (max (length *fn2-answer-cap-tls-text*)
+                               (length *fn2-answer-cap-compress-text*)))
+                       *fn2-answer-body-bytes*)
                    (<= (length *fn2-nntp-help-text*) *fn2-answer-body-bytes*)
                    (<= (length *fn2-answer-overview-fmt-text*) *fn2-answer-body-bytes*)
                    (<= (length *fn2-answer-headers-text*) *fn2-answer-body-bytes*)))
@@ -511,9 +513,16 @@
 
 ;; Status line only, or status line, fixed body and terminator.
 (defun fn2-answer-say (cmd reply mask n0 tslot tgen okind oslot ogen fn2-pool)
-  (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp n0))))
+  (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (natp n0))
+                  :guard-hints (("Goal" :in-theory (disable fn2-nntp-reply-template fn2-nntp-reply-admitted
+                                                            fn2-nntp-reply-command fn2-nntp-reply-layer)))))
   (fn2-nntp-render cmd reply mask n0 0 0 tslot tgen 0 0 tslot tgen okind oslot ogen fn2-pool))
-(fn2-pool-preserves fn2-answer-say (cmd reply mask n0 tslot tgen okind oslot ogen fn2-pool) :position 1 :rows nil)
+;; Keep the reply metadata lookups opaque during pool preservation so ACL2
+;; uses fn2-nntp-render's rule without splitting over every reply tag.
+(fn2-pool-preserves fn2-answer-say (cmd reply mask n0 tslot tgen okind oslot ogen fn2-pool)
+  :position 1 :rows nil
+  :hints (("Goal" :in-theory (disable fn2-nntp-reply-template fn2-nntp-reply-admitted
+                                      fn2-nntp-reply-command fn2-nntp-reply-layer))))
 (in-theory (disable fn2-answer-say))
 (defun fn2-answer-say-body (cmd reply mask text tslot tgen okind oslot ogen fn2-pool)
   (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (stringp text))))
@@ -524,6 +533,44 @@
           (fn2-gram-put-terminator tslot tgen okind oslot ogen fn2-pool))))))
 (fn2-pool-preserves fn2-answer-say-body (cmd reply mask text tslot tgen okind oslot ogen fn2-pool) :position 1 :rows nil)
 (in-theory (disable fn2-answer-say-body))
+
+;; Append TEXT into TX when FLAG holds; used for optional CAPABILITIES lines.
+(defun fn2-answer-put-opt-text (flag text slot gen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :guard (and (fn2-pool-wfp fn2-pool) (stringp text))))
+  (if flag (fn2-answer-put-text 0 text slot gen okind oslot ogen fn2-pool) (mv :ok fn2-pool)))
+(fn2-pool-preserves fn2-answer-put-opt-text (flag text slot gen okind oslot ogen fn2-pool) :position 1 :rows nil)
+(in-theory (disable fn2-answer-put-opt-text))
+
+;; Render the CAPABILITIES response cleanly for any combination of posting,
+;; peering, TLS, and compression state (RFC 3977 §5.2, RFC 4644 §2.2).
+(defun fn2-answer-say-capabilities (mask posting tslot tgen okind oslot ogen fn2-pool)
+  (declare (xargs :stobjs fn2-pool :guard (fn2-pool-wfp fn2-pool)))
+  (b* (((mv code fn2-pool)
+        (fn2-answer-say *fn2-nntp-command-capabilities* *fn2-nntp-reply-capabilities-list*
+                        mask 0 tslot tgen okind oslot ogen fn2-pool))
+       ((unless (eq code :ok)) (mv code fn2-pool))
+       ((mv code fn2-pool)
+        (fn2-answer-put-text 0 *fn2-answer-cap-head-text* tslot tgen okind oslot ogen fn2-pool))
+       ((unless (eq code :ok)) (mv code fn2-pool))
+       ((mv code fn2-pool)
+        (fn2-answer-put-opt-text posting *fn2-answer-cap-post-text* tslot tgen okind oslot ogen fn2-pool))
+       ((unless (eq code :ok)) (mv code fn2-pool))
+       ((mv code fn2-pool)
+        (fn2-answer-put-text 0 *fn2-answer-cap-tail-text* tslot tgen okind oslot ogen fn2-pool))
+       ((unless (eq code :ok)) (mv code fn2-pool))
+       ((mv code fn2-pool)
+        (fn2-answer-put-opt-text (fn2-answer-peer-p mask) *fn2-answer-cap-peer-text*
+                                 tslot tgen okind oslot ogen fn2-pool))
+       ((unless (eq code :ok)) (mv code fn2-pool))
+       (ext (cond ((fn2-answer-compress-offered-p mask) *fn2-answer-cap-compress-text*)
+                  ((fn2-answer-tls-offered-p mask) *fn2-answer-cap-tls-text*)
+                  (t "")))
+       ((mv code fn2-pool)
+        (fn2-answer-put-opt-text (< 0 (length ext)) ext tslot tgen okind oslot ogen fn2-pool))
+       ((unless (eq code :ok)) (mv code fn2-pool)))
+    (fn2-gram-put-terminator tslot tgen okind oslot ogen fn2-pool)))
+(fn2-pool-preserves fn2-answer-say-capabilities (mask posting tslot tgen okind oslot ogen fn2-pool) :position 1 :rows nil)
+(in-theory (disable fn2-answer-say-capabilities))
 
 (in-theory (disable fn2-answer-subform-p fn2-answer-date-digits))
 ;; A parsed, sub-form-valid command. Returns (mv code after pending
@@ -540,13 +587,7 @@
     (cond
      ((equal tag *fn2-nntp-command-capabilities*)
       (mv-let (code fn2-pool)
-        (fn2-answer-say-body c *fn2-nntp-reply-capabilities-list* mask
-                             (cond ((fn2-answer-compress-offered-p mask)
-                                    (if posting *fn2-answer-capabilities-posting-compress-text* *fn2-answer-capabilities-compress-text*))
-                                   ((fn2-answer-tls-offered-p mask)
-                                    (if posting *fn2-answer-capabilities-posting-tls-text* *fn2-answer-capabilities-tls-text*))
-                                   (t (if posting *fn2-answer-capabilities-posting-text* *fn2-answer-capabilities-text*)))
-                             tslot tgen okind oslot ogen fn2-pool)
+        (fn2-answer-say-capabilities mask posting tslot tgen okind oslot ogen fn2-pool)
         (mv code :command pending fn2-pool)))
      ((equal tag *fn2-nntp-command-compress*)
       (let ((verdict (fn2-compress-admission
@@ -845,11 +886,13 @@
 
 (assert-event
  (fn2-assert-compliant-p
-  '(fn2-answer-put-text fn2-answer-civil fn2-answer-date-digits fn2-answer-field-p fn2-answer-hdr-meta-ok-p
-    fn2-answer-digests-loop fn2-xpat-trim-end fn2-answer-subform-p fn2-wildmat-class-end fn2-wildmat-class-in-p
-    fn2-wildmat-step-one fn2-wildmat-pat-loop fn2-wildmat-alt-end fn2-wildmat-loop fn2-wildmat-match-p
+  '(fn2-answer-peer-p fn2-answer-put-text fn2-answer-put-opt-text fn2-answer-civil fn2-answer-date-digits
+    fn2-answer-field-p fn2-answer-hdr-meta-ok-p fn2-answer-digests-loop fn2-xpat-trim-end
+    fn2-answer-subform-p fn2-wildmat-class-end fn2-wildmat-class-in-p fn2-wildmat-step-one
+    fn2-wildmat-pat-loop fn2-wildmat-alt-end fn2-wildmat-loop fn2-wildmat-match-p
     fn2-xpat-skip-wsp fn2-xpat-step-one fn2-xpat-pat-loop fn2-xpat-wildmat-loop fn2-xpat-wildmat-match-p
-    fn2-answer-interim-reply fn2-answer-say fn2-answer-say-body fn2-answer-ok fn2-answer-discard-token
-    fn2-answer fn2-answer-greeting fn2-answer-overflow fn2-answer-block-open fn2-answer-post-reply
-    fn2-answer-ihave-reply fn2-answer-takethis-reply fn2-answer-outcome)
+    fn2-answer-interim-reply fn2-answer-say fn2-answer-say-body fn2-answer-say-capabilities
+    fn2-answer-ok fn2-answer-discard-token fn2-answer fn2-answer-greeting fn2-answer-overflow
+    fn2-answer-block-open fn2-answer-post-reply fn2-answer-ihave-reply fn2-answer-takethis-reply
+    fn2-answer-outcome)
   (w state)))
