@@ -1214,6 +1214,22 @@ install is four forwarded callbacks (scan, classify, adopt, finish).
   beyond the recovered history. Teeth: witnessed rollback detected and `damaged`; unwitnessed
   rollback recovered `intact` with no claim; uncredited receipt; covered witness `consistent`.
 
+On the November 24 replay fixture, the two bad-tail checks and four rollback
+checks above all return nil. Both batches acknowledge in the clean replay.
+Their records decode, but `fn2-b-expected-members` expects lineage and domain
+`(0 0)` where the configured origin writes `(1 1)`. Manifest projection reports
+`:missing-manifest`, and the resulting history supplies neither a valid bad
+tail nor a receipt. Those runs do not establish either keystone.
+
+Using the configured origin as the independent expectation restores a positive
+rollback control. With 600 `(:auto 26)` commands, mode 0, two members and seed 1,
+the broad profile with independent receipts gives `:rollback-detected` for
+`((:witness 2) (:rollback 1))`, recovers one batch, and retains receipt 2.
+Appending `(:rollback 2)` leaves the same physical outcome but history translation
+returns `:log-model-refused`. On that error `fn2-recovery-proof-state` returns an
+invalid initial state with no witnesses. Repairing the origin expectation alone
+therefore cannot establish the rollback statement over all admitted replays.
+
 ## 11a. The commit kind's members (B5-4: GC2's run member, B-S2's transaction member)
 
 Statement first (2026-10-30; read once by Astra, build/coordinator/fn2/lanes/b-quests/b54-astra.md).
@@ -1727,6 +1743,18 @@ before the pools are released. The statements take `plant` nil; the teeth plant 
   workspace, an unknown kind, a body one octet short (`:admission` each), then members until the
   batch's records room runs out (`:exhausted`); and a refusal planted to reserve a settled row, which
   fails.
+
+Two mode-0 replays with `plant` nil refute the first two transaction statements
+as written. Both set `fn2-ctp-initialized` and pass the admission-total check.
+
+| Commands | Observation |
+| --- | --- |
+| `((:admit 0) (:bypass-notify 0))` with workspace 0 containing `(fn2-ctu-acceptance 0)` | Member 0 settles as accepted in batch 1. The outbox counted no writes and the visibility rows published no batch. |
+| `(:start 0 1 1 0)` followed by 600 `(:auto 26)` commands | The keyed batch produces three writes and a sealed records image. The workspace admissions list is empty, so the image fails `fn2-ctp-images-okp`. |
+
+`fn2-ctp-replay` discards the legality flag returned by
+`fn2-commit-proof-step` for a bypass. It also captures images from keyed starts,
+whose members never enter the workspace admissions list.
 
 **As built (one-minute rule).** The B-S2 code is its own section book, `assembly-callbacks-bt`
 (admission, the source reference, the block read, the seal's verbatim copy), between `-b` and `-b2`.
