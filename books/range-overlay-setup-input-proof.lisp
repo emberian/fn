@@ -3,8 +3,7 @@
 (in-package "ACL2")
 (include-book "range-overlay-first-input-proof")
 
-(local
- (defthmd fn2-range-setup-overlay-geometry
+(defthmd fn2-range-setup-overlay-geometry
    (let* ((setup (fn2-rga-call fn2-rga-setup)) (ov (mv-nth 3 setup))
           (ix (mv-nth 4 setup)) (f (mv-nth 12 setup)) (p (mv-nth 13 setup)))
      (implies (and (fn2-fieldsp fn2-fields) (fn2-poolp fn2-pool))
@@ -13,19 +12,23 @@
                    (fn2-overlay-index-wfp ix) (equal (fn2-overlay-index-rows ix) 256)
                    (fn2-fieldsp f) (fn2-fields-wfp f)
                    (<= (+ *fn2-run-adapter-reader* *fn2-run-entry-rows*) (fn2-fields-rows f))
-                   (fn2-poolp p) (fn2-pool-wfp p))))
+                   (fn2-poolp p) (fn2-pool-wfp p)
+                   (implies (fn2-overlaysp fn2-overlays) (fn2-overlaysp ov))
+                   (implies (fn2-overlay-indexp fn2-overlay-index) (fn2-overlay-indexp ix)))))
    :hints (("Goal" :in-theory (e/d (fn2-rga-setup fn2-overlays-phase)
                       (fn2-overlays-init fn2-overlay-index-init fn2-fields-init fn2-pool-init
-                       fn2-fieldsp fn2-poolp fn2-overlays-wfp fn2-overlay-index-wfp fn2-fields-wfp fn2-pool-wfp))))))
+                       fn2-fieldsp fn2-poolp fn2-overlaysp fn2-overlay-indexp fn2-overlays-wfp fn2-overlay-index-wfp fn2-fields-wfp fn2-pool-wfp)))))
+
+(defmacro fn2-range-overlay-source-from-setup (rows)
+  `(b* (((mv & ,@*fn2-rga-stobjs*) (fn2-rga-call fn2-rga-setup)))
+     (fn2-rga-call fn2-rga-overlay 3 *fn2-overview-entry* ,rows)))
 
 (defmacro fn2-range-overlay-single-from-setup (row)
-  `(b* (((mv & ,@*fn2-rga-stobjs*) (fn2-rga-call fn2-rga-setup)))
-     (fn2-rga-call fn2-rga-overlay 3 *fn2-overview-entry* (list ,row))))
+  `(fn2-range-overlay-source-from-setup (list ,row)))
 
-(local
- (defthm fn2-range-created-pool-has-type
+(defthmd fn2-range-created-pool-has-type
    (fn2-poolp (create-fn2-pool))
-   :hints (("Goal" :in-theory (enable create-fn2-pool fn2-poolp)))))
+   :hints (("Goal" :in-theory (enable create-fn2-pool fn2-poolp))))
 
 (defthm fn2-range-setup-stores-single-overview
   (let* ((run (fn2-range-overlay-single-from-setup row))
