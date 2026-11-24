@@ -14,6 +14,7 @@
 (include-book "upload-kind")
 (include-book "upload-page-geometry")
 (include-book "article-manifest")
+(include-book "ordered")
 (fn2-book-layer :d)
 
 ;; The store page of stored octets longer than one extent (S-ARTICLE-LOCATION,

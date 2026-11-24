@@ -73,6 +73,7 @@
       (unsigned-byte-p 32 (* *fn2-run-max-levels* (+ (nfix (fn2-profile-t profile)) (* 9 (fn2-b-read-rows profile)) *fn2-idc-seal-cursors*)))
       (<= (+ (* *fn2-idc-b-stripe* (nfix (fn2-b-format-slots profile)))
              (* *fn2-idc-stride* (nfix (fn2-profile-t profile))) *fn2-b-seal-field-rows*
+             *fn2-b-checkpoint-field-rows*
              (* *fn2-b-read-stride* (fn2-b-read-rows profile)))
           (nfix (fn2-b-capacity :format-field-slots (fn2-b-field-rows profile) profile)))))
 
