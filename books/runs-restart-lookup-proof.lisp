@@ -27,6 +27,15 @@
                    (and (equal x y) (equal xs ys))))
    :hints (("Goal" :induct (pairlis$ x y) :in-theory (enable len)))))
 
+(defthmd fn2-run-read-stored-segments
+  (implies (and (natp at) (true-listp left)
+                (equal (fn2-run-read-bytes (+ (len left) (len right)) slot gen at pk ps pg pool)
+                       (append left right)))
+           (and (equal (fn2-run-read-bytes (len left) slot gen at pk ps pg pool) left)
+                (equal (fn2-run-read-bytes (len right) slot gen (+ at (len left)) pk ps pg pool) right)))
+  :hints (("Goal" :use ((:instance fn2-run-read-prefix (n (len left)) (m (len right))))
+           :in-theory (disable fn2-run-read-bytes binary-append))))
+
 (local
  (defthm fn2-run-four-byte-encoding
    (and (equal (len (fn2-layout-le 4 v)) 4) (true-listp (fn2-layout-le 4 v)))
