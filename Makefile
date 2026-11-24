@@ -285,6 +285,7 @@ ACL2_BOOKS = \
   books/overlay \
   books/overlay-index-list-proof \
   books/overlay-order-spec-proof \
+  books/overlay-search-generic-proof \
   books/origin \
   books/owed-reclamation \
   books/owed \
