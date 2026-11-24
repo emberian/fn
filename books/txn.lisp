@@ -711,7 +711,7 @@
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (if (and (eq (fn2-upload-snapshot-read-code u fn2-core) :ok)
            (equal (fn2-machine-generation u fn2-core) ug))
-      (* 32 (fn2-upload-row-location-hashed u fn2-core))
+      (* 32 (nfix (fn2-upload-row-location-hashed u fn2-core)))
     0))
 (defthm fn2-txn-upload-location-hashes-bytes-natp
   (natp (fn2-txn-upload-location-hashes-bytes u ug fn2-core))
