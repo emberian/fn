@@ -14,15 +14,26 @@
                                         nv nh ns ph))
                    (t (mv code (cdr xs) nil)))))))
 
+(defun fn2-run-scalar-kindp (k)
+  (declare (xargs :guard t))
+  (if (or (member-eq k '(:u8 :u16 :u32 :u64 :u16be :u32be :u64be :varint :u60 :bool))
+          (and (consp k) (member-eq (car k) '(:id :enum))))
+      t nil))
+
+(defthmd fn2-run-scalar-kind-code
+  (equal (fn2-run-scalar-kindp k)
+         (not (member-equal (fn2-layout-kind-code k) '(7 10 11 15 16))))
+  :hints (("Goal" :in-theory (enable fn2-layout-kind-code))))
+
 (defthm fn2-run-field-result-of-parser
  (let ((parse (fn2-layout-parse-field k bytes xs pos v hi size ref phase next))
        (span (fn2-run-field-result k xs pos v hi size phase)))
   (and (equal (mv-nth 0 parse) (mv-nth 0 span))
        (equal (mv-nth 2 parse) (mv-nth 1 span))
-       (implies (equal (fn2-layout-kind-code k) 8) (equal (mv-nth 1 parse) (mv-nth 2 span)))))
+       (implies (fn2-run-scalar-kindp k) (equal (mv-nth 1 parse) (mv-nth 2 span)))))
  :hints (("Goal" :induct (fn2-layout-parse-field k bytes xs pos v hi size ref phase next)
-          :in-theory (e/d (fn2-layout-parse-field fn2-run-field-result)
-                          (fn2-layout-byte fn2-layout-kind-code take nthcdr mv-nth))
+          :in-theory (e/d (fn2-layout-parse-field fn2-run-field-result fn2-run-scalar-kind-code)
+                          (fn2-layout-byte fn2-layout-kind-code fn2-run-scalar-kindp take nthcdr mv-nth))
           :expand ((:free (a b c) (mv-nth 0 (list a b c)))
                    (:free (a b c) (mv-nth 2 (list a b c)))
                    (:free (a b c) (mv-nth 1 (list a b c)))))))

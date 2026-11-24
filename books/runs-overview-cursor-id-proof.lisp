@@ -14,7 +14,7 @@
  (defthm fn2-run-overview-id-fits-field
  (let ((layout (if indexp *fn2-overview-index* *fn2-overview-entry*)))
   (implies (and (fn2-run-values-layoutp layout row) (natp j) (< j (if indexp 2 4)))
-           (and (fn2-run-id-prefixp j layout) (unsigned-byte-p 60 (nth j row)))))
+           (and (fn2-run-scalar-prefixp j layout) (unsigned-byte-p 60 (nth j row)))))
  :rule-classes nil
  :hints (("Goal" :cases ((equal j 0) (equal j 1) (equal j 2) (equal j 3))
           :do-not '(preprocess)
@@ -43,10 +43,10 @@
  :hints (("Goal" :use ((:instance fn2-run-overview-id-fits-field (indexp (and (integerp level) (< 0 level))))
               (:instance fn2-run-overview-admission-fits-decoder (layout (if (and (integerp level) (< 0 level)) *fn2-overview-index* *fn2-overview-entry*)))
               (:instance fn2-run-readable-page-prefix (bound (+ off (len (fn2-layout-octets (if (and (integerp level) (< 0 level)) *fn2-overview-index* *fn2-overview-entry*) row)))))
-              (:instance fn2-run-page-scan-returns-source-id (layout (if (and (integerp level) (< 0 level)) *fn2-overview-index* *fn2-overview-entry*)) (fuel *fn2-codec-decode-fuel*))
+              (:instance fn2-run-page-scan-returns-source-scalar (layout (if (and (integerp level) (< 0 level)) *fn2-overview-index* *fn2-overview-entry*)) (fuel *fn2-codec-decode-fuel*))
               (:instance fn2-run-page-scan-consumes-admitted-row (layout (if (and (integerp level) (< 0 level)) *fn2-overview-index* *fn2-overview-entry*)) (fuel *fn2-codec-decode-fuel*)))
           :cases ((and (integerp level) (< 0 level)))
-          :in-theory (disable fn2-fields-value nth fn2-run-values-layoutp fn2-run-id-prefixp fn2-layout-octets fn2-layout-scan fn2-run-read-bytes fn2-layout-range-code fn2-poolp fn2-pool-wfp fn2-pool-base fn2-fields-rows)))))
+          :in-theory (disable fn2-fields-value nth fn2-run-values-layoutp fn2-run-scalar-prefixp fn2-layout-octets fn2-layout-scan fn2-run-read-bytes fn2-layout-range-code fn2-poolp fn2-pool-wfp fn2-pool-base fn2-fields-rows)))))
 
 (defthm fn2-run-overview-page-row-id
  (let* ((indexp (and (integerp level) (< 0 level)))
