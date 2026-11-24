@@ -1,474 +1,9 @@
-; Layer C: a Ribbon filter per sealed run (C2c; FILTERS-2026 item 2).
-; Homogeneous Ribbon (Dillinger and Walzer): every key gives one equation
-; c . Z = 0 over GF(2)^8, where c is 64 coefficient bits starting at the
-; key's slot s and Z holds one byte per slot (r = 8). A homogeneous system
-; is always solvable, so a build never fails and never retries; free slots
-; take bytes from a generator seeded by the run, so a page is reproducible.
-; A probe that finds c . Z /= 0 proves the key absent; zero answers :maybe
-; and the reader then reads the run, so :found and :absent still come from
-; byte comparisons only. The key is a 64-bit hash (two FNV-1a streams, each
-; finalized) of one octet field, seeded per run. It is not cryptographic: a
-; key aimed at a run's filter costs an extra run read, never a wrong answer.
-;
-; Page: B's header (page kind :partitioned-filter); at the header area the
-; filter header (fn2-ribbon-header) in a region of the run page header's
-; reserved size; Z from *fn2-ribbon-base*, one byte per slot; zero padding.
-; Build: start (a writer row the caller opened on a fresh page), clear the
-; band, add each key (bounded insertion, any order), finish, then work
-; (back substitution from the top slot, the bytes, the close, the header,
-; the seal) until :sealed. Every call is bounded; :more resumes.
 (in-package "ACL2")
+(include-book "ribbon-build")
 (local (include-book "pool-read-contracts"))
-(include-book "runs-page")
-(include-book "fnv")
-(include-book "words")
-(include-book "columns-call-guards")
+(include-book "assumptions-integrity")
 (fn2-book-layer :c)
 (local (in-theory (disable fn2-pool-rows fn2-fields-rows fn2-digests-rows fn2-fc-rows fn2-fc-context-rows fn2-b3-rows)))
-
-(defconst *fn2-ribbon-width* 64)
-(defconst *fn2-ribbon-bits* 8)
-(deflayout fn2-ribbon-header
- '((schema (:id schema)) (run (:id run)) (seed :u32) (keys :varint) (slots :varint) (width :u8) (bits :u8)))
-(assert-event (<= *fn2-ribbon-header-max-size* *fn2-run-page-header-max-size*))
-; Z starts where a run page's entries start, so the writer's open is shared.
-(defconst *fn2-ribbon-base* *fn2-run-entries-base*)
-(defconst *fn2-ribbon-slots-max* (- *fn2-run-page-size* *fn2-ribbon-base*))
-; Slots for N keys: an overhead of one sixteenth plus the band width, so
-; every start s lies in [0, slots - 64].
-(defun fn2-ribbon-slots (n)
- (declare (xargs :guard (natp n)))
- (+ (nfix n) (floor (+ (nfix n) 15) 16) (- *fn2-ribbon-width* 1)))
-; The most keys one filter page holds (C-FILTER-ONE-PAGE).
-(defconst *fn2-ribbon-keys-max*
- (floor (* 16 (- *fn2-ribbon-slots-max* (+ 15 (- *fn2-ribbon-width* 1)))) 17))
-(assert-event (<= (fn2-ribbon-slots *fn2-ribbon-keys-max*) *fn2-ribbon-slots-max*))
-
-;; A width fact in the forms the prover uses: the predicate, natp and the bound.
-(defmacro fn2-ribbon-ub (name n hyps term &rest args)
- (let ((natp-name (fn2-columns-sym name "-NATP")) (bound-name (fn2-columns-sym name "-BOUND"))
-       (th '(union-theories '(unsigned-byte-p integer-range-p natp (:executable-counterpart expt)) (theory 'minimal-theory))))
-  `(progn
-    (defthm ,name (implies ,hyps (unsigned-byte-p ,n ,term)) ,@args)
-    (defthm ,natp-name (implies ,hyps (natp ,term))
-     :rule-classes ,(if (eq hyps t) :type-prescription :rewrite)
-     :hints (("Goal" :use ,name :in-theory ,th)))
-    (defthm ,bound-name (implies ,hyps (< ,term ,(expt 2 n))) :rule-classes :linear
-     :hints (("Goal" :use ,name :in-theory ,th))))))
-
-; ---------------------------------------------------------------------------
-; 32-bit words. Each operation's logic fixes its inputs, so its width holds
-; unconditionally; under the guard the execution is the plain operation.
-; The width facts come from bitops, inside this encapsulate only.
-(encapsulate ()
- (local (include-book "centaur/bitops/ihsext-basics" :dir :system))
- (defun fn2-ribbon-xor32 (a b)
-  (declare (xargs :guard (and (unsigned-byte-p 32 a) (unsigned-byte-p 32 b))))
-  (mbe :logic (logxor (logand a 4294967295) (logand b 4294967295)) :exec (logxor a b)))
- (fn2-ribbon-ub fn2-ribbon-xor32-type 32 t (fn2-ribbon-xor32 a b))
- (defun fn2-ribbon-xor8 (a b)
-  (declare (xargs :guard (and (unsigned-byte-p 8 a) (unsigned-byte-p 8 b))))
-  (mbe :logic (logxor (logand a 255) (logand b 255)) :exec (logxor a b)))
- (fn2-ribbon-ub fn2-ribbon-xor8-type 8 t (fn2-ribbon-xor8 a b))
- (defun fn2-ribbon-odd32 (a)
-  (declare (xargs :guard (unsigned-byte-p 32 a)))
-  (mbe :logic (logior (logand a 4294967295) 1) :exec (logior a 1)))
- (fn2-ribbon-ub fn2-ribbon-odd32-type 32 t (fn2-ribbon-odd32 a))
- (defun fn2-ribbon-byte (a)
-  (declare (xargs :guard (integerp a)))
-  (logand a 255))
- (fn2-ribbon-ub fn2-ribbon-byte-type 8 t (fn2-ribbon-byte a))
- ;; A >> K.
- (defun fn2-ribbon-shr (a k)
-  (declare (xargs :guard (and (unsigned-byte-p 32 a) (natp k))))
-  (mbe :logic (logand (ash (logand a 4294967295) (- (nfix k))) 4294967295) :exec (ash a (- k))))
- (fn2-ribbon-ub fn2-ribbon-shr-type 32 t (fn2-ribbon-shr a k))
- ;; The low word of (hi:lo) >> 1.
- (defun fn2-ribbon-shr1 (lo hi)
-  (declare (xargs :guard (and (unsigned-byte-p 32 lo) (unsigned-byte-p 32 hi))))
-  (mbe :logic (logand (logior (ash (logand lo 4294967295) -1) (ash (logand hi 1) 31)) 4294967295)
-       :exec (logior (ash lo -1) (ash (logand hi 1) 31))))
- (fn2-ribbon-ub fn2-ribbon-shr1-type 32 t (fn2-ribbon-shr1 lo hi)))
-(in-theory (disable fn2-ribbon-xor32 fn2-ribbon-xor8 fn2-ribbon-odd32 fn2-ribbon-byte fn2-ribbon-shr fn2-ribbon-shr1))
-
-; MurmurHash3's finalizer is A's fn2-prng-mix32 (words.lisp); its width in
-; the forms this book's guards use.
-(fn2-ribbon-ub fn2-prng-mix3232-width 32 t (fn2-prng-mix32 h) :hints (("Goal" :use fn2-prng-mix32-type)))
-; A run's seed, from its identifier.
-(defun fn2-ribbon-seed (run)
- (declare (xargs :guard (natp run)))
- (fn2-prng-mix32 (fn2-ribbon-xor32 (mod (nfix run) 4294967296)
-                                   (fn2-prng-mix32 (mod (floor (nfix run) 4294967296) 4294967296)))))
-(fn2-ribbon-ub fn2-ribbon-seed-type 32 t (fn2-ribbon-seed run))
-(in-theory (disable fn2-ribbon-seed))
-
-; The two FNV-1a streams over N octets at OFF, read under the owner.
-(defun fn2-ribbon-hash-loop (n slot gen off h1 h2 okind oslot ogen fn2-pool)
- (declare (xargs :stobjs fn2-pool :measure (nfix n)
-  :guard-hints ((fn2-columns-call-guard-hint 'fn2-ribbon-hash-loop '(fn2-pool-read-byte-type) nil world))
-  :guard (and (fn2-pool-wfp fn2-pool) (natp n) (natp off) (unsigned-byte-p 32 h1) (unsigned-byte-p 32 h2))))
- (if (zp n) (mv :ok h1 h2)
-  (mv-let (code byte) (fn2-pool-read slot gen off okind oslot ogen fn2-pool)
-   (if (not (and (eq code :ok) (unsigned-byte-p 8 byte))) (mv (if (eq code :ok) :bounds code) h1 h2)
-    (fn2-ribbon-hash-loop (- n 1) slot gen (+ 1 off) (fn2-fnv-step h1 byte) (fn2-fnv-step h2 byte)
-                          okind oslot ogen fn2-pool)))))
-(fn2-ribbon-ub fn2-ribbon-hash-loop-h1 32 (and (unsigned-byte-p 32 h1) (unsigned-byte-p 32 h2))
- (mv-nth 1 (fn2-ribbon-hash-loop n slot gen off h1 h2 okind oslot ogen fn2-pool)))
-(fn2-ribbon-ub fn2-ribbon-hash-loop-h2 32 (and (unsigned-byte-p 32 h1) (unsigned-byte-p 32 h2))
- (mv-nth 2 (fn2-ribbon-hash-loop n slot gen off h1 h2 okind oslot ogen fn2-pool)))
-(in-theory (disable fn2-ribbon-hash-loop))
-(defun fn2-ribbon-hash (n slot gen off seed okind oslot ogen fn2-pool)
- (declare (xargs :stobjs fn2-pool
-  :guard (and (fn2-pool-wfp fn2-pool) (natp n) (natp off) (unsigned-byte-p 32 seed))))
- (fn2-ribbon-hash-loop n slot gen off (fn2-ribbon-xor32 *fn2-fnv-offset-basis* seed)
-                       (fn2-ribbon-xor32 *fn2-fnv-offset-basis* (fn2-prng-mix32 (fn2-ribbon-xor32 seed #x9e3779b9)))
-                       okind oslot ogen fn2-pool))
-(fn2-ribbon-ub fn2-ribbon-hash-h1 32 t (mv-nth 1 (fn2-ribbon-hash n slot gen off seed okind oslot ogen fn2-pool))
- :hints (("Goal" :use ((:instance fn2-ribbon-hash-loop-h1 (h1 (fn2-ribbon-xor32 *fn2-fnv-offset-basis* seed))
-                      (h2 (fn2-ribbon-xor32 *fn2-fnv-offset-basis* (fn2-prng-mix32 (fn2-ribbon-xor32 seed #x9e3779b9)))))))))
-(fn2-ribbon-ub fn2-ribbon-hash-h2 32 t (mv-nth 2 (fn2-ribbon-hash n slot gen off seed okind oslot ogen fn2-pool))
- :hints (("Goal" :use ((:instance fn2-ribbon-hash-loop-h2 (h1 (fn2-ribbon-xor32 *fn2-fnv-offset-basis* seed))
-                      (h2 (fn2-ribbon-xor32 *fn2-fnv-offset-basis* (fn2-prng-mix32 (fn2-ribbon-xor32 seed #x9e3779b9)))))))))
-(in-theory (disable fn2-ribbon-hash))
-; A key's start S in [0, slots - 64] and its coefficient (hi:lo), bit 0 set.
-(defun fn2-ribbon-place (h1 h2 slots)
- (declare (xargs :guard (and (unsigned-byte-p 32 h1) (unsigned-byte-p 32 h2) (natp slots))))
- (let* ((a (fn2-prng-mix32 h1)) (b (fn2-prng-mix32 h2)))
-  (mv (floor (* a (nfix (- slots (- *fn2-ribbon-width* 1)))) 4294967296)
-      (fn2-ribbon-odd32 b)
-      (fn2-prng-mix32 (fn2-ribbon-xor32 a (fn2-ribbon-xor32 b #x9e3779b9))))))
-(defthm fn2-ribbon-place-start (natp (car (fn2-ribbon-place h1 h2 slots))) :rule-classes :type-prescription)
-(fn2-ribbon-ub fn2-ribbon-place-lo 32 (and (unsigned-byte-p 32 h1) (unsigned-byte-p 32 h2)) (mv-nth 1 (fn2-ribbon-place h1 h2 slots)))
-(fn2-ribbon-ub fn2-ribbon-place-hi 32 (and (unsigned-byte-p 32 h1) (unsigned-byte-p 32 h2)) (mv-nth 2 (fn2-ribbon-place h1 h2 slots)))
-(in-theory (disable fn2-ribbon-place))
-
-; ---------------------------------------------------------------------------
-; Tables. A build row (PENDING: an insertion that ran out of steps, its
-; continuation PS PLO PHI); the band: one row per slot (the coefficient of the
-; equation pivoted there, zero when free) and the solved byte.
-(defcolumns fn2-ribbon-builds
- ((phase (:enum fn2-ribbon-phase (:idle :clearing :adding :solving :emitting :closing :heading :sealing :sealed)))
-  (schema :u60) (run :u60) (seed :u32) (base :u32) (slots :u32) (keys :u32) (added :u32) (i :u32)
-  (w :u32) (crow :u32) (hrow :u32) (pending :bool) (ps :u32) (plo :u32) (phi :u32)))
-(defcolumns fn2-ribbon-band ((lo :u32) (hi :u32) (z :u8)))
-
-; Insert the equation (hi:lo) at start S: shift out low zero bits, store
-; it in a free row, or eliminate against the row pivoted there. A dependent
-; equation reduces to zero (:redundant); a homogeneous system never refuses
-; one. Each step shifts or eliminates; an elimination's result starts past
-; S and ends no later than the row it met, so S only grows and every bit
-; stays below the last slot. After FUEL steps the insertion answers :more
-; with its continuation (S LO HI).
-(defun fn2-ribbon-insert (fuel s lo hi base slots fn2-ribbon-band)
- (declare (xargs :stobjs fn2-ribbon-band :measure (nfix fuel)
-  :guard (and (fn2-ribbon-band-wfp fn2-ribbon-band) (natp fuel) (natp s) (natp base) (natp slots)
-              (unsigned-byte-p 32 lo) (unsigned-byte-p 32 hi))))
- (cond ((zp fuel) (mv :more s lo hi fn2-ribbon-band))
-       ((and (equal lo 0) (equal hi 0)) (mv :redundant s lo hi fn2-ribbon-band))
-       ((not (logbitp 0 lo))
-        (fn2-ribbon-insert (- fuel 1) (+ 1 s) (fn2-ribbon-shr1 lo hi) (fn2-ribbon-shr hi 1) base slots fn2-ribbon-band))
-       ((not (and (< s slots) (< (+ base s) (fn2-ribbon-band-rows fn2-ribbon-band)))) (mv :bounds s lo hi fn2-ribbon-band))
-       (t (let* ((r (+ base s)) (rlo (fn2-ribbon-band-lo r fn2-ribbon-band)) (rhi (fn2-ribbon-band-hi r fn2-ribbon-band)))
-           (if (and (equal rlo 0) (equal rhi 0))
-               (let ((fn2-ribbon-band (fn2-ribbon-band-put r (lo lo) (hi hi)))) (mv :ok s lo hi fn2-ribbon-band))
-             (fn2-ribbon-insert (- fuel 1) s (fn2-ribbon-xor32 lo rlo) (fn2-ribbon-xor32 hi rhi) base slots fn2-ribbon-band))))))
-(fn2-ribbon-band-preserves fn2-ribbon-insert (fuel s lo hi base slots fn2-ribbon-band) :position 4 :raw-rows t
- :hyps ((fn2-ribbon-bandp fn2-ribbon-band) (fn2-ribbon-band-wfp fn2-ribbon-band) (natp s) (natp base) (unsigned-byte-p 32 lo) (unsigned-byte-p 32 hi)))
-
-; XOR of the solved bytes at R + j for every set bit j of (hi:lo), j from
-; J up, K bits in all. A set bit past END is a corrupt band.
-(defun fn2-ribbon-dot (k j r end lo hi acc fn2-ribbon-band)
- (declare (xargs :stobjs fn2-ribbon-band :measure (nfix k)
-  :guard (and (fn2-ribbon-band-wfp fn2-ribbon-band) (natp k) (natp j) (natp r) (natp end)
-              (unsigned-byte-p 32 lo) (unsigned-byte-p 32 hi) (unsigned-byte-p 8 acc))))
- (b* (((when (zp k)) (mv :ok acc))
-      (bit (if (< j 32) (logbitp j lo) (logbitp (- j 32) hi)))
-      ((unless bit) (fn2-ribbon-dot (- k 1) (+ 1 j) r end lo hi acc fn2-ribbon-band))
-      (x (+ r j))
-      ((unless (and (< x end) (< x (fn2-ribbon-band-rows fn2-ribbon-band)))) (mv :format acc)))
-  (fn2-ribbon-dot (- k 1) (+ 1 j) r end lo hi (fn2-ribbon-xor8 acc (fn2-ribbon-band-z x fn2-ribbon-band)) fn2-ribbon-band)))
-(fn2-ribbon-ub fn2-ribbon-dot-type 8 (and (unsigned-byte-p 8 acc) (fn2-ribbon-bandp fn2-ribbon-band))
- (mv-nth 1 (fn2-ribbon-dot k j r end lo hi acc fn2-ribbon-band)))
-(in-theory (disable fn2-ribbon-dot))
-
-; Back substitution of rows I-1 down to I-N (relative to BASE; the caller
-; keeps N <= I): a pivoted row's byte is the dot of the rows above it, a
-; free row's comes from the generator.
-(defun fn2-ribbon-solve-rows (n i base end seed fn2-ribbon-band)
- (declare (xargs :stobjs fn2-ribbon-band :measure (nfix n)
-  :guard (and (fn2-ribbon-band-wfp fn2-ribbon-band) (natp n) (natp i) (natp base) (natp end)
-              (unsigned-byte-p 32 seed))))
- (b* (((when (zp n)) (mv :ok fn2-ribbon-band))
-      ((when (zp i)) (mv :bounds fn2-ribbon-band))
-      (r (+ base (- i 1)))
-      ((unless (and (< r (fn2-ribbon-band-rows fn2-ribbon-band)) (unsigned-byte-p 32 (- i 1)))) (mv :bounds fn2-ribbon-band))
-      (lo (fn2-ribbon-band-lo r fn2-ribbon-band)) (hi (fn2-ribbon-band-hi r fn2-ribbon-band))
-      ((mv code z) (if (and (equal lo 0) (equal hi 0))
-                       (mv :ok (fn2-ribbon-byte (fn2-prng-mix32 (fn2-ribbon-xor32 seed (- i 1)))))
-                     (fn2-ribbon-dot 63 1 r end lo hi 0 fn2-ribbon-band)))
-      ((unless (eq code :ok)) (mv code fn2-ribbon-band))
-      (fn2-ribbon-band (fn2-ribbon-band-set-z r z fn2-ribbon-band)))
-  (fn2-ribbon-solve-rows (- n 1) (- i 1) base end seed fn2-ribbon-band)))
-(fn2-ribbon-band-preserves fn2-ribbon-solve-rows (n i base end seed fn2-ribbon-band) :position 1 :raw-rows t
- :hyps ((fn2-ribbon-bandp fn2-ribbon-band) (fn2-ribbon-band-wfp fn2-ribbon-band) (natp base) (natp i)))
-
-; Zero rows BASE+I .. BASE+I+N-1.
-(defun fn2-ribbon-clear-rows (n i base fn2-ribbon-band)
- (declare (xargs :stobjs fn2-ribbon-band :measure (nfix n)
-  :guard (and (fn2-ribbon-band-wfp fn2-ribbon-band) (natp n) (natp i) (natp base))))
- (b* (((when (zp n)) (mv :ok fn2-ribbon-band))
-      (r (+ base i))
-      ((unless (< r (fn2-ribbon-band-rows fn2-ribbon-band))) (mv :bounds fn2-ribbon-band))
-      (fn2-ribbon-band (fn2-ribbon-band-put r (lo 0) (hi 0) (z 0))))
-  (fn2-ribbon-clear-rows (- n 1) (+ 1 i) base fn2-ribbon-band)))
-(fn2-ribbon-band-preserves fn2-ribbon-clear-rows (n i base fn2-ribbon-band) :position 1 :raw-rows t
- :hyps ((fn2-ribbon-bandp fn2-ribbon-band) (fn2-ribbon-band-wfp fn2-ribbon-band) (natp base) (natp i)))
-
-; Bytes I .. I+N-1 of Z (rows BASE+I ..) written at OFF+I of the page.
-(defun fn2-ribbon-emit-bytes (n i base slot gen off okind oslot ogen fn2-ribbon-band fn2-pool)
- (declare (xargs :stobjs (fn2-ribbon-band fn2-pool) :measure (nfix n)
-  :guard (and (fn2-ribbon-band-wfp fn2-ribbon-band) (fn2-pool-wfp fn2-pool) (natp n) (natp i)
-              (natp base) (natp off))
-  :guard-hints ((fn2-columns-call-guard-hint 'fn2-ribbon-emit-bytes nil nil world))))
- (b* (((when (zp n)) (mv :ok fn2-pool))
-      (r (+ base i))
-      ((unless (< r (fn2-ribbon-band-rows fn2-ribbon-band))) (mv :bounds fn2-pool))
-      ((mv code fn2-pool) (fn2-pool-write slot gen (+ off i) (fn2-ribbon-band-z r fn2-ribbon-band) okind oslot ogen fn2-pool))
-      ((unless (eq code :ok)) (mv code fn2-pool)))
-  (fn2-ribbon-emit-bytes (- n 1) (+ 1 i) base slot gen off okind oslot ogen fn2-ribbon-band fn2-pool)))
-(fn2-pool-preserves fn2-ribbon-emit-bytes (n i base slot gen off okind oslot ogen fn2-ribbon-band fn2-pool) :position 1)
-
-; The phases of fn2-ribbon-work, one helper each.
-(defmacro fn2-ribbon-row-ok (f)
- `(and (natp ,f) (< ,f (fn2-ribbon-builds-rows fn2-ribbon-builds))))
-;; The build row's words, each checked at its width (the column's type).
-(defmacro fn2-ribbon-words-ok ()
- '(and (unsigned-byte-p 32 base) (unsigned-byte-p 32 slots) (unsigned-byte-p 32 i) (unsigned-byte-p 32 seed)))
-; ---------------------------------------------------------------------------
-; The build. Start: writer row W is open on a fresh :partitioned-filter page
-; (fn2-run-open, level 0, ordinal 0), its cursor at *fn2-ribbon-base*; the
-; band rows BASE .. BASE+slots-1 are this build's; CROW is the checker row
-; and HROW the digest row that receives the parent-held hash at the seal.
-(defun fn2-ribbon-start (f w crow hrow base keys fn2-ribbon-builds fn2-ribbon-band fn2-run-writers)
- (declare (xargs :stobjs (fn2-ribbon-builds fn2-ribbon-band fn2-run-writers)
-  :guard (and (fn2-ribbon-builds-wfp fn2-ribbon-builds) (fn2-ribbon-band-wfp fn2-ribbon-band)
-              (fn2-run-writers-wfp fn2-run-writers))))
- (b* (((unless (and (natp f) (< f (fn2-ribbon-builds-rows fn2-ribbon-builds))
-                    (natp w) (< w (fn2-run-writers-rows fn2-run-writers))
-                    (unsigned-byte-p 32 w) (unsigned-byte-p 32 crow) (unsigned-byte-p 32 hrow)
-                    (unsigned-byte-p 32 base) (natp keys)))
-       (mv :bounds fn2-ribbon-builds))
-      ((unless (and (equal (fn2-run-writers-phase w fn2-run-writers) *fn2-run-writer-phase-open*)
-                    (equal (fn2-run-writers-page-kind w fn2-run-writers) *page-kind-partitioned-filter*)
-                    (equal (fn2-run-writers-cursor w fn2-run-writers) *fn2-ribbon-base*)
-                    (equal (fn2-run-writers-entries w fn2-run-writers) 0)))
-       (mv :state fn2-ribbon-builds))
-      ((unless (and (< 0 keys) (<= keys *fn2-ribbon-keys-max*))) (mv :filter-capacity fn2-ribbon-builds))
-      (slots (fn2-ribbon-slots keys))
-      ((unless (unsigned-byte-p 32 slots)) (mv :filter-capacity fn2-ribbon-builds))
-      ((unless (<= (+ base slots) (fn2-ribbon-band-rows fn2-ribbon-band))) (mv :capacity fn2-ribbon-builds))
-      (run (fn2-run-writers-run w fn2-run-writers))
-      (fn2-ribbon-builds (fn2-ribbon-builds-put f (phase *fn2-ribbon-phase-clearing*)
-                           (schema (fn2-run-writers-schema w fn2-run-writers)) (run run) (seed (fn2-ribbon-seed run))
-                           (base base) (slots slots) (keys keys) (added 0) (i 0) (w w) (crow crow) (hrow hrow)
-                           (pending 0) (ps 0) (plo 0) (phi 0))))
-  (mv :ok fn2-ribbon-builds)))
-(fn2-ribbon-builds-preserves fn2-ribbon-start (f w crow hrow base keys fn2-ribbon-builds fn2-ribbon-band fn2-run-writers) :position 1 :raw-rows t
- :hyps ((fn2-ribbon-buildsp fn2-ribbon-builds) (fn2-ribbon-builds-wfp fn2-ribbon-builds) (fn2-run-writersp fn2-run-writers) (fn2-run-writers-wfp fn2-run-writers)))
-
-; Add one key: the octets field row ROW names, read under the owner. At
-; most the declared number of keys; a repeated key is a dependent equation.
-; :more means the key is taken and its insertion continues in
-; fn2-ribbon-work (which answers :idle when it is done); a key is added only
-; when none is pending.
-(defconst *fn2-ribbon-insert-steps* 4096)
-(defun fn2-ribbon-add (f row okind oslot ogen fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool)
- (declare (xargs :stobjs (fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool)
-  :guard (and (fn2-ribbon-builds-wfp fn2-ribbon-builds) (fn2-ribbon-band-wfp fn2-ribbon-band)
-              (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool))
-  :guard-hints ((fn2-columns-call-guard-hint 'fn2-ribbon-add nil nil world))))
- (b* (((unless (and (natp f) (< f (fn2-ribbon-builds-rows fn2-ribbon-builds))
-                    (natp row) (< row (fn2-fields-rows fn2-fields))))
-       (mv :bounds fn2-ribbon-builds fn2-ribbon-band))
-      ((unless (equal (fn2-ribbon-builds-phase f fn2-ribbon-builds) *fn2-ribbon-phase-adding*))
-       (mv :state fn2-ribbon-builds fn2-ribbon-band))
-      ((when (equal (fn2-ribbon-builds-pending f fn2-ribbon-builds) 1)) (mv :pending fn2-ribbon-builds fn2-ribbon-band))
-      (added (fn2-ribbon-builds-added f fn2-ribbon-builds))
-      ((unless (and (natp added) (< added (fn2-ribbon-builds-keys f fn2-ribbon-builds)) (unsigned-byte-p 32 (+ 1 added))))
-       (mv :filter-keys fn2-ribbon-builds fn2-ribbon-band))
-      (len (fn2-fields-ref-len row fn2-fields))
-      ((unless (<= len *fn2-run-key-octets-max*)) (mv :bounds fn2-ribbon-builds fn2-ribbon-band))
-      (base (fn2-ribbon-builds-base f fn2-ribbon-builds)) (slots (fn2-ribbon-builds-slots f fn2-ribbon-builds))
-      (seed (fn2-ribbon-builds-seed f fn2-ribbon-builds))
-      ((unless (and (unsigned-byte-p 32 base) (unsigned-byte-p 32 slots) (unsigned-byte-p 32 seed) (natp len))) (mv :bounds fn2-ribbon-builds fn2-ribbon-band))
-      ((mv code h1 h2) (fn2-ribbon-hash len (fn2-fields-ref-slot row fn2-fields) (fn2-fields-ref-gen row fn2-fields)
-                                        (fn2-fields-ref-off row fn2-fields) seed okind oslot ogen fn2-pool))
-      ((unless (eq code :ok)) (mv code fn2-ribbon-builds fn2-ribbon-band))
-      ((mv s lo hi) (fn2-ribbon-place h1 h2 slots))
-      ((mv code s lo hi fn2-ribbon-band) (fn2-ribbon-insert *fn2-ribbon-insert-steps* s lo hi base slots fn2-ribbon-band))
-      ((unless (member-eq code '(:ok :redundant :more))) (mv code fn2-ribbon-builds fn2-ribbon-band))
-      (fn2-ribbon-builds (fn2-ribbon-builds-set-added f (+ 1 added) fn2-ribbon-builds))
-      ((unless (eq code :more)) (mv :ok fn2-ribbon-builds fn2-ribbon-band))
-      ((unless (and (unsigned-byte-p 32 s) (unsigned-byte-p 32 lo) (unsigned-byte-p 32 hi))) (mv :bounds fn2-ribbon-builds fn2-ribbon-band))
-      (fn2-ribbon-builds (fn2-ribbon-builds-put f (pending 1) (ps s) (plo lo) (phi hi))))
-  (mv :more fn2-ribbon-builds fn2-ribbon-band)))
-(fn2-ribbon-builds-preserves fn2-ribbon-add (f row okind oslot ogen fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool) :position 1 :raw-rows t :disable nil
- :hyps ((fn2-ribbon-buildsp fn2-ribbon-builds) (fn2-ribbon-builds-wfp fn2-ribbon-builds)))
-(fn2-ribbon-band-preserves fn2-ribbon-add (f row okind oslot ogen fn2-ribbon-builds fn2-ribbon-band fn2-fields fn2-pool) :position 2 :prefix "-BAND-PRESERVES" :raw-rows t
- :hyps ((fn2-ribbon-buildsp fn2-ribbon-builds) (fn2-ribbon-builds-wfp fn2-ribbon-builds) (fn2-ribbon-bandp fn2-ribbon-band) (fn2-ribbon-band-wfp fn2-ribbon-band)))
-
-; Every key added: solve from the top slot down.
-(defun fn2-ribbon-finish (f fn2-ribbon-builds)
- (declare (xargs :stobjs fn2-ribbon-builds :guard (fn2-ribbon-builds-wfp fn2-ribbon-builds)))
- (b* (((unless (and (natp f) (< f (fn2-ribbon-builds-rows fn2-ribbon-builds)))) (mv :bounds fn2-ribbon-builds))
-      ((unless (equal (fn2-ribbon-builds-phase f fn2-ribbon-builds) *fn2-ribbon-phase-adding*)) (mv :state fn2-ribbon-builds))
-      ((when (equal (fn2-ribbon-builds-pending f fn2-ribbon-builds) 1)) (mv :pending fn2-ribbon-builds))
-      (fn2-ribbon-builds (fn2-ribbon-builds-put f (phase *fn2-ribbon-phase-solving*) (i (fn2-ribbon-builds-slots f fn2-ribbon-builds)))))
-  (mv :ok fn2-ribbon-builds)))
-(fn2-ribbon-builds-preserves fn2-ribbon-finish (f fn2-ribbon-builds) :position 1 :raw-rows t
- :hyps ((fn2-ribbon-buildsp fn2-ribbon-builds) (fn2-ribbon-builds-wfp fn2-ribbon-builds)))
-
-; Continue a pending insertion: :more while it runs, :idle once none is.
-(defun fn2-ribbon-continue (f budget fn2-ribbon-builds fn2-ribbon-band)
- (declare (xargs :stobjs (fn2-ribbon-builds fn2-ribbon-band)
-  :guard (and (fn2-ribbon-builds-wfp fn2-ribbon-builds) (fn2-ribbon-band-wfp fn2-ribbon-band) (natp budget))))
- (b* (((unless (fn2-ribbon-row-ok f)) (mv :bounds fn2-ribbon-builds fn2-ribbon-band))
-      ((unless (equal (fn2-ribbon-builds-pending f fn2-ribbon-builds) 1)) (mv :idle fn2-ribbon-builds fn2-ribbon-band))
-      (base (fn2-ribbon-builds-base f fn2-ribbon-builds)) (slots (fn2-ribbon-builds-slots f fn2-ribbon-builds))
-      (s (fn2-ribbon-builds-ps f fn2-ribbon-builds)) (lo (fn2-ribbon-builds-plo f fn2-ribbon-builds))
-      (hi (fn2-ribbon-builds-phi f fn2-ribbon-builds))
-      ((unless (and (unsigned-byte-p 32 base) (unsigned-byte-p 32 slots) (unsigned-byte-p 32 s)
-                    (unsigned-byte-p 32 lo) (unsigned-byte-p 32 hi)))
-       (mv :bounds fn2-ribbon-builds fn2-ribbon-band))
-      ((mv code s lo hi fn2-ribbon-band) (fn2-ribbon-insert (max 1 (nfix budget)) s lo hi base slots fn2-ribbon-band))
-      ((when (member-eq code '(:ok :redundant)))
-       (let ((fn2-ribbon-builds (fn2-ribbon-builds-set-pending f 0 fn2-ribbon-builds))) (mv :idle fn2-ribbon-builds fn2-ribbon-band)))
-      ((unless (and (eq code :more) (unsigned-byte-p 32 s) (unsigned-byte-p 32 lo) (unsigned-byte-p 32 hi)))
-       (mv (if (eq code :more) :bounds code) fn2-ribbon-builds fn2-ribbon-band))
-      (fn2-ribbon-builds (fn2-ribbon-builds-put f (ps s) (plo lo) (phi hi))))
-  (mv :more fn2-ribbon-builds fn2-ribbon-band)))
-(defun fn2-ribbon-clear-step (f budget fn2-ribbon-builds fn2-ribbon-band)
- (declare (xargs :stobjs (fn2-ribbon-builds fn2-ribbon-band)
-  :guard (and (fn2-ribbon-builds-wfp fn2-ribbon-builds) (fn2-ribbon-band-wfp fn2-ribbon-band) (natp budget))))
- (b* (((unless (fn2-ribbon-row-ok f)) (mv :bounds fn2-ribbon-builds fn2-ribbon-band))
-      (base (fn2-ribbon-builds-base f fn2-ribbon-builds)) (slots (fn2-ribbon-builds-slots f fn2-ribbon-builds))
-      (i (fn2-ribbon-builds-i f fn2-ribbon-builds)) (seed (fn2-ribbon-builds-seed f fn2-ribbon-builds))
-      ((unless (fn2-ribbon-words-ok)) (mv :bounds fn2-ribbon-builds fn2-ribbon-band))
-      (n (min (max 1 (nfix budget)) (nfix (- slots i))))
-      ((mv code fn2-ribbon-band) (fn2-ribbon-clear-rows n i base fn2-ribbon-band))
-      ((unless (eq code :ok)) (mv code fn2-ribbon-builds fn2-ribbon-band))
-      (i (+ i n))
-      ((when (< i slots)) (let ((fn2-ribbon-builds (fn2-ribbon-builds-set-i f i fn2-ribbon-builds))) (mv :more fn2-ribbon-builds fn2-ribbon-band)))
-      (fn2-ribbon-builds (fn2-ribbon-builds-put f (phase *fn2-ribbon-phase-adding*) (i 0))))
-  (mv :ready fn2-ribbon-builds fn2-ribbon-band)))
-(defun fn2-ribbon-solve-step (f budget fn2-ribbon-builds fn2-ribbon-band)
- (declare (xargs :stobjs (fn2-ribbon-builds fn2-ribbon-band)
-  :guard (and (fn2-ribbon-builds-wfp fn2-ribbon-builds) (fn2-ribbon-band-wfp fn2-ribbon-band) (natp budget))))
- (b* (((unless (fn2-ribbon-row-ok f)) (mv :bounds fn2-ribbon-builds fn2-ribbon-band))
-      (base (fn2-ribbon-builds-base f fn2-ribbon-builds)) (slots (fn2-ribbon-builds-slots f fn2-ribbon-builds))
-      (i (fn2-ribbon-builds-i f fn2-ribbon-builds)) (seed (fn2-ribbon-builds-seed f fn2-ribbon-builds))
-      ((unless (fn2-ribbon-words-ok)) (mv :bounds fn2-ribbon-builds fn2-ribbon-band))
-      (n (min (max 1 (nfix budget)) i))
-      ((mv code fn2-ribbon-band) (fn2-ribbon-solve-rows n i base (+ base slots) seed fn2-ribbon-band))
-      ((unless (eq code :ok)) (mv code fn2-ribbon-builds fn2-ribbon-band))
-      (i (- i n))
-      ((when (< 0 i)) (let ((fn2-ribbon-builds (fn2-ribbon-builds-set-i f i fn2-ribbon-builds))) (mv :more fn2-ribbon-builds fn2-ribbon-band)))
-      (fn2-ribbon-builds (fn2-ribbon-builds-put f (phase *fn2-ribbon-phase-emitting*) (i 0))))
-  (mv :more fn2-ribbon-builds fn2-ribbon-band)))
-; Write the solved bytes; after the last, the writer's cursor covers them
-; and the writer begins closing (zero padding to the page end).
-(defun fn2-ribbon-emit-step (f budget fn2-ribbon-builds fn2-ribbon-band fn2-run-writers fn2-pool)
- (declare (xargs :stobjs (fn2-ribbon-builds fn2-ribbon-band fn2-run-writers fn2-pool)
-  :guard (and (fn2-ribbon-builds-wfp fn2-ribbon-builds) (fn2-ribbon-band-wfp fn2-ribbon-band)
-              (fn2-run-writers-wfp fn2-run-writers) (fn2-pool-wfp fn2-pool) (natp budget))
-  :guard-hints (("Goal" :in-theory (disable fn2-run-close)))))
- (b* (((unless (fn2-ribbon-row-ok f)) (mv :bounds fn2-ribbon-builds fn2-run-writers fn2-pool))
-      (w (fn2-ribbon-builds-w f fn2-ribbon-builds))
-      ((unless (< w (fn2-run-writers-rows fn2-run-writers))) (mv :bounds fn2-ribbon-builds fn2-run-writers fn2-pool))
-      ((unless (equal (fn2-run-writers-phase w fn2-run-writers) *fn2-run-writer-phase-open*))
-       (mv :state fn2-ribbon-builds fn2-run-writers fn2-pool))
-      (base (fn2-ribbon-builds-base f fn2-ribbon-builds)) (slots (fn2-ribbon-builds-slots f fn2-ribbon-builds))
-      (i (fn2-ribbon-builds-i f fn2-ribbon-builds)) (seed (fn2-ribbon-builds-seed f fn2-ribbon-builds))
-      ((unless (fn2-ribbon-words-ok)) (mv :bounds fn2-ribbon-builds fn2-run-writers fn2-pool))
-      (n (min (max 1 (nfix budget)) (nfix (- slots i))))
-      ((mv code fn2-pool)
-       (fn2-ribbon-emit-bytes n i base (fn2-run-writers-slot w fn2-run-writers) (fn2-run-writers-gen w fn2-run-writers) *fn2-ribbon-base*
-                              (fn2-run-writers-okind w fn2-run-writers) (fn2-run-writers-oslot w fn2-run-writers)
-                              (fn2-run-writers-ogen w fn2-run-writers) fn2-ribbon-band fn2-pool))
-      ((unless (eq code :ok)) (mv code fn2-ribbon-builds fn2-run-writers fn2-pool))
-      (i (+ i n))
-      ((when (< i slots)) (let ((fn2-ribbon-builds (fn2-ribbon-builds-set-i f i fn2-ribbon-builds))) (mv :more fn2-ribbon-builds fn2-run-writers fn2-pool)))
-      (cursor (+ *fn2-ribbon-base* slots))
-      ((unless (unsigned-byte-p 32 cursor)) (mv :bounds fn2-ribbon-builds fn2-run-writers fn2-pool))
-      (fn2-run-writers (fn2-run-writers-set-cursor w cursor fn2-run-writers))
-      ((mv code fn2-run-writers) (fn2-run-close w fn2-run-writers))
-      ((unless (eq code :ok)) (mv code fn2-ribbon-builds fn2-run-writers fn2-pool))
-      (fn2-ribbon-builds (fn2-ribbon-builds-put f (phase *fn2-ribbon-phase-closing*) (i slots))))
-  (mv :more fn2-ribbon-builds fn2-run-writers fn2-pool)))
-(defun fn2-ribbon-close-step (f budget fn2-ribbon-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
- (declare (xargs :stobjs (fn2-ribbon-builds fn2-run-writers fn2-run-restarts fn2-fields fn2-pool)
-  :guard (and (fn2-ribbon-builds-wfp fn2-ribbon-builds) (fn2-run-writers-wfp fn2-run-writers) (fn2-run-restarts-wfp fn2-run-restarts)
-              (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (natp budget))))
- (b* (((unless (fn2-ribbon-row-ok f)) (mv :bounds fn2-ribbon-builds fn2-run-writers fn2-fields fn2-pool))
-      (w (fn2-ribbon-builds-w f fn2-ribbon-builds))
-      ((unless (fn2-run-writerp w fn2-run-writers fn2-run-restarts fn2-fields)) (mv :bounds fn2-ribbon-builds fn2-run-writers fn2-fields fn2-pool))
-      ((mv code fn2-run-writers fn2-fields fn2-pool) (fn2-run-close-step w budget fn2-run-writers fn2-run-restarts fn2-fields fn2-pool))
-      ((unless (eq code :ok)) (mv code fn2-ribbon-builds fn2-run-writers fn2-fields fn2-pool))
-      (fn2-ribbon-builds (fn2-ribbon-builds-set-phase f *fn2-ribbon-phase-heading* fn2-ribbon-builds)))
-  (mv :more fn2-ribbon-builds fn2-run-writers fn2-fields fn2-pool)))
-; B's header, the filter header after it, then the seal context.
-(defun fn2-ribbon-head (f fn2-ribbon-builds fn2-run-writers fn2-fields fn2-pool fn2-fc-context)
- (declare (xargs :stobjs (fn2-ribbon-builds fn2-run-writers fn2-fields fn2-pool fn2-fc-context)
-  :guard (and (fn2-ribbon-builds-wfp fn2-ribbon-builds) (fn2-run-writers-wfp fn2-run-writers)
-              (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool) (fn2-fc-context-wfp fn2-fc-context))
-  :guard-hints (("Goal" :in-theory (disable fn2-run-seal-context)))))
- (b* (((unless (fn2-ribbon-row-ok f)) (mv :bounds fn2-ribbon-builds fn2-run-writers fn2-fields fn2-pool fn2-fc-context))
-      (w (fn2-ribbon-builds-w f fn2-ribbon-builds))
-      (crow (fn2-ribbon-builds-crow f fn2-ribbon-builds)) (hrow (fn2-ribbon-builds-hrow f fn2-ribbon-builds))
-      ((unless (and (< w (fn2-run-writers-rows fn2-run-writers)) (< crow (fn2-fc-context-rows fn2-fc-context))
-                    (< (fn2-digest-slot crow *fn2-fc-previous-seal*) 4294967296)))
-       (mv :bounds fn2-ribbon-builds fn2-run-writers fn2-fields fn2-pool fn2-fc-context))
-      ((unless (equal (fn2-run-writers-phase w fn2-run-writers) *fn2-run-writer-phase-heading*))
-       (mv :state fn2-ribbon-builds fn2-run-writers fn2-fields fn2-pool fn2-fc-context))
-      (b (fn2-run-writers-fields w fn2-run-writers)) (c (+ b *fn2-run-c-header-fields*))
-      ((unless (<= (+ c *fn2-ribbon-header-num-fields*) (fn2-fields-rows fn2-fields)))
-       (mv :bounds fn2-ribbon-builds fn2-run-writers fn2-fields fn2-pool fn2-fc-context))
-      ((mv code fn2-fields fn2-pool) (fn2-run-head-b w b fn2-run-writers fn2-fields fn2-pool))
-      ((unless (eq code :ok)) (mv code fn2-ribbon-builds fn2-run-writers fn2-fields fn2-pool fn2-fc-context))
-      (fn2-fields (fn2-fields-set-value (+ c *fn2-ribbon-header-field-schema*) (fn2-ribbon-builds-schema f fn2-ribbon-builds) fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ c *fn2-ribbon-header-field-run*) (fn2-ribbon-builds-run f fn2-ribbon-builds) fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ c *fn2-ribbon-header-field-seed*) (fn2-ribbon-builds-seed f fn2-ribbon-builds) fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ c *fn2-ribbon-header-field-keys*) (fn2-ribbon-builds-keys f fn2-ribbon-builds) fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ c *fn2-ribbon-header-field-slots*) (fn2-ribbon-builds-slots f fn2-ribbon-builds) fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ c *fn2-ribbon-header-field-width*) *fn2-ribbon-width* fn2-fields))
-      (fn2-fields (fn2-fields-set-value (+ c *fn2-ribbon-header-field-bits*) *fn2-ribbon-bits* fn2-fields))
-      ((mv code & fn2-pool) (fn2-ribbon-header-encode c (fn2-run-writers-slot w fn2-run-writers) (fn2-run-writers-gen w fn2-run-writers)
-                                                      *fn2-run-header-area* (fn2-run-writers-okind w fn2-run-writers)
-                                                      (fn2-run-writers-oslot w fn2-run-writers) (fn2-run-writers-ogen w fn2-run-writers)
-                                                      fn2-fields fn2-pool))
-      ((unless (eq code :ok)) (mv code fn2-ribbon-builds fn2-run-writers fn2-fields fn2-pool fn2-fc-context))
-      (fn2-run-writers (fn2-run-writers-set-phase w *fn2-run-writer-phase-sealing* fn2-run-writers))
-      (fn2-fc-context (fn2-run-seal-context w crow hrow fn2-run-writers fn2-fc-context))
-      (fn2-ribbon-builds (fn2-ribbon-builds-set-phase f *fn2-ribbon-phase-sealing* fn2-ribbon-builds)))
-  (mv :more fn2-ribbon-builds fn2-run-writers fn2-fields fn2-pool fn2-fc-context)))
-(defun fn2-ribbon-seal (f budget fn2-ribbon-builds fn2-run-writers fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
- (declare (xargs :stobjs (fn2-ribbon-builds fn2-run-writers fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)
-  :guard (and (fn2-ribbon-builds-wfp fn2-ribbon-builds) (fn2-run-writers-wfp fn2-run-writers) (fn2-fc-wfp fn2-fc)
-              (fn2-fc-context-wfp fn2-fc-context) (fn2-fields-wfp fn2-fields) (fn2-pool-wfp fn2-pool)
-              (fn2-digests-wfp fn2-digests) (natp budget))))
- (b* (((unless (fn2-ribbon-row-ok f)) (mv :bounds fn2-ribbon-builds fn2-run-writers fn2-fc fn2-b3 fn2-fields fn2-pool fn2-digests))
-      (w (fn2-ribbon-builds-w f fn2-ribbon-builds))
-      (crow (fn2-ribbon-builds-crow f fn2-ribbon-builds)) (hrow (fn2-ribbon-builds-hrow f fn2-ribbon-builds))
-      ((unless (and (< w (fn2-run-writers-rows fn2-run-writers)) (< crow (fn2-fc-rows fn2-fc))
-                    (< crow (fn2-fc-context-rows fn2-fc-context))))
-       (mv :bounds fn2-ribbon-builds fn2-run-writers fn2-fc fn2-b3 fn2-fields fn2-pool fn2-digests))
-      ((mv code fn2-run-writers fn2-fc fn2-b3 fn2-fields fn2-pool fn2-digests)
-       (fn2-run-seal-step w crow hrow budget fn2-run-writers fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests))
-      ((unless (eq code :ok)) (mv code fn2-ribbon-builds fn2-run-writers fn2-fc fn2-b3 fn2-fields fn2-pool fn2-digests))
-      (fn2-ribbon-builds (fn2-ribbon-builds-set-phase f *fn2-ribbon-phase-sealed* fn2-ribbon-builds)))
-  (mv :sealed fn2-ribbon-builds fn2-run-writers fn2-fc fn2-b3 fn2-fields fn2-pool fn2-digests)))
-(in-theory (disable fn2-ribbon-continue fn2-ribbon-clear-step fn2-ribbon-solve-step fn2-ribbon-emit-step fn2-ribbon-close-step
-                    fn2-ribbon-head fn2-ribbon-seal))
 
 ; One bounded unit of build work: :ready once the band is clear (add the
 ; keys, then fn2-ribbon-finish), :idle while adding with no insertion
@@ -665,8 +200,8 @@
        (fn2-format-drive (fn2-format-fuel *fn2-run-page-size*) 0 :page nil pslot pgen 0 *fn2-run-page-size*
                          0 9 0 1 4096 fn2-fc fn2-fc-context fn2-b3 fn2-fields fn2-pool fn2-digests)))
   (fn2-rba-mv code)))
-(fn2-rba-defun fn2-rba-run (keys drop queries mutate)
- (b* ((kept (fn2-ribbon-drop keys drop))
+(defmacro fn2-rba-with-sealed-page (drop &rest body)
+ `(b* ((kept (fn2-ribbon-drop keys ,drop))
       ((mv & fn2-ribbon-builds fn2-ribbon-band fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
        (fn2-rba-call fn2-rba-setup (len kept)))
       ((mv & pslot pgen fn2-pool) (fn2-pool-reserve 0 9 0 1 fn2-pool))
@@ -685,24 +220,57 @@
       ((mv code fn2-ribbon-builds) (fn2-ribbon-finish 0 fn2-ribbon-builds))
       ((unless (eq code :ok)) (fn2-rba-mv (list :finish code)))
       ((mv sealed fn2-ribbon-builds fn2-ribbon-band fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
-       (fn2-rba-call fn2-rba-drive 100000))
-      ((mv check fn2-ribbon-builds fn2-ribbon-band fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
+       (fn2-rba-call fn2-rba-drive 100000)))
+   ,@body))
+
+(defmacro fn2-rba-after-mutation (body)
+ `(b* (((mv & byte) (fn2-pool-read pslot pgen (car mutate) 9 0 1 fn2-pool))
+       ((mv & fn2-pool) (fn2-pool-write pslot pgen (car mutate) (logxor (nfix (cdr mutate)) (nfix byte)) 9 0 1 fn2-pool)))
+    ,body))
+
+(fn2-rba-defun fn2-rba-run (keys drop queries mutate)
+ (fn2-rba-with-sealed-page drop
+  (b* (((mv check fn2-ribbon-builds fn2-ribbon-band fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
        (fn2-rba-call fn2-rba-check pslot pgen))
       ((mv check fn2-ribbon-builds fn2-ribbon-band fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
        (if (consp mutate)
-           (b* (((mv & byte) (fn2-pool-read pslot pgen (car mutate) 9 0 1 fn2-pool))
-                ((mv & fn2-pool) (fn2-pool-write pslot pgen (car mutate) (logxor (nfix (cdr mutate)) (nfix byte)) 9 0 1 fn2-pool)))
-            (fn2-rba-call fn2-rba-check pslot pgen))
+           (fn2-rba-after-mutation (fn2-rba-call fn2-rba-check pslot pgen))
          (fn2-rba-mv check)))
       ((mv & qslot qgen fn2-pool) (fn2-pool-reserve 0 9 0 1 fn2-pool))
       ((mv answers fn2-ribbon-builds fn2-ribbon-band fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
        (fn2-rba-call fn2-rba-probes queries qslot qgen 0 pslot pgen)))
-  (fn2-rba-mv (list sealed check answers))))
+  (fn2-rba-mv (list sealed check answers)))))
 (defun fn2-ribbon-image (keys drop queries mutate)
  (declare (xargs :verify-guards nil))
  (fn2-run-with-local (fn2-ribbon-builds fn2-ribbon-band fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
   (fn2-rba-run keys drop queries mutate fn2-ribbon-builds fn2-ribbon-band fn2-run-writers fn2-run-restarts fn2-fields fn2-pool
                fn2-fc fn2-fc-context fn2-b3 fn2-digests)))
+
+(defmacro fn2-rba-page-bytes ()
+ '(fn2-run-read-bytes *fn2-run-page-size* pslot pgen 0 9 0 1 fn2-pool))
+
+; Observe exactly the input page of each checker call, including its padding.
+(fn2-rba-defun fn2-rba-mutation-pages (keys mutate)
+ (fn2-rba-with-sealed-page nil
+  (b* ((expected (fn2-rba-page-bytes))
+       ((mv & fn2-ribbon-builds fn2-ribbon-band fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
+        (fn2-rba-call fn2-rba-check pslot pgen)))
+   (fn2-rba-after-mutation (fn2-rba-mv (list sealed expected (fn2-rba-page-bytes)))))))
+
+(defun fn2-ribbon-page-integrity-premise (before after)
+ (declare (xargs :verify-guards nil))
+ (let ((expected (fn2-fc-covered :page before nil))
+       (observed (fn2-fc-covered :page after nil)))
+  (or (equal expected observed)
+      (not (equal (fn-blake3 expected) (fn-blake3 observed)))
+      (fn2-a-integrity-evidence expected observed))))
+
+(defun fn2-ribbon-mutation-premise (keys off x)
+ (declare (xargs :verify-guards nil))
+ (let ((pages
+        (fn2-run-with-local (fn2-ribbon-builds fn2-ribbon-band fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
+         (fn2-rba-call fn2-rba-mutation-pages keys (cons off x)))))
+  (fn2-ribbon-page-integrity-premise (cadr pages) (caddr pages))))
 
 ;; Keystones (FILTERS-2026 item 2; the layer doc's section 9).
 (defthm-owed fn2-ribbon-no-false-negative (keys queries)
@@ -713,8 +281,9 @@
  :doc "A filter built through the real build from a run's keys seals, passes B's checker under its parent-held hash, and its probe answers :absent only for a query that is no key of the run: a filter may skip a run, never hide a key.")
 (defthm-owed fn2-ribbon-mutation-refused (keys off x)
  (implies (and (fn2-ribbon-keysp keys) (consp keys) (<= (len keys) 256)
-               (natp off) (< off *fn2-run-page-size*) (unsigned-byte-p 8 x) (not (equal x 0)))
+               (natp off) (< off *fn2-run-page-size*) (unsigned-byte-p 8 x) (not (equal x 0))
+               (fn2-ribbon-mutation-premise keys off x))
           (let ((check (cadr (fn2-ribbon-image keys nil nil (cons off x)))))
            (and (keywordp check) (not (equal check :ok)))))
  :teeth (fn2-ribbon-mutation-refused-positive fn2-ribbon-mutation-refused-negative) :schema :invariant
- :doc "Any one-byte change anywhere in a sealed filter page (header, filter header, solution bytes or padding) is refused by name by B's checker before a probe can read it.")
+ :doc "Under A-INTEGRITY-EVIDENCE for the two domain-prefixed page images, the checker refuses any single-byte mutation of a sealed filter page before a probe can read it.")

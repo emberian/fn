@@ -1,7 +1,7 @@
 ; Proofs for the range adapter.
 (in-package "ACL2")
 
-(include-book "ribbon")
+(include-book "ribbon-mutation-proof")
 (include-book "range-resume-order-proof")
 (include-book "range-seek-step-proof")
 (include-book "range-page-lower-bound-proof")
@@ -23,23 +23,8 @@
 ; discharges this square. A square takes one discharge, so this book does
 ; not repeat it.
 
-; FN2-RIBBON-MUTATION-REFUSED remains owed. The
-; check after the mutation is B's checker, which compares the page's BLAKE3
-; digest with the parent-held words. Evaluated at KEYS = ((1 2 3)) (65 slots,
-; so the payload ends at offset 209) and X = 1 for every OFF below 65536,
-; the refusal is structural at offsets 0-3 (:BAD-MAGIC), 4 (:VERSION),
-; 5 (:WRONG-KIND), 6 (:WRONG-HISTORY), 7 (:WRONG-INCARNATION),
-; 8 (:WRONG-LOCATION), 9-10 (:WRONG-ALLOCATION), 12 and 209-65535
-; (:NONZERO-PADDING). At 11 and at 13-208 the only refusal is :BAD-HASH.
-; Those offsets are the rest of B's header, the filter header at
-; *fn2-run-header-area* (96), the bytes up to *fn2-ribbon-base* (144) and
-; the solution bytes. At those offsets the statement says that no filter
-; page of up to 256 keys collides under BLAKE3 with a one-byte change of
-; itself, and it carries no collision-freedom premise (compare
-; FN2-FC-COLLISION-FREE-PAIRP in FN2-FORMAT-FRAME-BINDS-LOCATION).
-; On a successfully sealed and checked page, this branch would need a theorem
-; that the specific one-byte change alters the digest. These controls exercise
-; the unchanged page, a header refusal, and a hash-only refusal.
+; The checker uses its parent-held digest for solution bytes. These controls
+; distinguish a structural refusal, a digest refusal and an unchanged page.
 (local
  (assert-event
   (let ((keys '((1 2 3))))
