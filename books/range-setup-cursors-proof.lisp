@@ -3,14 +3,13 @@
 (in-package "ACL2")
 (include-book "range-started-sources-proof")
 
-(local
- (defthm fn2-range-build-preserves-reader-tables
+(defthmd fn2-range-build-preserves-reader-tables
    (let ((build (fn2-rga-call fn2-rga-build sid layout entries k)))
      (and (equal (mv-nth 1 build) fn2-ranges) (equal (mv-nth 2 build) fn2-range-sources)
           (equal (mv-nth 3 build) fn2-overlays)))
    :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
                        '(fn2-rga-build eq atom mv-nth car-cons cdr-cons (:e mv-nth) (:e equal)
-                         (:e binary-+) (:e unary--) (:e zp) (:e consp)))))))
+                         (:e binary-+) (:e unary--) (:e zp) (:e consp))))))
 
 (local
  (defthm fn2-range-building-runs-preserves-reader-tables
@@ -18,7 +17,7 @@
      (and (equal (mv-nth 2 build) fn2-ranges) (equal (mv-nth 3 build) fn2-range-sources)
           (equal (mv-nth 4 build) fn2-overlays)))
    :hints (("Goal" :induct (fn2-rga-call fn2-rga-builds sid layout entries k)
-            :in-theory (disable fn2-rga-build)))))
+            :in-theory (e/d (fn2-range-build-preserves-reader-tables) (fn2-rga-build))))))
 
 (local
  (defthm fn2-range-initial-reader-tables
