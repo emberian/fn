@@ -1,6 +1,7 @@
 ; D7 request grants on the served core.
 (in-package "ACL2")
 (include-book "owed-accounts")
+(include-book "account-core-init-proof")
 (include-book "account-once-proof")
 (include-book "account-exact-proof")
 (include-book "account-wait-proof")
