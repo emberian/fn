@@ -14,6 +14,7 @@
 (include-book "range-encoded-page-search-proof")
 (include-book "runs-overview-builder-cursor-proof")
 (include-book "runs-builder-directory-contents-proof")
+(include-book "runs-builder-headed-page-proof")
 (include-book "runs-build-sealed-page-proof")
 (include-book "runs-build-root-proof")
 
