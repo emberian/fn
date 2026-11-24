@@ -8,7 +8,6 @@
 (include-book "runs-served")
 (include-book "overlay-index-list-proof")
 (include-book "overlay-order-spec-proof")
-(local (include-book "centaur/bitops/integer-length" :dir :system))
 
 ; A sorted list's head comes before every later entry.
 (local
@@ -51,16 +50,17 @@
 
 ; Each halving step spends at least one bit of the interval.
 (local
- (defthm fn2-ovg-integer-length-monotonic
-   (implies (and (natp i) (natp j) (<= i j)) (<= (integer-length i) (integer-length j)))
-   :rule-classes nil
-   :hints (("Goal" :in-theory (disable integer-length)))))
-
+ (defun fn2-ovg-halves (i j)
+   (if (or (zp i) (zp j)) (list i j) (fn2-ovg-halves (floor i 2) (floor j 2)))))
+(defthm fn2-ovg-integer-length-monotonic
+  (implies (and (natp i) (natp j) (<= i j)) (<= (integer-length i) (integer-length j)))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn2-ovg-halves i j) :in-theory (enable integer-length))))
 (local
  (defthm fn2-ovg-integer-length-of-half
    (implies (natp n) (equal (integer-length (floor n 2)) (if (zp n) 0 (1- (integer-length n)))))
    :rule-classes nil
-   :hints (("Goal" :in-theory (disable floor integer-length)))))
+   :hints (("Goal" :expand ((integer-length n))))))
 
 (local
  (defthm fn2-ovg-half-interval
@@ -311,4 +311,3 @@
                             fn2-overlays-oslot fn2-overlays-ogen fn2-overlays-count fn2-overlays-icap fn2-overlays-cap
                             fn2-overlays-ibase fn2-overlays-rows fn2-overlays-phase fn2-fields-rows integer-length len nth
                             fn2-layoutp-cdr fn2-run-layout-merge (:type-prescription fn2-run-lower-bound-spec) (:type-prescription fn2-run-key-order-spec))))))
-

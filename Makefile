@@ -283,6 +283,7 @@ ACL2_BOOKS = \
   books/overview-mid-span \
   books/outcome-class \
   books/overlay \
+  books/overlay-image-generic-proof \
   books/overlay-index-list-proof \
   books/overlay-order-spec-proof \
   books/overlay-search-generic-proof \
