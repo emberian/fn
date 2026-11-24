@@ -1086,8 +1086,8 @@ ready-next`, P1). The FIFO's ends are the ledger row's `wait-head wait-tail`.
 
 **The grant pair.** It visits the principals in calendar order from a grant cursor (`grant-at`, a
 field of the ledger's configuration row) for a head whose acquisition now fits.
-- `fn2-account-grant-ready-p` holds when some principal p has a non-empty FIFO whose head's
-  acquisition would answer `:ok` with the FIFO ignored.
+- On a running core, `fn2-account-grant-pending-p` schedules a visit when the scan finds a fitting
+  head. `fn2-account-grant-ready-p` also checks that the head and its successor can be dequeued.
 - `fn2-account-grant-one`, for the first such p from the cursor:
   - acquires on the head's behalf;
   - dequeues it and clears its wait reason;
@@ -1107,11 +1107,10 @@ field of the ledger's configuration row) for a head whose acquisition now fits.
   `fn2-account-request-events` (materialized in assembly-access after the machine access events)
   holds `fn2-account-request-park`, and the source `fn2-account-grant-ready` /
   `fn2-account-grant-take`.
-  - The source is attached by `defattach` to the constrained pair `fn2-account-grant-ready-p` /
-    `-grant-one`, which A's machines-a-access.lisp now declares like the sealable and batchable
-    sources. That is a foundation edit to A's book: the stubs moved out of D's events.
-  - `fn2-account-grant-take-live` is **proved**, so the liveness constraint holds by construction: a
-    grant whose FIFO and ledger disagree stops the core (`:machine-write`) and still answers its head.
+  - The executor schedules the source through `fn2-account-grant-pending-p`.
+    `fn2-account-grant-take-live` proves that a ready source returns a row. A corrupt pending
+    entry stops the core with `:machine-write` and returns `*fn2-none*`. A stopped core retains its
+    first stop reason and its queued requests.
 - **Teeth.** `tests/request-unit.lisp`, in the owed export, covers:
   - Astra's example, scaled to capacity 8;
   - the bounded wait: id 7 on slot 2 is granted within the 4 rows, and a cursor that restarts at 0
@@ -1119,8 +1118,6 @@ field of the ledger's configuration row) for a head whose acquisition now fits.
   - settled once, with a re-park as the negative;
   - `:refused` for a request limit of 0.
 - `fn2-account-request-cancel` comes with 5/n, its only caller.
-- `grant-ready-exact` is definitional (`fn2-account-grant-ready` is "the scan finds a fitting head"),
-  so it is not a separate row.
 - **E's dimensions** (e-surface.md §11): `:durable-octets`, a new D0 kind at rank 7 (the kinds after
   it renumbered 8..24, so every wait-reason code above `:principal-reservation` moves by one),
   `:wait-row` and `:subscription-edge`, the last bounded by the profile key `:esub` (default 4,096).

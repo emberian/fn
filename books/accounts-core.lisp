@@ -69,7 +69,7 @@
   :doc "D7 4/n-a: park a refused request on its principal's FIFO in the same transition.")
 ;; The :principal-reservation wait kind is D's (MACHINE-FORM 6.10): a refused
 ;; request parks on its principal's FIFO; the ledger's pair grants it.
-(defwait :principal-reservation :ready fn2-account-grant-ready-p :grant fn2-account-grant-one
+(defwait :principal-reservation :ready fn2-account-grant-ready-p :pending fn2-account-grant-pending-p :grant fn2-account-grant-one
   :park fn2-account-request-park :tables (fn2-core-machines fn2-core-accounts)
   :doc "A request parked on its principal's FIFO, granted (acquired, dequeued) once its reservation fits.")
 (defcost fn2-account-charge-core :tables (fn2-core-accounts)
@@ -284,51 +284,117 @@
   (if (not (eq (fn2-machine-principal-slot-read-code id fn2-core) :ok)) (mv :bounds fn2-core)
     (fn2-account-request-park-on (fn2-machine-principal-slot id fn2-core) id fn2-core)))
 (fn2-core-preserves fn2-account-request-park (id fn2-core) :position 1 :rows nil)
-;; The source: ready when some principal's FIFO head would be granted; the
-;; grant acquires its reservation, moves the cursor past its principal,
-;; dequeues it and clears its wait, in one transition, and returns it. A
-;; head whose links or acquisition fail stops the core (the ledger and the
-;; FIFO disagree: an invariant broken), still answering the head, so the
-;; source's liveness is by construction.
+;; The scan chooses the first fitting principal. A corrupt FIFO is pending
+;; service so its refusal reaches the executor, but only a ready FIFO grants
+;; a row. The stopped core has neither kind of work.
 (defun fn2-account-grant-head (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (let ((p (fn2-account-core-grant-next fn2-core)))
-    (if (equal p *fn2-none*) (mv p *fn2-none*)
-      (mv-let (ok head tail) (fn2-account-core-ends p fn2-core)
-        (declare (ignore tail))
-        (mv p (if ok head *fn2-none*))))))
-(defun fn2-account-grant-ready (fn2-core)
+  (if (fn2-core-stopped-p fn2-core) (mv *fn2-none* *fn2-none*)
+    (let ((p (fn2-account-core-grant-next fn2-core)))
+      (if (equal p *fn2-none*) (mv p *fn2-none*)
+        (mv-let (ok head tail) (fn2-account-core-ends p fn2-core)
+          (declare (ignore tail))
+          (mv p (if ok head *fn2-none*)))))))
+(defun fn2-account-grant-pending (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
   (mv-let (p id) (fn2-account-grant-head fn2-core)
     (declare (ignore p))
     (not (equal id *fn2-none*))))
+
+(defun fn2-account-grant-entry (fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (b* (((mv p id) (fn2-account-grant-head fn2-core))
+       ((when (equal id *fn2-none*)) (mv :empty p id *fn2-none* *fn2-none*))
+       ((mv & & tail) (fn2-account-core-ends p fn2-core))
+       ((unless (and (unsigned-byte-p 32 (+ 1 (nfix p))) (natp p)
+                     (fn2-machine-idp id fn2-core)
+                     (equal (fn2-machine-wait-reason id fn2-core) *fn2-wait-principal-reservation*)
+                     (equal (fn2-machine-ready-prev id fn2-core) *fn2-none*)
+                     (unsigned-byte-p 32 tail) (not (equal tail *fn2-none*))
+                     (fn2-machine-idp tail fn2-core)))
+        (mv :invalid p id *fn2-none* tail))
+       (next (fn2-machine-ready-next id fn2-core))
+       (ok (and (unsigned-byte-p 32 next)
+                (iff (equal next *fn2-none*) (equal id tail))
+                (or (equal next *fn2-none*)
+                    (and (not (equal next id)) (fn2-machine-idp next fn2-core)
+                         (equal (fn2-machine-ready-prev next fn2-core) id)
+                         (equal (fn2-machine-wait-reason next fn2-core) *fn2-wait-principal-reservation*))))))
+    (mv (if ok :ready :invalid) p id next tail)))
+
+(defun fn2-account-grant-ready (fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
+  (mv-let (status p id next tail) (fn2-account-grant-entry fn2-core)
+    (declare (ignore p id next tail))
+    (eq status :ready)))
+
 (defun fn2-account-grant-take (fn2-core)
   (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)))
-  (mv-let (p id) (fn2-account-grant-head fn2-core)
-    (if (equal id *fn2-none*) (mv *fn2-none* fn2-core)
-      (b* (((mv & & tail) (fn2-account-core-ends p fn2-core))
-           ((unless (and (fn2-machine-idp id fn2-core) (eq (fn2-machine-ready-next-read-code id fn2-core) :ok)
-                         (eq (fn2-machine-wait-reason-read-code id fn2-core) :ok)
-                         (equal (fn2-machine-wait-reason id fn2-core) *fn2-wait-principal-reservation*)))
-            (let ((fn2-core (fn2-machine-refuse-write fn2-core))) (mv id fn2-core)))
-           (next (fn2-machine-ready-next id fn2-core))
-           ((unless (and (unsigned-byte-p 32 next) (unsigned-byte-p 32 tail)
-                         (or (equal next *fn2-none*) (fn2-machine-idp next fn2-core))))
-            (let ((fn2-core (fn2-machine-refuse-write fn2-core))) (mv id fn2-core)))
-           ((mv gcode fn2-core) (fn2-account-core-grant p fn2-core))
-           ((unless (eq gcode :ok)) (let ((fn2-core (fn2-machine-refuse-write fn2-core))) (mv id fn2-core)))
-           (fn2-core (fn2-account-core-set-ends p next (if (equal next *fn2-none*) *fn2-none* tail) fn2-core))
-           (fn2-core (if (equal next *fn2-none*) fn2-core (fn2-machine-write-ready-prev next *fn2-none* fn2-core))))
-        (let ((fn2-core (fn2-machine-put id (wait-reason *fn2-wait-none*) (ready-prev *fn2-none*) (ready-next *fn2-none*))))
-          (mv id fn2-core))))))
+  (b* (((mv status p id next tail) (fn2-account-grant-entry fn2-core))
+       ((when (eq status :empty)) (mv *fn2-none* fn2-core))
+       ((unless (eq status :ready))
+        (let ((fn2-core (fn2-machine-refuse-write fn2-core))) (mv *fn2-none* fn2-core)))
+       ((mv code fn2-core) (fn2-account-core-grant p fn2-core))
+       ((unless (eq code :ok))
+        (let ((fn2-core (fn2-machine-refuse-write fn2-core))) (mv *fn2-none* fn2-core)))
+       (fn2-core (fn2-account-core-set-ends p next (if (equal next *fn2-none*) *fn2-none* tail) fn2-core))
+       (fn2-core (if (equal next *fn2-none*) fn2-core (fn2-machine-write-ready-prev next *fn2-none* fn2-core)))
+       (fn2-core (fn2-machine-put id (wait-reason *fn2-wait-none*) (ready-prev *fn2-none*) (ready-next *fn2-none*))))
+    (mv id fn2-core)))
 (fn2-core-preserves fn2-account-grant-take (fn2-core) :position 1 :rows nil)
+(defthm fn2-account-grant-on-stopped-core
+  (implies (fn2-core-stopped-p fn2-core)
+           (and (not (fn2-account-grant-ready fn2-core))
+                (equal (fn2-account-grant-take fn2-core) (list *fn2-none* fn2-core))))
+  :hints (("Goal" :in-theory '(fn2-account-grant-ready fn2-account-grant-entry fn2-account-grant-head
+                               fn2-account-grant-take mv-nth nth car-cons cdr-cons))))
+(defthm fn2-account-core-chosen-acquires
+  (let ((p (fn2-account-core-grant-next fn2-core)))
+    (implies (and (not (equal p *fn2-none*))
+                  (unsigned-byte-p 32 (+ 1 p)))
+             (equal (mv-nth 0 (fn2-account-core-grant p fn2-core)) :ok)))
+  :hints (("Goal" :use ((:instance fn2-account-grant-scan-range
+                          (i (fn2-account-grant-cursor (fn2-core-accounts fn2-core)))
+                          (k (nfix (fn2-accounts-rows (fn2-core-accounts fn2-core))))
+                          (fn2-accounts (fn2-core-accounts fn2-core)))
+                         (:instance fn2-account-grant-scan-fits
+                          (i (fn2-account-grant-cursor (fn2-core-accounts fn2-core)))
+                          (k (nfix (fn2-accounts-rows (fn2-core-accounts fn2-core))))
+                          (fn2-accounts (fn2-core-accounts fn2-core))))
+           :in-theory (e/d (fn2-account-core-grant-next fn2-account-core-grant
+                                   fn2-account-grant-next fn2-accounts-rows)
+                                  (fn2-account-grant-scan fn2-account-grant-cursor
+                                   fn2-account-fits fn2-account-acquire fn2-accountsp
+                                   fn2-accounts-wfp fn2-accounts-shapep)))))
+(local (defthm fn2-account-grant-entry-ready
+  (implies (fn2-account-grant-ready fn2-core)
+           (let ((entry (fn2-account-grant-entry fn2-core)))
+             (and (fn2-account-grant-pending fn2-core)
+                  (not (equal (mv-nth 2 entry) *fn2-none*))
+                  (equal (mv-nth 1 entry) (fn2-account-core-grant-next fn2-core))
+                  (unsigned-byte-p 32 (+ 1 (mv-nth 1 entry))))))
+  :hints (("Goal" :in-theory (e/d (fn2-account-grant-head fn2-account-grant-entry fn2-account-grant-ready
+                                   fn2-account-grant-pending) (fn2-account-core-grant-next fn2-account-core-ends))))))
 (defthm fn2-account-grant-take-live
   (implies (fn2-account-grant-ready fn2-core)
            (not (equal (mv-nth 0 (fn2-account-grant-take fn2-core)) *fn2-none*)))
-  :hints (("Goal" :in-theory (enable fn2-account-grant-take fn2-account-grant-head fn2-account-grant-ready))))
+  :hints (("Goal" :use (fn2-account-grant-entry-ready fn2-account-core-chosen-acquires)
+           :in-theory (e/d (fn2-account-grant-ready fn2-account-grant-take)
+                           (fn2-account-grant-entry fn2-account-core-grant fn2-account-core-grant-next)))))
+(defthm fn2-account-pending-refusal
+  (implies (and (fn2-account-grant-pending fn2-core) (not (fn2-account-grant-ready fn2-core)))
+           (and (equal (mv-nth 0 (fn2-account-grant-take fn2-core)) *fn2-none*)
+                (fn2-core-stopped-p (mv-nth 1 (fn2-account-grant-take fn2-core)))))
+  :hints (("Goal" :in-theory (enable fn2-account-grant-take fn2-account-grant-ready
+                  fn2-account-grant-entry fn2-account-grant-pending fn2-machine-refuse-write
+                  fn2-core-stop fn2-control-record-stop fn2-core-stopped-p fn2-control-stop
+                  update-fn2-control-stop update-fn2-control-stop-reason))))
 (fn2-wait-attach :principal-reservation fn2-account-grant-take)
-(defattach (fn2-account-grant-ready-p fn2-account-grant-ready) (fn2-account-grant-one fn2-account-grant-take)
-  :hints (("Goal" :use ((:instance fn2-account-grant-take-live) (:instance fn2-account-grant-take-wait-kids)
+(defattach (fn2-account-grant-ready-p fn2-account-grant-ready)
+           (fn2-account-grant-pending-p fn2-account-grant-pending)
+           (fn2-account-grant-one fn2-account-grant-take)
+  :hints (("Goal" :use ((:instance fn2-account-grant-entry-ready) (:instance fn2-account-pending-refusal)
+                        (:instance fn2-account-grant-take-live) (:instance fn2-account-grant-take-wait-kids)
                         (:instance fn2-account-grant-take-wait-directory)))))
 (in-theory (disable fn2-account-request-park-on fn2-account-request-park fn2-account-grant-head fn2-account-grant-ready fn2-account-grant-take))
 ))
