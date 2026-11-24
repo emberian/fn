@@ -240,7 +240,17 @@
                   ,(fn2-dt-rewrite-core-ev (car xs) 'fn2-txn nil nil))
                (fn2-dt-augment-arms-list (cdr xs))))
         (t (cons (car xs) (fn2-dt-augment-arms-list (cdr xs)))))))))
-(fn2-txn-op-events)
+(local
+ (defun fn2-dt-subst-sym (new old x)
+   (declare (xargs :mode :program))
+   (cond ((eq x old) new)
+         ((atom x) x)
+         (t (cons (fn2-dt-subst-sym new old (car x))
+                  (fn2-dt-subst-sym new old (cdr x)))))))
+(make-event
+ (mv-let (erp exp) (macroexpand1-cmp '(fn2-txn-op-events) 'assembly-callbacks-d-txn (w state) (default-state-vars nil))
+   (if erp (er soft 'assembly-callbacks-d-txn "Expand failed: ~@0" erp)
+     (value (fn2-dt-subst-sym 'rfill 'fill exp)))))
 (fn2-authority-allows-events)
 (assert-event (equal *fn2-auth-depend-slot* *fn2-txn-slot-depend*))
 (make-event
