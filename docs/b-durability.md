@@ -1110,10 +1110,10 @@ profile's assumption bits, `witness` the receipt's commit, 0 for none). Results 
 `rc-chain`; the commit root rows name each recovered batch's extent.
 
 ### Algorithm (STORAGE-DESIGN-ASTRA parts G, H, I over the genesis arena)
-1. **Discovery.** Every position of the arena (the allocator's extent table) is read at its seal
-   unit, and, when that unit is all zero, at its records frame and dependency page too: a position is
-   `empty` only when all three units are zero, and debris in either other unit beside an empty seal
-   unit is `invalid` (dirt). A nonzero seal unit's frame header is decoded and must name this position,
+1. **Discovery.** Recovery reads the seal unit of each arena extent first. If the seal is all
+   zero, recovery checks the records unit, the dependency page and each remaining unit in order.
+   It marks the extent `invalid` at the first nonzero unit, or `empty` after the last zero unit.
+   Each read still covers at most one unit. A nonzero seal unit's frame header is decoded and must name this position,
    the genesis lineage (history 1, incarnation 1) and a seal frame; the frame hash is checked with
    the header's own identity; the sealed batch is decoded and must repeat that identity, and its
    previous seal, final seal, record-stream commitment and dependency hash are loaded. A failed

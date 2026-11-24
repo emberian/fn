@@ -316,6 +316,7 @@ ACL2_BOOKS = \
   books/recovery \
   books/recovery-decision-proof \
   books/recovery-evidence-translation-proof \
+  books/recovery-discovery-order \
   books/recovery-machine \
   books/recovery-payload \
   books/recovery-receipt-history-proof \
