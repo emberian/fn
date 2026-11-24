@@ -3,7 +3,7 @@
 
 (include-book "ribbon-mutation-discharge-proof")
 (include-book "range-resume-order-proof")
-(include-book "range-supplied-window-proof")
+(include-book "range-seek-read-window-proof")
 (include-book "range-overlay-head-proof")
 (include-book "range-seek-step-proof")
 (include-book "range-stored-leaf-row-proof")
