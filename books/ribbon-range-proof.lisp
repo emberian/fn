@@ -1,7 +1,7 @@
 ; Proofs for the range adapter.
 (in-package "ACL2")
 
-(include-book "ribbon-mutation-proof")
+(include-book "ribbon-mutation-discharge-proof")
 (include-book "range-resume-order-proof")
 (include-book "range-head-pick-proof")
 (include-book "range-seek-step-proof")

@@ -228,8 +228,7 @@
        ((mv & fn2-pool) (fn2-pool-write pslot pgen (car mutate) (logxor (nfix (cdr mutate)) (nfix byte)) 9 0 1 fn2-pool)))
     ,body))
 
-(fn2-rba-defun fn2-rba-run (keys drop queries mutate)
- (fn2-rba-with-sealed-page drop
+(fn2-rba-defun fn2-rba-check-and-probe (pslot pgen sealed queries mutate)
   (b* (((mv check fn2-ribbon-builds fn2-ribbon-band fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
        (fn2-rba-call fn2-rba-check pslot pgen))
       ((mv check fn2-ribbon-builds fn2-ribbon-band fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
@@ -239,7 +238,11 @@
       ((mv & qslot qgen fn2-pool) (fn2-pool-reserve 0 9 0 1 fn2-pool))
       ((mv answers fn2-ribbon-builds fn2-ribbon-band fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
        (fn2-rba-call fn2-rba-probes queries qslot qgen 0 pslot pgen)))
-  (fn2-rba-mv (list sealed check answers)))))
+  (fn2-rba-mv (list sealed check answers))))
+
+(fn2-rba-defun fn2-rba-run (keys drop queries mutate)
+ (fn2-rba-with-sealed-page drop
+   (fn2-rba-call fn2-rba-check-and-probe pslot pgen sealed queries mutate)))
 (defun fn2-ribbon-image (keys drop queries mutate)
  (declare (xargs :verify-guards nil))
  (fn2-run-with-local (fn2-ribbon-builds fn2-ribbon-band fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests)
