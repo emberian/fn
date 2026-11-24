@@ -99,3 +99,58 @@
           :in-theory (disable fn2-cs-reserve fn2-cs-free-count fn2-commit-settled-rows
                               fn2-ctp-totalp fn2-ctp-member-fields fn2-ctp-member-fields-range
                               fn2-commit-member-rows assoc-equal fn2-ctp-recorded-member-owners-p))))
+
+; A keyed start can reuse a row formerly occupied by a transaction.
+(defthm fn2-ctp-member-fields-of-keyed-write
+ (let ((after (fn2-commit-member-put r (kind *fn2-commit-member-kind-keyed-mutation*)
+               (slot 0) (gen 0) (len 0) (okind okind) (oslot oslot) (ogen ogen)
+               (entries 0) (entry-bytes 0) (schema 0) (event event) (settled settled))))
+  (implies (and (natp i) (natp r) (< r (fn2-commit-member-rows fn2-commit-member)))
+           (equal (fn2-ctp-member-fields i after)
+                  (if (equal i r)
+                      (list *fn2-commit-member-kind-keyed-mutation* 0 0 0 okind oslot ogen event settled)
+                    (fn2-ctp-member-fields i fn2-commit-member)))))
+ :hints (("Goal" :in-theory (e/d (fn2-ctp-member-fields-from-snapshot)
+                                 (fn2-ctp-member-fields fn2-commit-member-rows
+                                  fn2-commit-member-row-snapshot)))))
+
+(defthm fn2-ctp-keyed-write-preserves-recorded-owners
+ (let ((after (fn2-commit-member-put r (kind *fn2-commit-member-kind-keyed-mutation*)
+               (slot 0) (gen 0) (len 0) (okind okind) (oslot oslot) (ogen ogen)
+               (entries 0) (entry-bytes 0) (schema 0) (event event) (settled settled))))
+  (implies (and (natp r) (natp start) (< r (fn2-commit-member-rows fn2-commit-member))
+                (fn2-ctp-recorded-member-owners-p
+                 (fn2-ctp-member-fields-range start count fn2-commit-member) admissions))
+           (fn2-ctp-recorded-member-owners-p (fn2-ctp-member-fields-range start count after)
+                                             admissions)))
+ :hints (("Goal" :induct (fn2-ctp-member-fields-range start count fn2-commit-member)
+          :in-theory (disable assoc-equal fn2-ctp-member-fields fn2-commit-member-rows))))
+
+; The empty admission list covers every row of the initialized table.
+(local (include-book "std/lists/resize-list" :dir :system))
+(local
+ (defthm fn2-ctp-member-fields-kind
+  (equal (car (fn2-ctp-member-fields i fn2-commit-member))
+         (and (< (nfix i) (fn2-commit-member-rows fn2-commit-member))
+              (fn2-commit-member-kind i fn2-commit-member)))
+  :hints (("Goal" :in-theory '(fn2-ctp-member-fields car-cons (:e car))))))
+
+(local
+ (defthm fn2-ctp-member-kind-after-init
+  (implies (and (natp i) (natp n) (< i n))
+           (equal (fn2-commit-member-kind i (fn2-commit-member-init n fn2-commit-member))
+                  *fn2-commit-member-kind-none*))
+  :hints (("Goal" :in-theory
+           (union-theories '(fn2-commit-member-kind fn2-commit-member-kind$ai
+                             fn2-commit-member-init-nth nth-of-resize-list
+                             natp nfix (:e nfix) (:e equal) (:e len))
+                           (theory 'minimal-theory))))))
+
+(defthm fn2-ctp-initial-member-owners-recorded
+ (implies (and (natp start) (natp n))
+          (fn2-ctp-recorded-member-owners-p
+           (fn2-ctp-member-fields-range start count (fn2-commit-member-init n fn2-commit-member))
+           nil))
+ :hints (("Goal" :induct (fn2-ctp-member-fields-range start count fn2-commit-member)
+          :in-theory (disable fn2-ctp-member-fields fn2-commit-member-init
+                              fn2-commit-member-kind fn2-commit-member-rows))))
