@@ -15,8 +15,7 @@
          (equal (fn2-layout-range-code slot gen word (+ word 4) nil pk ps pg pool) :ok)
          (equal (fn2-run-read-bytes 4 slot gen word pk ps pg pool) (fn2-layout-le 4 at)))))
 
-(local
- (defthm fn2-run-page-restart-recovers-row
+(defthm fn2-run-page-restart-recovers-row
    (let ((read (fn2-run-restart-offset j slot gen rb pk ps pg f pool)))
      (implies (fn2-run-page-restart-word-p j at rb slot gen pk ps pg f pool)
               (and (equal (car read) :ok) (equal (mv-nth 1 read) at))))
@@ -24,7 +23,7 @@
    :hints (("Goal" :use ((:instance fn2-run-restart-offset-reads-directory-word
                                      (base rb) (v at) (fn2-fields f)))
             :in-theory (disable fn2-run-restart-offset fn2-run-directory fn2-run-header-value fn2-fields-rows
-                       fn2-layout-range-code fn2-layout-le fn2-run-read-bytes fn2-poolp fn2-pool-wfp fn2-pool-base)))))
+                       fn2-layout-range-code fn2-layout-le fn2-run-read-bytes fn2-poolp fn2-pool-wfp fn2-pool-base))))
 
 (local
  (defthm fn2-run-restart-preserves-row-view
