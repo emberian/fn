@@ -5,7 +5,7 @@
 ; after every step. Negative: one child array resized after init changes it.
 ; Run: sh tools/certify.sh tests/owed-d-unit.lisp
 (in-package "ACL2")
-(include-book "../books/owed-d")
+(include-book "../books/owed-d-proof")
 
 (defun fn2-od-ack-all (fn2-core)
   (declare (xargs :stobjs fn2-core :verify-guards nil))
