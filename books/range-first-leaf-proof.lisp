@@ -42,8 +42,7 @@
   :hints (("Goal" :use (fn2-range-first-step-opens-overview-leaf)
             :in-theory (union-theories (theory 'minimal-theory) '(fn2-range-first-open-result-p))))))
 
-(local
- (defthm fn2-range-fresh-builder-ready-for-first-page
+(defthmd fn2-range-fresh-builder-ready-for-first-page
    (fn2-range-first-builder-bindings
     (let ((b (mv-nth 1 start)) (w (mv-nth 2 start)))
       (implies (and (equal fn2-pool (create-fn2-pool)) (fn2-run-buildsp fn2-run-builds)
@@ -59,7 +58,7 @@
                    (b (mv-nth 6 (fn2-rga-call fn2-rga-setup))) (w (mv-nth 10 (fn2-rga-call fn2-rga-setup)))
                    (rs (mv-nth 11 (fn2-rga-call fn2-rga-setup))) (f (mv-nth 12 (fn2-rga-call fn2-rga-setup)))
                    (p (fn2-range-first-builder-bindings (mv-nth 3 src-res)))))
-            :in-theory (theory 'minimal-theory)))))
+            :in-theory (theory 'minimal-theory))))
 
 (defthmd fn2-range-setup-opens-first-overview-leaf
   (fn2-range-first-builder-bindings
