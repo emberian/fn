@@ -6,7 +6,7 @@
 (include-book "range-head-delivery-proof")
 (include-book "range-seek-step-proof")
 (include-book "range-stored-page-search-proof")
-(include-book "runs-built-cache-proof")
+(include-book "range-installed-cursor-proof")
 (include-book "runs-overview-builder-cursor-proof")
 (include-book "runs-build-close-proof")
 

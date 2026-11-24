@@ -782,6 +782,15 @@
          (fn2-b3 (fn2-b3-table-init 1 fn2-b3))
          (fn2-digests (fn2-digests-init 150 fn2-digests)))
      (fn2-rga-mv :ok)))
+   ;; Install the newest sealed page as the root and cache the entire page list.
+   (defun fn2-rga-install-pages (sid k count pages fn2-run-installed fn2-run-cache)
+    (declare (xargs :stobjs (fn2-run-installed fn2-run-cache) :verify-guards nil))
+    (b* ((fn2-run-cache (fn2-run-run-cache-all pages fn2-run-cache))
+         (root (car pages))
+         ((mv code fn2-run-installed)
+          (fn2-run-install k sid (+ 1 k) (nth 0 root) (nth 3 root) (nth 4 root)
+                           (nth 1 root) (nth 2 root) count 9 0 1 fn2-run-installed)))
+      (mv code fn2-run-installed fn2-run-cache)))
    ;; Build ENTRIES into run K+1 (row K; pages from unit 1+1000K) and install it.
    (fn2-rga-defun fn2-rga-build (sid layout entries k)
     (if (atom entries) (fn2-rga-mv :ok)
@@ -795,10 +804,8 @@
            (fn2-run-run-loop 1000000 layout entries src sgen 0 (+ 1 (* 1000 k)) nil fn2-run-builds fn2-run-cursors fn2-run-paths
                              fn2-run-cache fn2-run-writers fn2-run-restarts fn2-fields fn2-pool fn2-fc fn2-fc-context fn2-b3 fn2-digests))
           ((unless (eq code :root)) (fn2-rga-mv (list :build code)))
-          (fn2-run-cache (fn2-run-run-cache-all pages fn2-run-cache))
-          (root (car pages))
-          ((mv code fn2-run-installed)
-           (fn2-run-install k sid (+ 1 k) (nth 0 root) (nth 3 root) (nth 4 root) (nth 1 root) (nth 2 root) (len entries) 9 0 1 fn2-run-installed)))
+          ((mv code fn2-run-installed fn2-run-cache)
+           (fn2-rga-install-pages sid k (len entries) pages fn2-run-installed fn2-run-cache)))
       (fn2-rga-mv code))))
    (fn2-rga-defun fn2-rga-builds (sid layout runs k)
     (if (atom runs) (fn2-rga-mv :ok k)
