@@ -497,7 +497,8 @@
              ,x
              (local (in-theory (disable fn2-cns-fill-cap)))))
          ((and (eq (car x) 'defun)
-               (member-eq (cadr x) '(fn2-cns-range-ready fn2-cns-article-ready fn2-cns-article-next)))
+               (member-eq (cadr x) '(fn2-cns-range-ready fn2-cns-article-ready
+                                     fn2-cns-article-next-contextp fn2-cns-article-inspect fn2-cns-article-next)))
           `(encapsulate ()
              (local (in-theory (disable nfix min posp floor mod
                                         fn2-cns-read-row fn2-read-stripe)))
@@ -692,17 +693,33 @@
                :position 1 :rows nil :hints (("Goal" :do-not '(preprocess) :in-theory (disable |(equal (if a b c) x)|))))))
          ((and (eq (car x) 'fn2-cns-natp-outputs)
                (consp (cdr x))
+               (eq (cadr x) 'fn2-cns-article-inspect))
+          (cons 'progn
+                (fn2-ecns-fast-natp-outputs
+                 (cadr x) (caddr x) (cadddr x)
+                 '(fn2-cns-article-answer-types
+                   fn2-cns-item-answer-types
+                   (:type-prescription fn2-read-value)
+                   (:type-prescription fn2-cns-article-answer)
+                   (:type-prescription fn2-cns-fill-cap)
+                   (:type-prescription fn2-cns-item-answer)))))
+         ((and (eq (car x) 'fn2-cns-natp-outputs)
+               (consp (cdr x))
                (eq (cadr x) 'fn2-cns-article-next))
           (cons 'progn
                 (fn2-ecns-fast-natp-outputs
                  (cadr x) (caddr x) (cadddr x)
-                 '(fn2-cns-item-answer-types
+                 '(fn2-cns-article-inspect-natp-3
+                   fn2-cns-article-inspect-natp-4
+                   fn2-cns-article-inspect-natp-5
+                   fn2-cns-article-inspect-natp-6
+                   fn2-cns-article-inspect-natp-7
+                   fn2-cns-article-inspect-natp-8
+                   fn2-cns-article-inspect-natp-9
+                   fn2-cns-article-inspect-natp-10
                    (:type-prescription fn2-cns-article-ready)
                    (:type-prescription fn2-read-lookup)
-                   (:type-prescription fn2-read-value)
-                   (:type-prescription fn2-cns-article-answer)
-                   (:type-prescription fn2-cns-fill-cap)
-                   (:type-prescription fn2-cns-item-answer)
+                   (:type-prescription fn2-cns-article-inspect)
                    (:type-prescription fn2-core-reset)
                    (:type-prescription fn2-cns-stream-source-capture)
                    (:type-prescription fn2-read-octets)
