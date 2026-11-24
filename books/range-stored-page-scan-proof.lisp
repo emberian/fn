@@ -14,8 +14,7 @@
             (equal (len (nthcdr i rows)) (- (len rows) i)))
    :hints (("Goal" :induct (nthcdr i rows)))))
 
-(local
- (defthm fn2-run-stored-scan-input
+(defthm fn2-run-stored-scan-input
    (let* ((layout (fn2-run-overview-layout-at level))
           (offsets (fn2-run-restart-offsets-spec layout rows 0 *fn2-run-entries-base*))
           (i (* j *fn2-run-restart-interval*))
@@ -38,7 +37,7 @@
                  (fn2-run-page-restart-word-p fn2-run-overview-row-atp fn2-run-overview-page-rowsp
                   fn2-run-directory fn2-run-header-value fn2-run-restart-offsets-spec fn2-run-row-offset
                   fn2-layout-range-code fn2-poolp fn2-pool-wfp fn2-pool-base fn2-fields-rows
-                  fn2-run-read-bytes fn2-run-directory-octets nth nthcdr))))))
+                  fn2-run-read-bytes fn2-run-directory-octets nth nthcdr)))))
 
 (defthmd fn2-run-seek-scans-stored-page
   (let* ((j (fn2-run-preceding-restart low)) (i (* j *fn2-run-restart-interval*))

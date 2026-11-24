@@ -1,4 +1,4 @@
-; The group, number, article and position delivered from a stored overview row.
+; Scalar identities in a stored overview entry or its index child reference.
 (in-package "ACL2")
 (include-book "runs-overview-cursor-proof")
 (local (include-book "runs-page-id-proof"))
@@ -13,10 +13,10 @@
 (local
  (defthm fn2-run-overview-id-fits-field
  (let ((layout (if indexp *fn2-overview-index* *fn2-overview-entry*)))
-  (implies (and (fn2-run-values-layoutp layout row) (natp j) (< j (if indexp 2 4)))
+  (implies (and (fn2-run-values-layoutp layout row) (natp j) (< j (if indexp 6 4)))
            (and (fn2-run-scalar-prefixp j layout) (unsigned-byte-p 60 (nth j row)))))
  :rule-classes nil
- :hints (("Goal" :cases ((equal j 0) (equal j 1) (equal j 2) (equal j 3))
+ :hints (("Goal" :cases ((equal j 0) (equal j 1) (equal j 2) (equal j 3) (equal j 4) (equal j 5))
           :do-not '(preprocess)
           :use ((:instance fn2-run-layout-id-width
                   (layout (if indexp *fn2-overview-index* *fn2-overview-entry*))
@@ -31,7 +31,7 @@
         (bytes (fn2-layout-octets layout row))
         (bound (+ off (len bytes)))
         (scan (fn2-layout-scan layout *fn2-codec-decode-fuel* base 0 0 0 0 0 0 off slot gen end pk ps pg f pool)))
-   (implies (and (fn2-run-values-layoutp layout row) (natp j) (< j (if indexp 2 4))
+   (implies (and (fn2-run-values-layoutp layout row) (natp j) (< j (if indexp 6 4))
                  (unsigned-byte-p 32 slot) (unsigned-byte-p 60 gen) (natp base)
                  (<= (+ base (len layout)) (fn2-fields-rows f))
                  (unsigned-byte-p 32 off) (unsigned-byte-p 32 end) (<= bound end)
@@ -54,7 +54,7 @@
         (bytes (fn2-layout-octets layout row))
         (bound (+ off (len bytes)))
         (read (fn2-run-layout-decode 3 level base slot gen off end pk ps pg f pool)))
-   (implies (and (fn2-run-values-layoutp layout row) (natp j) (< j (if indexp 2 4))
+   (implies (and (fn2-run-values-layoutp layout row) (natp j) (< j (if indexp 6 4))
                  (unsigned-byte-p 32 slot) (unsigned-byte-p 60 gen) (natp base)
                  (<= (+ base (len layout)) (fn2-fields-rows f))
                  (unsigned-byte-p 32 off) (unsigned-byte-p 32 end) (<= bound end)
