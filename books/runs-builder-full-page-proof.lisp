@@ -83,7 +83,9 @@
                   (equal (mv-nth 2 step) (cons row tail)) (equal (mv-nth 3 step) at)
                   (equal (mv-nth 4 step) unit) (equal (mv-nth 5 step) pages) (equal (mv-nth 6 step) builds)
                   (equal (mv-nth 10 step) (fn2-run-writers-set-phase w *fn2-run-writer-phase-closing* (fn2-run-writers-set-pos w 0 writers)))
-                  (equal (mv-nth 11 step) restarts))))
+                  (equal (mv-nth 11 step) restarts)
+                  (equal (mv-nth 13 step) (mv-nth 3 (fn2-run-load-values *fn2-overview-entry* row *fn2-run-run-entry*
+                                                                        src sg at 9 0 1 f pool))))))
   :hints (("Goal" :use (fn2-run-oversized-next-append-starts-close
                    (:instance fn2-run-idle-build-consumes-accepted-row (layout *fn2-overview-entry*)))
            :in-theory (union-theories (theory 'minimal-theory)
