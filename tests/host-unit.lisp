@@ -1,7 +1,7 @@
 ; A5r's host-boundary units (layer doc 4.1.1, 4.1.6): the peer record of an
 ; Accept result, its validation, and the harvest latch.
 (in-package "ACL2")
-(include-book "../books/owed-host")
+(include-book "../books/owed-host-proof")
 
 ; 127.0.0.1:119, [::1]:8119 and Unix-domain peers (uid 501 gid 20, and
 ; root's 0 0) reach the listener row.
