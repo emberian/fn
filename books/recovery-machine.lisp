@@ -7,6 +7,8 @@
 (include-book "machine-arms")
 (fn2-book-layer :b)
 
+(defcost fn2-rec-next-discovery-unit :doc "Return the next physical unit in discovery order, or nil at the end of the extent.")
+
 ; R5e2: a recovery row id is valid exactly when the kind's generated snapshot
 ; check accepts it; then every declared field read is in bounds.
 (defun fn2-recovery-idp-lemmas (fields)
