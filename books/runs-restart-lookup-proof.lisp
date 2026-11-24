@@ -3,8 +3,7 @@
 (include-book "runs-restart-directory-proof")
 (include-book "runs-restart-reader-proof")
 
-(local
- (defthm fn2-run-read-prefix
+(defthm fn2-run-read-prefix
    (implies (and (natp n) (natp m) (natp at))
             (equal (fn2-run-read-bytes (+ n m) slot gen at pk ps pg pool)
                    (append (fn2-run-read-bytes n slot gen at pk ps pg pool)
@@ -12,7 +11,7 @@
    :rule-classes nil
    :hints (("Goal" :induct (fn2-run-read-bytes n slot gen at pk ps pg pool)
             :expand ((fn2-run-read-bytes (+ n m) slot gen at pk ps pg pool))
-            :in-theory (disable fn2-pool-read)))))
+            :in-theory (disable fn2-pool-read))))
 
 (local
  (defthm fn2-run-word-read-is-four-bytes
@@ -87,18 +86,16 @@
         (implies (and (fn-b3-octet-listp a) (fn-b3-octet-listp b))
                  (fn-b3-octet-listp (append a b))))
    :hints (("Goal" :induct (append a b)))))
-(local
- (defthm fn2-run-directory-shape
+(defthm fn2-run-directory-shape
    (let ((bytes (fn2-run-directory-octets offsets)))
      (and (equal (len bytes) (* 4 (len offsets))) (true-listp bytes)
           (fn-b3-octet-listp bytes)))
    :hints (("Goal" :induct (fn2-run-directory-octets offsets)
-            :in-theory (disable fn2-layout-le)))))
-(local
- (defthm fn2-run-saved-offset-count
+            :in-theory (disable fn2-layout-le))))
+(defthm fn2-run-saved-offset-count
    (equal (len (fn2-run-saved-offsets k row restarts)) (nfix k))
    :hints (("Goal" :induct (fn2-run-saved-offsets k row restarts)
-            :in-theory (disable fn2-run-restarts-offset)))))
+            :in-theory (disable fn2-run-restarts-offset))))
 (local
  (defun-nx fn2-run-saved-offset-index (i k row)
    (if (or (zp i) (zp k)) row
