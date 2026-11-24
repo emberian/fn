@@ -1,7 +1,7 @@
 ; The first add on an empty build requests a leaf. The returned sequence
 ; retains that first row for encoding after supplying the new page.
 (in-package "ACL2")
-(include-book "range-served")
+(include-book "runs-served")
 
 (local
  (defthmd fn2-range-reset-first-writer
@@ -65,6 +65,7 @@
           (b1 (fn2-run-builds-set-height 0 1 b))
           (page (fn2-run-build-page 0 0 (mv-nth 1 reserve) (mv-nth 2 reserve) unit 2 unit b1 w (mv-nth 3 reserve)))
           (step (fn2-run-run-onestep *fn2-overview-entry* (cons row tail) src sg 0 unit pages b curs paths cache w rs f p fc ctx b3 ds)))
+     (declare (ignorable page))
      ,body))
 
 (defthmd fn2-range-first-step-supplies-leaf
