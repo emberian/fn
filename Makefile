@@ -313,6 +313,7 @@ ACL2_BOOKS = \
   books/recovery-decision-proof \
   books/recovery-machine \
   books/recovery-payload \
+  books/recovery-receipt-history-proof \
   books/recovery-proof \
   books/reference \
   books/reference-state \
