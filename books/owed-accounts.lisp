@@ -8,9 +8,26 @@
 ; accounts.lisp; fn2-account-grant-take-live in accounts-core.lisp.
 (in-package "ACL2")
 (include-book "executor")
+(include-book "account-fifo")
 (fn2-book-layer :d)
 
 (make-event (value (fn2-declare '(:operation-set fn2-account-requests) nil nil nil)))
+
+; Every reachable request row belongs to one FIFO, has the reservation wait
+; reason and has both links consistent with its position. This predicate is
+; checked by proofs and tests. A grant inspects only its head and successor.
+(defun fn2-account-core-invariantp (fn2-core)
+  (declare (xargs :stobjs fn2-core :guard (fn2-core-wfp fn2-core)
+                  :guard-hints (("Goal" :in-theory (enable fn2-core-wfp)))))
+  (and (iff (fn2-core-stopped-p fn2-core)
+            (not (equal (fn2-core-stop-reason fn2-core) *fn2-stop-reason-none*)))
+       (stobj-let ((fn2-accounts (fn2-core-accounts fn2-core))
+                   (fn2-machines (fn2-core-machines fn2-core)))
+         (ok) (and (fn2-accounts-shapep fn2-accounts)
+                   (not (eq (fn2-account-fifos-visit (fn2-accounts-rows fn2-accounts)
+                                                     nil fn2-accounts fn2-machines)
+                            :invalid)))
+         ok)))
 
 ; Whether H, waiting at the head of P's FIFO with a fitting request, is
 ; granted within N grants: true at once if H no longer heads P's FIFO with
