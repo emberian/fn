@@ -28,31 +28,30 @@
             :in-theory (union-theories (theory 'minimal-theory) '(fn2-run-next-overview-row-p unsigned-byte-p
                          integer-range-p natp (:e expt) (:e equal) (:e <)))))))
 
-(local
- (defthmd fn2-range-fitting-leaf-build-pool
-   (let* ((w (fn2-run-builds-wbase 0 builds)) (base *fn2-run-run-entry*)
-          (load (fn2-run-load-values *fn2-overview-entry* row base src sg at 9 0 1 f pool))
-          (build (fn2-run-build-add 0 base builds writers restarts (mv-nth 2 load) (mv-nth 3 load))))
-     (implies (and (fn2-run-build-awaits-input-p builds writers restarts f fc ctx)
-                   (fn2-run-next-overview-row-p rows row src sg at builds writers restarts f pool)
-                   (car (fn2-run-leaf-packed-end row w writers)))
-              (and (equal (car load) :ok) (equal (car build) :ok)
-                   (equal (mv-nth 5 build)
-                          (mv-nth 1 (fn2-run-load-bytes (fn2-layout-octets *fn2-overview-entry* row)
-                          (fn2-run-writers-slot w writers) (fn2-run-writers-gen w writers)
-                          (fn2-run-writers-cursor w writers) 9 0 1 (fn2-range-leaf-input-pool)))))))
-   :hints (("Goal" :do-not '(preprocess)
-            :use (fn2-range-next-leaf-row-passes-ready-check fn2-run-builder-appends-overview-source-row)
-            :in-theory (e/d (fn2-run-next-overview-row-p fn2-run-overview-append-workspace-p fn2-run-build-awaits-input-p)
-                        (fn2-run-open-overview-contents-p fn2-run-values-layoutp fn2-run-key-order-spec fn2-overview-range-key-at
-                         fn2-run-builds-wbase fn2-run-builds-schema fn2-run-builds-height fn2-run-builds-phase
-                         fn2-run-builds-entries fn2-run-writers-phase fn2-run-writers-fields fn2-run-writers-rows
-                         fn2-run-writers-schema fn2-run-writers-level fn2-run-writers-slot fn2-run-writers-gen fn2-run-writers-cursor
-                         fn2-run-writers-prev fn2-run-writers-entries fn2-run-writers-restarts fn2-run-writers-limit
-                         fn2-run-writers-okind fn2-run-writers-oslot fn2-run-writers-ogen fn2-run-restarts-rows fn2-pool-base
-                         fn2-poolp fn2-pool-wfp fn2-layout-range-code fn2-layout-octets fn2-run-pack-bound fn2-run-writerp
-                         fn2-run-builds-crow fn2-run-builds-hbase fn2-run-scan fn2-fc-rows fn2-fc-context-rows fn2-fields-rows
-                         fn2-run-load-values fn2-run-load-bytes fn2-run-build-add fn2-run-add-ready unsigned-byte-p len nth))))))
+(defthmd fn2-range-fitting-leaf-build-pool
+  (let* ((w (fn2-run-builds-wbase 0 builds)) (base *fn2-run-run-entry*)
+         (load (fn2-run-load-values *fn2-overview-entry* row base src sg at 9 0 1 f pool))
+         (build (fn2-run-build-add 0 base builds writers restarts (mv-nth 2 load) (mv-nth 3 load))))
+    (implies (and (fn2-run-build-awaits-input-p builds writers restarts f fc ctx)
+                  (fn2-run-next-overview-row-p rows row src sg at builds writers restarts f pool)
+                  (car (fn2-run-leaf-packed-end row w writers)))
+             (and (equal (car load) :ok) (equal (car build) :ok)
+                  (equal (mv-nth 5 build)
+                         (mv-nth 1 (fn2-run-load-bytes (fn2-layout-octets *fn2-overview-entry* row)
+                         (fn2-run-writers-slot w writers) (fn2-run-writers-gen w writers)
+                         (fn2-run-writers-cursor w writers) 9 0 1 (fn2-range-leaf-input-pool)))))))
+  :hints (("Goal" :do-not '(preprocess)
+           :use (fn2-range-next-leaf-row-passes-ready-check fn2-run-builder-appends-overview-source-row)
+           :in-theory (e/d (fn2-run-next-overview-row-p fn2-run-overview-append-workspace-p fn2-run-build-awaits-input-p)
+                       (fn2-run-open-overview-contents-p fn2-run-values-layoutp fn2-run-key-order-spec fn2-overview-range-key-at
+                        fn2-run-builds-wbase fn2-run-builds-schema fn2-run-builds-height fn2-run-builds-phase
+                        fn2-run-builds-entries fn2-run-writers-phase fn2-run-writers-fields fn2-run-writers-rows
+                        fn2-run-writers-schema fn2-run-writers-level fn2-run-writers-slot fn2-run-writers-gen fn2-run-writers-cursor
+                        fn2-run-writers-prev fn2-run-writers-entries fn2-run-writers-restarts fn2-run-writers-limit
+                        fn2-run-writers-okind fn2-run-writers-oslot fn2-run-writers-ogen fn2-run-restarts-rows fn2-pool-base
+                        fn2-poolp fn2-pool-wfp fn2-layout-range-code fn2-layout-octets fn2-run-pack-bound fn2-run-writerp
+                        fn2-run-builds-crow fn2-run-builds-hbase fn2-run-scan fn2-fc-rows fn2-fc-context-rows fn2-fields-rows
+                        fn2-run-load-values fn2-run-load-bytes fn2-run-build-add fn2-run-add-ready unsigned-byte-p len nth)))))
 
 (local
  (defthmd fn2-range-fitting-leaf-writes-two-slots

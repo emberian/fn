@@ -1,7 +1,7 @@
 ; Publishing a sealed leaf or parent extends the same physical page list
 ; that the range adapter will install, without consuming the pending row.
 (in-package "ACL2")
-(include-book "range-published-run-pages-proof")
+(include-book "range-published-run-contents")
 (include-book "runs-builder-page-publication-proof")
 
 (defmacro fn2-range-publishing-page (&rest body)
@@ -13,22 +13,23 @@
      (declare (ignorable w hrow ctx page calls run))
      ,@body))
 
-(local
- (defthmd fn2-range-page-publication-returns-list-and-pool
-   (fn2-range-publishing-page
-    (implies (and (equal (fn2-run-builds-crow 0 builds) 0)
-                  (fn2-run-build-sealing-at-p l builds writers restarts f fc ctx)
-                  (fn2-run-seal-workspace-p w hrow writers fc ctx b3 f pool ds)
-                  (fn2-run-written-page-ready-p w (fn2-run-writers-fields w writers) writers f fc pool))
-             (and (posp calls) (<= calls 70) (equal (car run) :fuel)
-                  (equal (mv-nth 1 run) (cons page pages)) (equal (mv-nth 9 run) pool))))
-   :hints (("Goal" :do-not '(preprocess)
-            :use ((:instance fn2-run-builder-publishes-written-page (extra 0)))
-            :expand ((:free (pp bb ww ff cc b d ctx)
-                            (fn2-run-sealing-loop 0 pp bb ww ff cc b d)))
-            :in-theory (union-theories (theory 'minimal-theory)
-                '(mv-nth car-cons cdr-cons (:t fn2-run-page-check-calls) commutativity-of-+ unicity-of-0 fix
-                  (:e natp) (:e zp) (:e equal) (:e binary-+) (:e mv-nth) (:e consp)))))))
+(defthmd fn2-range-page-publication-returns-list-and-pool
+  (fn2-range-publishing-page
+   (implies (and (equal (fn2-run-builds-crow 0 builds) 0)
+                 (fn2-run-build-sealing-at-p l builds writers restarts f fc ctx)
+                 (fn2-run-seal-workspace-p w hrow writers fc ctx b3 f pool ds)
+                 (fn2-run-written-page-ready-p w (fn2-run-writers-fields w writers) writers f fc pool))
+            (and (posp calls) (<= calls 70) (equal (car run) :fuel)
+                 (equal (mv-nth 1 run) (cons page pages)) (equal (mv-nth 9 run) pool)
+                 (equal (mv-nth 2 run) (fn2-run-sealed-builds builds))
+                 (equal (mv-nth 6 run) (fn2-run-writers-set-phase w *fn2-run-writer-phase-sealed* writers)))))
+  :hints (("Goal" :do-not '(preprocess)
+           :use ((:instance fn2-run-builder-publishes-written-page (extra 0)))
+           :expand ((:free (pp bb ww ff cc b d ctx)
+                           (fn2-run-sealing-loop 0 pp bb ww ff cc b d)))
+           :in-theory (union-theories (theory 'minimal-theory)
+               '(mv-nth car-cons cdr-cons (:t fn2-run-page-check-calls) commutativity-of-+ unicity-of-0 fix
+                 (:e natp) (:e zp) (:e equal) (:e binary-+) (:e mv-nth) (:e consp))))))
 
 (defthmd fn2-range-builder-publishes-represented-rows
   (fn2-range-publishing-page
