@@ -106,7 +106,7 @@
  (nfix (- (nfix rows) 3)))
 (defun fn2-b-ctl-runtime-row (s connections rows)
  (declare (xargs :guard t))
- (+ (nfix (- (nfix rows) (nfix connections) 5)) (nfix s)))
+ (+ (nfix (- (nfix rows) (+ (nfix connections) 5))) (nfix s)))
 (defun fn2-b-checkpoint-row (rows)
  (declare (xargs :guard t))
  (nfix (- (nfix rows) 1)))
