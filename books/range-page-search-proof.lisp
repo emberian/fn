@@ -22,8 +22,7 @@
         (fn2-run-key-order-spec *fn2-overview-range-key* row query))
  :hints (("Goal" :expand ((nth 0 row) (nth 1 row) (nth 0 (cdr row))) :in-theory (disable nfix)))))
 
-(local
- (defthm fn2-run-overview-decoded-key-pair
+(defthm fn2-run-overview-decoded-key-pair
  (let* ((read (fn2-run-layout-decode 3 level base slot gen off end pk ps pg f pool)) (after (mv-nth 2 read)))
   (implies (and (fn2-run-overview-row-atp level row base slot gen off end pk ps pg f pool)
                 (natp qbase) (< (1+ qbase) base))
@@ -37,7 +36,7 @@
           :in-theory (e/d (fn2-run-overview-row-atp fn2-overview-range-key-at)
                          (fn2-run-layout-decode fn2-fields-value fn2-run-values-layoutp unsigned-byte-p nth
                           fn2-layout-octets fn2-run-read-bytes fn2-poolp fn2-pool-wfp fn2-pool-base
-                          fn2-layout-range-code fn2-fields-rows))))))
+                          fn2-layout-range-code fn2-fields-rows)))))
 
 (defthm fn2-run-overview-page-key-order
  (let* ((read (fn2-run-layout-decode 3 level base slot gen off end pk ps pg f pool))

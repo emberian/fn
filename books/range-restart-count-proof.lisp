@@ -4,11 +4,11 @@
 (include-book "range-restart-bisection-proof")
 (local (include-book "centaur/bitops/integer-length" :dir :system))
 
-(local
- (defthm fn2-run-integer-length-monotonic
+(defthm fn2-run-integer-length-monotonic
    (implies (and (natp i) (natp j) (<= i j)) (<= (integer-length i) (integer-length j)))
    :rule-classes nil
-   :hints (("Goal" :in-theory (disable integer-length)))))
+   :hints (("Goal" :in-theory (disable integer-length))))
+
 (local
  (defthm fn2-run-integer-length-of-half
    (implies (natp n) (equal (integer-length (floor n 2)) (if (zp n) 0 (1- (integer-length n)))))
@@ -24,8 +24,7 @@
    :rule-classes nil
    :hints (("Goal" :cases ((< (floor (+ lo hi) 2) (/ (+ lo hi) 2)))))))
 
-(local
- (defthm fn2-run-restart-half-bits
+(defthm fn2-run-restart-half-bits
    (let* ((j (floor (+ lo hi) 2)) (low (if less (1+ j) lo)) (high (if less hi j)))
      (implies (and (natp lo) (natp hi) (< lo hi))
               (and (natp low) (natp high) (<= low high)
@@ -36,7 +35,7 @@
                            (i (- (if less hi (floor (+ lo hi) 2)) (if less (1+ (floor (+ lo hi) 2)) lo)))
                            (j (floor (- hi lo) 2)))
                          (:instance fn2-run-integer-length-of-half (n (- hi lo))))
-            :in-theory (disable integer-length floor)))))
+            :in-theory (disable integer-length floor))))
 
 (defthmd fn2-run-restart-search-fits-budget
   (let* ((search (fn2-run-overview-restart-search fuel lo hi offsets rows level qbase rb slot gen pk ps pg f pool))
