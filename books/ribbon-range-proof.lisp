@@ -3,7 +3,7 @@
 
 (include-book "ribbon-mutation-discharge-proof")
 (include-book "range-resume-order-proof")
-(include-book "range-head-pick-proof")
+(include-book "range-head-delivery-proof")
 (include-book "range-seek-step-proof")
 (include-book "range-page-lower-bound-proof")
 (include-book "runs-built-cache-proof")
